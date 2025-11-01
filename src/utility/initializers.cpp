@@ -7,10 +7,10 @@ using namespace std;
 
 gaussian_initializer::gaussian_initializer() : initializer_base() {}
 
-double gaussian_initializer::get_random_number() const {
+ftype gaussian_initializer::get_random_number() const {
     static std::random_device rd;
     static std::mt19937 gen{rd()};
-    static std::normal_distribution<double> dist;
+    static std::normal_distribution<ftype> dist;
 
     return dist(gen);
 }
