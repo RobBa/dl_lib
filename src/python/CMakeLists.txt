@@ -6,8 +6,21 @@ include_directories(
         #"${CMAKE_CURRENT_SOURCE_DIR}/gpu"
         )
 
-add_library(PythonLib STATIC
+# remove the lib... prefix 
+set(CMAKE_SHARED_MODULE_PREFIX "")
+
+add_library(PythonLib MODULE
             layers/layers_cpu.cpp
             )
 
+target_link_libraries(PythonLib ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+target_include_directories(PythonLib PRIVATE ${PYTHON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 target_include_directories(PythonLib PRIVATE ${Boost_INCLUDE_DIRS})
+
+
+#add_library(hello MODULE
+#            hello.cpp
+#            )
+
+#target_link_libraries(hello ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+#target_include_directories(hello PRIVATE ${PYTHON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
