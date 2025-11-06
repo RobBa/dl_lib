@@ -21,5 +21,5 @@ class ff_layer_cpu : public layer_base {
         ~ff_layer_cpu() noexcept override;
 
         ftype* forward(ftype* input) const override;
-        ftype* backward(ftype* input) override;
+        //ftype* backward(ftype* input) override;
 };

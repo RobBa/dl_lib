@@ -5,6 +5,12 @@ project(slip)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Boost REQUIRED)
+
+# for compiled boost lib
+#find_package(Boost REQUIRED COMPONENTS filesystem)
+
+
 if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc")
 endif()
@@ -18,7 +24,42 @@ endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-option(DOUBLE_PRECISION "Compile with double precision at cost of speed?" OFF)
+option(DOUBLE_PRECISION "Compile with double precision at cost of speed?" OFF) # TODO: not implemented yet
+
+# include python libs
+if(APPLE)
+  message("Getting PythonLibs on Apple (MacOSX) path")
+  set(CMAKE_FIND_FRAMEWORK NEVER)
+  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
+    
+  message("Python_VERSION:${Python_VERSION}")
+  message("Python_LIBRARIES:${Python_LIBRARIES}")
+  message("Python_INCLUDE_DIRS:${${Python_INCLUDE_DIRS}}")
+
+  set(PYTHON_LIBRARIES ${Python_LIBRARIES})
+  string(COMPARE EQUAL "${PYTHON_LIBRARIES}" "" PYTHONLIBS_EMPTY)
+  if(PYTHONLIBS_EMPTY)
+    message(FATAL_ERROR "Problem: PYTHON_LIBRARIES not found. Do you have Python installed on your machine?")
+  endif()
+
+  string(COMPARE EQUAL "${Python_INCLUDE_DIRS}" "" PYTHONDIRS_EMPTY)
+  if(PYTHONDIRS_EMPTY)
+    message("Failed to automatically find Python_INCLUDE_DIRS. Setting the PYTHON_INCLUDE_DIRS variable manually. If this crashes please adjust the following
+            path to the path where Python.h resides (the one matching the found Python instance). Paths must be consistent iff multiple Python versions on machine.")
+    set(PYTHON_H_PATH "/usr/local/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/include/python3.13")
+    set(PYTHON_INCLUDE_DIRS "${PYTHON_H_PATH}")
+  else()
+    set(PYTHON_INCLUDE_DIRS ${Python_INCLUDE_DIRS})
+  endif()
+    #FindPython3()
+  message("Apple - Using Python:${Python_VERSION_MAJOR} - Libraries:${PYTHON_LIBRARIES} - IncludeDirs: ${PYTHON_INCLUDE_DIRS}")
+else()
+  message("Getting PythonLibs on Linux or Windows path")
+  find_package(PythonLibs REQUIRED)
+endif()
+include_directories(${PYTHON_INCLUDE_DIRS})
+message("Using Python:${Python_VERSION_MAJOR} - Libraries:${PYTHON_LIBRARIES} - IncludeDirs: ${PYTHON_INCLUDE_DIRS}")
+
 
 #set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
 
@@ -64,3 +105,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
 
 add_subdirectory(src)
 add_subdirectory(examples)
+
+#target_include_directories(my_app PRIVATE ${Boost_INCLUDE_DIRS})
+# for compiled lib
+#target_link_libraries(my_app PRIVATE Boost::filesystem)

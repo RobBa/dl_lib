@@ -19,13 +19,12 @@ using namespace std;
 ff_layer_cpu::ff_layer_cpu(const int in_size, const int out_size) : layer_base() {
     auto initializer = initializer_factory::get_initializer();
     
-    weights.resize(out_size);
     for(int i=0; i<out_size; ++i){
         auto v = vector<ftype>(in_size);
         for(int j=0; j<in_size; ++j){
             v[j] = initializer->get_random_number();
         }
-        weights[i] = move(v);
+        weights.push_back(std::move(v));
     }
 
     v1 = static_cast<ftype*>(malloc(out_size * sizeof(ftype)));
@@ -57,6 +56,6 @@ ftype* ff_layer_cpu::forward(ftype* input) const {
     return v1;
 }
 
-ftype* ff_layer_cpu::backward(ftype* input) {
+//ftype* ff_layer_cpu::backward(ftype* input) {
 
-}
+//}
