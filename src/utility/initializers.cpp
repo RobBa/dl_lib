@@ -5,6 +5,14 @@
 
 using namespace std;
 
+namespace {
+    class gaussian_initializer final : public initializer_base {
+    public:
+        gaussian_initializer();
+        ftype get_random_number() const override;
+    };
+}
+
 gaussian_initializer::gaussian_initializer() : initializer_base() {}
 
 ftype gaussian_initializer::get_random_number() const {

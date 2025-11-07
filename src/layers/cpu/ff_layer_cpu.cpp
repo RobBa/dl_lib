@@ -19,6 +19,7 @@ using namespace std;
 ff_layer_cpu::ff_layer_cpu(const int in_size, const int out_size) : layer_base() {
     auto initializer = initializer_factory::get_initializer();
     
+    weights.reserve(out_size);
     for(int i=0; i<out_size; ++i){
         auto v = vector<ftype>(in_size);
         for(int j=0; j<in_size; ++j){
