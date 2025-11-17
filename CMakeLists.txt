@@ -14,8 +14,7 @@ endif()
 find_package(Boost REQUIRED)
 
 # for compiled boost lib
-#find_package(Boost REQUIRED COMPONENTS filesystem)
-
+find_package(Boost REQUIRED COMPONENTS filesystem)
 
 if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc")
