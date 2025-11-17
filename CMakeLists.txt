@@ -11,10 +11,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
 endif()
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS python3)
 
 # for compiled boost lib
-find_package(Boost REQUIRED COMPONENTS filesystem)
+#find_package(Boost REQUIRED COMPONENTS filesystem)
 
 if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc")

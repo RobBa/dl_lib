@@ -16,7 +16,7 @@
 
 using namespace std;
 
-ff_layer_cpu::ff_layer_cpu(const int in_size, const int out_size) : layer_base() {
+ff_layer_cpu::ff_layer_cpu(const int in_size, const int out_size){
     auto initializer = initializer_factory::get_initializer();
     
     weights.reserve(out_size);
@@ -35,13 +35,14 @@ ff_layer_cpu::~ff_layer_cpu() noexcept {
     free(v1);
 }
 
+/*
 void ff_layer_cpu::reset_vector(ftype* v, const int size) const noexcept {
     for(int i=0; i<size; ++i){
         v[i]=0;
     }
 }
 
-ftype* ff_layer_cpu::forward(ftype* input) const {
+void ff_layer_cpu::forward(ftype* input) const {
     static const int in_size = weights.size();
     static const int out_size = weights[0].size();
 
@@ -54,8 +55,8 @@ ftype* ff_layer_cpu::forward(ftype* input) const {
         }
     }
 
-    return v1;
-}
+    //return v1;
+} */
 
 //ftype* ff_layer_cpu::backward(ftype* input) {
 

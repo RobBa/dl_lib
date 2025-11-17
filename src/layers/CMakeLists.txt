@@ -7,3 +7,5 @@ include_directories(
 add_library(Layers STATIC
         cpu/ff_layer_cpu.cpp
         )
+
+target_link_libraries(Layers Utility)

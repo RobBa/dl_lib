@@ -1,15 +1,24 @@
-/* #pragma once
+/**
+ * @file layers_cpu.h
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-17
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 
-#include <boost/python.hpp>
-//#include <boost/python/detail/wrap_python.hpp>
+#pragma once
 
 #include "ff_layer_cpu.h"
 
-using namespace boost::python;
+#include <boost/python.hpp>
 
-BOOST_PYTHON_MODULE(layers_cpu)
+/* BOOST_PYTHON_MODULE(layers_cpu)
 {
-    Py_Initialize();
+    using namespace boost::python;
+
     class_<ff_layer_cpu>("ff_layer_cpu", init<int, int>())
         .def("forward", &ff_layer_cpu::forward)
         //.def("backward", &ff_layer_cpu::backward)

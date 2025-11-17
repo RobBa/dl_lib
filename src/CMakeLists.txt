@@ -6,7 +6,7 @@ include_directories(
         "${CMAKE_CURRENT_SOURCE_DIR}/python"
         )
 
-add_subdirectory(layers)
 add_subdirectory(utility)
+add_subdirectory(layers)
 add_subdirectory(networks)
 add_subdirectory(python)
