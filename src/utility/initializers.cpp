@@ -11,16 +11,17 @@ namespace {
         gaussian_initializer();
         ftype get_random_number() const override;
     };
-}
 
-gaussian_initializer::gaussian_initializer() : initializer_base() {}
+    gaussian_initializer::gaussian_initializer() : initializer_base() {}
 
-ftype gaussian_initializer::get_random_number() const {
-    static std::random_device rd;
-    static std::mt19937 gen{rd()};
-    static std::normal_distribution<ftype> dist;
+    ftype gaussian_initializer::get_random_number() const {
+        // TODO: optimize those objects so they don't get reinitialized each time
+        std::random_device rd;
+        std::mt19937 gen{rd()};
+        std::normal_distribution<ftype> dist;
 
-    return dist(gen);
+        return dist(gen);
+    }
 }
 
 unique_ptr<initializer_base> initializer_factory::get_initializer() {
