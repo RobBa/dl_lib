@@ -15,12 +15,12 @@
 
 #include <boost/python.hpp>
 
-/* BOOST_PYTHON_MODULE(layers_cpu)
+BOOST_PYTHON_MODULE(layers_cpu)
 {
     using namespace boost::python;
 
-    class_<ff_layer_cpu>("ff_layer_cpu", init<int, int>())
-        .def("forward", &ff_layer_cpu::forward)
+    class_<layers::ff_layer_cpu>("ff_layer_cpu", init<int, int>())
+        //.def("forward", &ff_layer_cpu::forward)
         //.def("backward", &ff_layer_cpu::backward)
     ;
-} */
+}

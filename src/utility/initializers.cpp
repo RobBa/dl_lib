@@ -4,6 +4,7 @@
 #include <algorithm>
 
 using namespace std;
+using namespace utility;
 
 namespace {
     class gaussian_initializer final : public initializer_base {
@@ -16,9 +17,9 @@ namespace {
 
     ftype gaussian_initializer::get_random_number() const {
         // TODO: optimize those objects so they don't get reinitialized each time
-        std::random_device rd;
-        std::mt19937 gen{rd()};
-        std::normal_distribution<ftype> dist;
+        static std::random_device rd;
+        static std::mt19937 gen{rd()};
+        static std::normal_distribution<ftype> dist;
 
         return dist(gen);
     }

@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+# to link shared libs. TODO: can we get rid of this, as it may cost runtime?
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # to enable find boost, see https://stackoverflow.com/a/79147222
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)

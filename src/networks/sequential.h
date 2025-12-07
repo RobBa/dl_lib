@@ -7,7 +7,7 @@
 
 class sequential_network {
     protected:
-        std::vector<layer_base> layers; 
+        std::vector<layers::layer_base> layers; 
 
     public:
         sequential_network();

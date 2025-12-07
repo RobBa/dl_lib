@@ -12,11 +12,11 @@
 #include "layers_cpu.h"
 
 using namespace boost::python;
-
+/* 
 BOOST_PYTHON_MODULE(layers_cpu)
 {
     class_<ff_layer_cpu>("ff_layer_cpu", init<int, int>())
         //.def("forward", &ff_layer_cpu::forward)
         //.def("backward", &ff_layer_cpu::backward)
     ;
-}
+} */
