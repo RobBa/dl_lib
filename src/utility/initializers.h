@@ -1,3 +1,14 @@
+/**
+ * @file initializers.h
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2025-12-07
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
+
 #pragma once
 
 #include "global_params.h"
@@ -6,16 +17,16 @@
 #include <type_traits>
 
 namespace utility{
-    class initializer_base {
+    class InitializerBase {
         public:
-            initializer_base() = default;
-            virtual ~initializer_base() = default;
-            virtual ftype get_random_number() const = 0;
+            InitializerBase() = default;
+            virtual ~InitializerBase() = default;
+            virtual ftype getRandomNumber() const = 0;
     };
 
-    class initializer_factory final {
+    class InitializerFactory final {
         public:
-            initializer_factory() = delete;
-            static std::unique_ptr<initializer_base> get_initializer();
+            InitializerFactory() = delete;
+            static std::unique_ptr<InitializerBase> getInitializer();
     };
 }

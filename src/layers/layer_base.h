@@ -1,3 +1,14 @@
+/**
+ * @file layer_base.h
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2025-12-07
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
+
 #pragma once
 
 #include "global_params.h"
@@ -8,10 +19,10 @@ namespace layers {
     /** 
      * The base class for all the layers that we have. Not instantiable.
      */
-    class layer_base {
+    class LayerBase {
         public:
-            layer_base() = default;
-            virtual ~layer_base() noexcept {};
+            LayerBase() = default;
+            virtual ~LayerBase() noexcept {};
 
             virtual ftype* forward(ftype* input) const = 0;
             //virtual ftype* backward(ftype* input) = 0;

@@ -8,6 +8,7 @@ include_directories(
 
 # compiling the libraries
 add_subdirectory(utility)
+add_subdirectory(data_modeling)
 add_subdirectory(layers)
 add_subdirectory(networks)
 add_subdirectory(python)

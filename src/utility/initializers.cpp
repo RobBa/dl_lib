@@ -1,3 +1,14 @@
+/**
+ * @file initializers.cpp
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2025-12-07
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
+
 #include "initializers.h"
 
 #include <random>
@@ -7,16 +18,15 @@ using namespace std;
 using namespace utility;
 
 namespace {
-    class gaussian_initializer final : public initializer_base {
+    class GaussianInitializer final : public InitializerBase {
     public:
-        gaussian_initializer();
-        ftype get_random_number() const override;
+        GaussianInitializer();
+        ftype getRandomNumber() const override;
     };
 
-    gaussian_initializer::gaussian_initializer() : initializer_base() {}
+    GaussianInitializer::GaussianInitializer() : InitializerBase() {}
 
-    ftype gaussian_initializer::get_random_number() const {
-        // TODO: optimize those objects so they don't get reinitialized each time
+    ftype GaussianInitializer::getRandomNumber() const {
         static std::random_device rd;
         static std::mt19937 gen{rd()};
         static std::normal_distribution<ftype> dist;
@@ -25,6 +35,6 @@ namespace {
     }
 }
 
-unique_ptr<initializer_base> initializer_factory::get_initializer() {
-    return make_unique<gaussian_initializer>();
+unique_ptr<InitializerBase> InitializerFactory::getInitializer() {
+    return make_unique<GaussianInitializer>();
 }

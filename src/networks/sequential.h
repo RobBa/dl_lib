@@ -1,3 +1,14 @@
+/**
+ * @file sequential.h
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2025-12-07
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
+
 #pragma once
 
 #include "layer_base.h"
@@ -5,18 +16,18 @@
 #include <vector>
 #include <utility>
 
-class sequential_network {
+class SequentialNetwork {
     protected:
-        std::vector<layers::layer_base> layers; 
+        std::vector<layers::LayerBase> layers; 
 
     public:
-        sequential_network();
+        SequentialNetwork();
 
         //template<typename T>
-        //void add_layer(layer_base&& layer) noexcept;
+        //void addLayer(LayerBase&& layer) noexcept;
 };
 
 /*template<typename T>
-void sequential_network::add_layer(layer_base&& layer) noexcept {
-    layers.push_back(std::forward<layer_base>(layer));
+void SequentialNetwork::addLayer(LayerBase&& layer) noexcept {
+    layers.push_back(std::forward<LayerBase>(layer));
 }*/

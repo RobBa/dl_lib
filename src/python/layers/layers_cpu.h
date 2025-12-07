@@ -19,8 +19,8 @@ BOOST_PYTHON_MODULE(layers_cpu)
 {
     using namespace boost::python;
 
-    class_<layers::ff_layer_cpu>("ff_layer_cpu", init<int, int>())
-        //.def("forward", &ff_layer_cpu::forward)
-        //.def("backward", &ff_layer_cpu::backward)
+    class_<layers::FfLayerCpu>("FfLayerCpu", init<int, int>())
+        //.def("forward", &FfLayerCpu::forward)
+        //.def("backward", &FfLayerCpu::backward)
     ;
 }
