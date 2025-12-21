@@ -13,6 +13,7 @@
 
 #include "layer_base.h"
 #include "initializers.h"
+#include "tensor.h"
 
 #include <vector>
 #include <memory>
@@ -20,22 +21,22 @@
 namespace layers {
     class FfLayerCpu : public LayerBase {
         protected:
-            // the matrix we multiply with. For efficiency dim = (output_size, input_size)
-            std::vector< std::vector<ftype> > weights; // TODO: optimize via flattening out
+            Dimension dims;
+
+            Tensor weights;
             
             // memoization
             mutable ftype* v1;
 
-            void resetVector(ftype* v, int size) const noexcept;
+            void resetVector(ftype* v, std::uint16_t size) const noexcept;
 
         public:
-            FfLayerCpu(int in_size, int out_size);
+            FfLayerCpu(std::uint16_t in_size, std::uint16_t out_size);
             ~FfLayerCpu() noexcept;
 
             ftype* forward(ftype* input) const override;
             //ftype* backward(ftype* input) override;
 
-            int n_rows() const noexcept { return 0; }
-            int n_cols() const noexcept { return 0; }
+            const Dimension& getDim() const noexcept { return dims; }
     };
 }

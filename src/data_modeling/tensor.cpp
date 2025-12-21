@@ -11,6 +11,20 @@
 
 #include "tensor.h"
 
-const std::array<std::uint16_t, 4>& Tensor::getDims() const noexcept {
+#include <stdlib.h>
+
+using namespace std;
+
+const Dimension& Tensor::getDims() const noexcept {
   return dims;
+}
+
+Tensor::~Tensor() noexcept {
+  if(values != nullptr){
+    free(values);
+  }
+}
+
+Tensor operator*(Tensor const& other){
+  
 }

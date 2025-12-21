@@ -1,3 +1,3 @@
-add_library(Data STATIC
+add_library(DataModeling STATIC
     tensor.cpp
     )

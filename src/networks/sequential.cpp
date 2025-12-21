@@ -12,7 +12,15 @@
 #include "sequential.h"
 
 using namespace std;
+using namespace layers;
 
-SequentialNetwork::SequentialNetwork(){
+/**
+ * @brief Returns true if dimensions valid, else false. 
+ * Ensures consistency along network.
+ */
+bool SequentialNetwork::assertDims(const LayerBase& layer) const noexcept {
+  if(layers.size() == 0)
+    return true;
 
+  return layers.at(layers.size()-1).getDim() == layer.getDim(); 
 }

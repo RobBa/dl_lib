@@ -15,13 +15,24 @@
 
 #include <vector>
 #include <utility>
+#include <type_traits>
 
 class SequentialNetwork {
     protected:
-        std::vector<layers::LayerBase> layers; 
+        std::vector<layers::LayerBase> layers;
+        bool assertDims(const layers::LayerBase& layer) const noexcept;
 
     public:
-        SequentialNetwork();
+        SequentialNetwork() = default;
+
+        template <typename T> requires (std::derived_from<T, layers::LayerBase>)
+        void addLayer(T&& layer) {
+            if(!assertDims(layer)){
+                // TODO: show warning that the dims don't match
+                return;
+            }
+            layers.push_back(std::forward<T>(layer));
+        }
 
         //template<typename T>
         //void addLayer(LayerBase&& layer) noexcept;

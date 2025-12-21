@@ -12,19 +12,24 @@
 #pragma once
 
 #include "global_params.h"
+#include "dim_type.h"
 
+#include <array>
 #include <type_traits>
+#include <tuple>
+#include <cstdint>
 
 namespace layers {
     /** 
      * The base class for all the layers that we have. Not instantiable.
      */
-    class LayerBase {
+    class LayerBase {            
         public:
             LayerBase() = default;
             virtual ~LayerBase() noexcept {};
 
             virtual ftype* forward(ftype* input) const = 0;
             //virtual ftype* backward(ftype* input) = 0;
+            virtual const Dimension& getDim() const noexcept = 0;
     };
 }
