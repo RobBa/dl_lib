@@ -13,6 +13,7 @@
 
 #include "dim_type.h"
 
+#include <stdlib.h>
 #include <unordered_map>
 
 #include <concepts>
@@ -23,7 +24,7 @@ enum class Device {
     CUDA
 };
 
-consteval char* DeviceToString(Device d) {
+consteval const char* DeviceToString(Device d) {
     switch(d){
         case Device::CPU:
             return "CPU";

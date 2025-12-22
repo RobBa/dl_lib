@@ -12,4 +12,4 @@
 #pragma once
 
 using ftype = float; // TODO: make compiler flag
-static constexpr int MAX_TENSOR_SIZE = 4;
+constexpr int MAX_TENSOR_SIZE = 4;

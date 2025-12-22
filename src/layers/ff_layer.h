@@ -1,5 +1,5 @@
 /**
- * @file ff_layer_cpu.h
+ * @file ff_layer.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -13,30 +13,23 @@
 
 #include "layer_base.h"
 #include "initializers.h"
-#include "tensor.h"
 
 #include <vector>
 #include <memory>
 
 namespace layers {
-    class FfLayerCpu : public LayerBase {
-        protected:
-            Dimension dims;
-
-            Tensor weights;
-            
+    class FfLayer : public LayerBase {
+        protected:            
             // memoization
             mutable ftype* v1;
 
             void resetVector(ftype* v, std::uint16_t size) const noexcept;
 
         public:
-            FfLayerCpu(std::uint16_t in_size, std::uint16_t out_size);
-            ~FfLayerCpu() noexcept;
+            FfLayer(std::uint16_t in_size, std::uint16_t out_size);
+            ~FfLayer() noexcept;
 
             ftype* forward(ftype* input) const override;
             //ftype* backward(ftype* input) override;
-
-            const Dimension& getDim() const noexcept { return dims; }
     };
 }

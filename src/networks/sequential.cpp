@@ -22,5 +22,5 @@ bool SequentialNetwork::assertDims(const LayerBase& layer) const noexcept {
   if(layers.size() == 0)
     return true;
 
-  return layers.at(layers.size()-1).getDim() == layer.getDim(); 
+  return layers.at(layers.size()-1).getDims() == layer.getDims(); 
 }

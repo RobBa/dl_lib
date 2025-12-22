@@ -12,7 +12,7 @@
 #pragma once
 
 #include "global_params.h"
-#include "dim_type.h"
+#include "tensor.h"
 
 #include <array>
 #include <type_traits>
@@ -23,13 +23,17 @@ namespace layers {
     /** 
      * The base class for all the layers that we have. Not instantiable.
      */
-    class LayerBase {            
+    class LayerBase {       
+        protected:
+            Tensor weights;
+
         public:
             LayerBase() = default;
-            virtual ~LayerBase() noexcept {};
+            virtual ~LayerBase() noexcept = default;
 
             virtual ftype* forward(ftype* input) const = 0;
             //virtual ftype* backward(ftype* input) = 0;
-            virtual const Dimension& getDim() const noexcept = 0;
+
+            const Dimension& getDims() const noexcept { return weights.getDims(); }
     };
 }

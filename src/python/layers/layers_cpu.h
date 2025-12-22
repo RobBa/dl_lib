@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "ff_layer_cpu.h"
+#include "ff_layer.h"
 
 #include <boost/python.hpp>
 
@@ -19,8 +19,8 @@ BOOST_PYTHON_MODULE(layers_cpu)
 {
     using namespace boost::python;
 
-    class_<layers::FfLayerCpu>("FfLayerCpu", init<int, int>())
-        //.def("forward", &FfLayerCpu::forward)
-        //.def("backward", &FfLayerCpu::backward)
+    class_<layers::FfLayer>("FfLayer", init<int, int>())
+        //.def("forward", &FfLayer::forward)
+        //.def("backward", &FfLayer::backward)
     ;
 }

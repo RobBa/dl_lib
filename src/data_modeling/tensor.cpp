@@ -11,8 +11,6 @@
 
 #include "tensor.h"
 
-#include <stdlib.h>
-
 using namespace std;
 
 const Dimension& Tensor::getDims() const noexcept {
