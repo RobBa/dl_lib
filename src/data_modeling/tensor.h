@@ -34,11 +34,19 @@ consteval const char* DeviceToString(Device d) {
 }
 
 struct Tensor final {
+    enum class TensorType {
+        OneD,
+        TwoD,
+        ThreeD,
+        FourD
+    };
+
     private:
         ftype* values = nullptr;
         Dimension dims;
 
         Device device;
+        TensorType type;
 
         /**
          * @brief Folding expression since C++17: Does the 
@@ -61,9 +69,23 @@ struct Tensor final {
             }
         }
 
+        Tensor multiply1D(const Tensor& scalar, const Tensor& other) const;
+        Tensor multiply2D(const Tensor& left, const Tensor& right) const;
+
+
     public:
-        Tensor() = default;
         ~Tensor() noexcept;
+
+        /** copy ctor. Does not copy content, but only copies
+         * dimensions and other properties, then allocates space. 
+         */
+        Tensor(const Tensor& other);
+
+        Tensor(Device d=Device::CPU)
+            : device(d) {
+            type = TensorType::OneD;
+            allocValues(1, d);
+        }
         
         template<typename T> requires (is_valid_dim<T>)
         Tensor(T dim1, Device d=Device::CPU)
@@ -120,5 +142,6 @@ struct Tensor final {
         }
 
         const Dimension& getDims() const noexcept;
-        Tensor operator*(Tensor const& t);
+
+        Tensor operator*(Tensor const& t) const;
 };

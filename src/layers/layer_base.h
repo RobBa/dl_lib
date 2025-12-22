@@ -31,7 +31,7 @@ namespace layers {
             LayerBase() = default;
             virtual ~LayerBase() noexcept = default;
 
-            virtual ftype* forward(ftype* input) const = 0;
+            virtual Tensor forward(const Tensor& input) const = 0;
             //virtual ftype* backward(ftype* input) = 0;
 
             const Dimension& getDims() const noexcept { return weights.getDims(); }

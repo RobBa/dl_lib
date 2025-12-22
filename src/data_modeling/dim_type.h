@@ -34,7 +34,26 @@ class Dimension final {
       return dims[idx];
     }
 
+    std::uint16_t get(int idx) const {
+      assert(idx < MAX_TENSOR_SIZE);
+      return dims[idx];
+    }
+
     bool operator==(const Dimension& other) const {
       return this->dims == other.dims;
+    }
+
+    /**
+     * @brief Get the total size of the dimension as a product of all dimension sizes.
+     */
+    std::uint32_t getTotalSize() const noexcept {
+      std::uint32_t res = 1;
+      for(const auto x : dims){
+        if(x==0){
+          return res;
+        }
+        res *= x;
+      }
+      return res;
     }
 };
