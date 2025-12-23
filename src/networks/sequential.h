@@ -25,7 +25,8 @@ class SequentialNetwork {
     public:
         SequentialNetwork() = default;
 
-        template <typename T> requires (std::derived_from<T, layers::LayerBase>)
+        template <typename T>
+        requires (std::derived_from< std::remove_const_t<T>, layers::LayerBase >)
         void addLayer(T&& layer) {
             if(!assertDims(layer)){
                 // TODO: show warning that the dims don't match
@@ -33,9 +34,6 @@ class SequentialNetwork {
             }
             layers.push_back(std::forward<T>(layer));
         }
-
-        //template<typename T>
-        //void addLayer(LayerBase&& layer) noexcept;
 };
 
 /*template<typename T>

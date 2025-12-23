@@ -84,6 +84,7 @@ struct Tensor final {
         Tensor(Device d=Device::CPU)
             : device(d) {
             type = TensorType::OneD;
+            dims[0] = 1;
             allocValues(1, d);
         }
         
@@ -144,4 +145,6 @@ struct Tensor final {
         const Dimension& getDims() const noexcept;
 
         Tensor operator*(Tensor const& t) const;
+
+        static Tensor multiply(const Tensor& left, const Tensor& right);
 };
