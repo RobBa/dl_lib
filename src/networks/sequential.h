@@ -34,6 +34,8 @@ class SequentialNetwork {
             }
             layers.push_back(std::forward<T>(layer));
         }
+
+        Tensor forward(Tensor x) const;
 };
 
 /*template<typename T>
