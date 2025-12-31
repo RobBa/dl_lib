@@ -7,7 +7,7 @@ include_directories(
 # remove the lib... prefix 
 set(CMAKE_SHARED_MODULE_PREFIX "")
 
-add_library(layers_cpu MODULE
+add_library(dllib MODULE
             layers/layers_cpu.cpp
             )
 

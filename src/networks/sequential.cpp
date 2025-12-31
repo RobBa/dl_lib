@@ -25,15 +25,21 @@ bool SequentialNetwork::assertDims(const LayerBase& layer) const noexcept {
   return layers.at(layers.size()-1).getDims() == layer.getDims(); 
 }
 
-// TODO: 
-Tensor SequentialNetwork::forward(Tensor x) const {
+Tensor SequentialNetwork::forward(const Tensor& input) const {
   if(input.getDims().get(1) != layers.at(0).getDims().get(0)){
     // TODO: show meaningful message rather than exception
     __throw_invalid_argument("Not implemented yet. Dimensions don't match");
   }
 
-  Tensor ref;
-  for(const auto& layer: layers){
-    auto t = layer.forward(ref);
+  if(layers.size()==0){
+    // TODO: show meaningful message rather than exception
+    __throw_invalid_argument("Network empy, cannot be called.");
   }
+
+  Tensor x = layers.at(0).forward(input);
+  for(int i=1; i<layers.size(); i++){
+    x = layers.at(i).forward(x);
+  }
+
+  return x;
 }
