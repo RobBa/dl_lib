@@ -14,16 +14,16 @@
 #include "layer_base.h"
 #include "initializers.h"
 
-#include <vector>
-#include <memory>
+#include <optional>
 
 namespace layers {
     class FfLayer : public LayerBase {
         protected:            
-            // memoization
-            mutable Tensor v1;
+            // memoization 
+            // TODO: necessary?
+            //mutable std::optional<Tensor> v1;
 
-            void resetVector(ftype* v, std::uint16_t size) const noexcept;
+            //void resetVector(ftype* v, std::uint16_t size) const noexcept;
 
         public:
             FfLayer(std::uint16_t in_size, std::uint16_t out_size);

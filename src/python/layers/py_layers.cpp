@@ -1,5 +1,5 @@
 /**
- * @file layers_cpu.cpp
+ * @file layers.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -9,11 +9,11 @@
  * 
  */
 
-#include "layers_cpu.h"
+#include "py_layers.h"
 
 using namespace boost::python;
 /* 
-BOOST_PYTHON_MODULE(layers_cpu)
+BOOST_PYTHON_MODULE(layers)
 {
     class_<FfLayer>("FfLayer", init<int, int>())
         //.def("forward", &FfLayer::forward)

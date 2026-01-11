@@ -17,21 +17,23 @@
 using namespace std;
 using namespace layers;
 
-FfLayer::FfLayer(const std::uint16_t in_size, const std::uint16_t out_size){
+FfLayer::FfLayer(const std::uint16_t in_size, const std::uint16_t out_size) {
     auto initializer = utility::InitializerFactory::getInitializer();
 
-    weights = Tensor(in_size, out_size);
-    v1 = Tensor(out_size);
+    weights.emplace(in_size, out_size);
+    // TODO: init the weigths randomly
+
+    //v1 = make_unique<Tensor>(out_size);
 }
 
-void FfLayer::resetVector(ftype* v, const std::uint16_t size) const noexcept {
+/* void FfLayer::resetVector(ftype* v, const std::uint16_t size) const noexcept {
     for(int i=0; i<size; ++i){
         v[i]=0;
     }
-}
+} */
 
 Tensor FfLayer::forward(const Tensor& input) const {
-    return weights * input;
+    return *weights * input;
 }
 
 //ftype* FfLayer::backward(ftype* input) {

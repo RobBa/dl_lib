@@ -64,22 +64,30 @@ struct Tensor final {
             switch(d){
                 case Device::CPU:
                     values = static_cast<ftype*>( malloc(size * sizeof(ftype)) );
+                    break;
                 case Device::CUDA:
                     std::__throw_invalid_argument("Not implemented yet.");
+                    break;
             }
         }
 
         Tensor multiply1D(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
 
-
     public:
         ~Tensor() noexcept;
 
         /** copy ctor. Does not copy content, but only copies
-         * dimensions and other properties, then allocates space. 
+         * dimensions and other properties, then allocates space
+         * without populating the content of the new tensor.
          */
         Tensor(const Tensor& other);
+
+        /**
+         * @brief Move assignment operator. Currently not intented 
+         * to be used, therefore let the compiler tell us when we do.
+         */
+        Tensor& operator=(Tensor&& other) = delete;
 
         Tensor(Device d=Device::CPU)
             : device(d) {

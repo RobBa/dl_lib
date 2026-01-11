@@ -20,6 +20,7 @@ const Dimension& Tensor::getDims() const noexcept {
 Tensor::~Tensor() noexcept {
   if(values != nullptr){
     free(values);
+    values=nullptr;
   }
 }
 
@@ -96,7 +97,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
     case TensorType::TwoD:
       return multiply2D(*this, other);
     default:
-      __throw_invalid_argument("Not implemented yet");
+      __throw_invalid_argument("Multiplication of tensors of higher order than 2 not implemented");
   }
 }
 

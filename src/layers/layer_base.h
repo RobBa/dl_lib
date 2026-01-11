@@ -14,10 +14,7 @@
 #include "global_params.h"
 #include "tensor.h"
 
-#include <array>
-#include <type_traits>
-#include <tuple>
-#include <cstdint>
+#include <optional>
 
 namespace layers {
     /** 
@@ -25,7 +22,7 @@ namespace layers {
      */
     class LayerBase {       
         protected:
-            Tensor weights;
+            std::optional<Tensor> weights = std::nullopt;
 
         public:
             LayerBase() = default;
@@ -34,6 +31,9 @@ namespace layers {
             virtual Tensor forward(const Tensor& input) const = 0;
             //virtual ftype* backward(ftype* input) = 0;
 
-            const Dimension& getDims() const noexcept { return weights.getDims(); }
+            // weights should always exist, never nullopt outside of c'tor
+            const Dimension& getDims() const noexcept { 
+                return weights.value().getDims(); 
+            }
     };
 }
