@@ -11,26 +11,87 @@
 
 #include "tensor.h"
 
+#include <utility>
+
+#ifndef NDEBUG
+  #include <iostream>
+#endif // NDEBUG
+
 using namespace std;
 
-const Dimension& Tensor::getDims() const noexcept {
-  return dims;
-}
+/******************************************************************** 
+*************************** value_t *********************************
+********************************************************************/
 
-Tensor::~Tensor() noexcept {
-  if(values != nullptr){
-    free(values);
-    values=nullptr;
-  }
-}
+Tensor::value_t::value_t(Device d) : device(d) { }
 
-Tensor::Tensor(const Tensor& other) {
+Tensor::value_t::value_t(value_t&& other) noexcept {
   this->device = other.device;
+  this->values = other.values;
+}
+
+Tensor::value_t& Tensor::value_t::operator=(value_t&& other) noexcept {
+  if (this == &other) return *this;
+
+  this->device = other.device;
+  this->values = std::move(other.values);
+
+  return *this;
+}
+
+Tensor::value_t::~value_t() noexcept {
+  #ifndef NDEBUG
+    if(values != nullptr){
+      cerr << "value is nullptr in destructor of Tensor::value_t" << endl;
+    }
+  #endif // NDEBUG
+
+  free(values);
+}
+
+Tensor::value_t::operator bool() const {
+  return values != nullptr;
+}
+
+ftype& Tensor::value_t::operator[](int idx) {
+  return values[idx];
+}
+
+
+/******************************************************************** 
+*************************** Tensor **********************************
+********************************************************************/
+
+Tensor::Tensor(const Tensor& other) noexcept {
   this->dims = other.dims;
   this->type = other.type;
+  this->values = other.values;
+}
 
-  auto size = other.dims.getTotalSize();
-  allocValues(size, other.device);
+Tensor& Tensor::operator=(const Tensor& other) noexcept {
+  if (this == &other) return *this;
+  
+  this->dims = other.dims;
+  this->type = other.type;
+  this->values = other.values;
+
+  return *this;
+}
+
+Tensor::Tensor(Tensor&& other) noexcept {  
+  this->type = other.type;
+  this->dims = move(other.dims);
+  this->values = move(other.values);
+}
+
+Tensor& Tensor::operator=(Tensor&& other) noexcept {
+  if (this == &other) return *this;
+  
+  this->type = other.type;
+  this->dims = move(other.dims);
+  this->values = move(other.values);
+
+  return *this;
 }
 
 /**
@@ -40,7 +101,7 @@ Tensor::Tensor(const Tensor& other) {
 Tensor Tensor::multiply1D(const Tensor& scalar, const Tensor& right) const {
   Tensor res(right);
   for(int i=0; i<right.dims.getTotalSize(); ++i){
-    res.values[i] = this->values[0] * right.values[i];
+    (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
   }
   return res;
 }
@@ -54,7 +115,7 @@ Tensor Tensor::multiply1D(const Tensor& scalar, const Tensor& right) const {
  * network class object instance upon construction. 
  */
 Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
-  Tensor res(left.dims.get(0), right.dims.get(1), this->device);
+  Tensor res(left.dims.get(0), right.dims.get(1), this->values->device);
 
   for(uint16_t row=0; row<left.dims.get(0); row++){
     const uint32_t leftRowOffset = row * left.dims.get(1);
@@ -67,11 +128,11 @@ Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
       for(uint16_t idx=0; idx<left.dims.get(1); idx++){
         const uint32_t leftOffset = leftRowOffset + idx;
         const uint32_t targetOffset = col + idx * right.dims.get(1); // we can do this better via increments
-        scalarProd += left.values[leftOffset] * right.values[targetOffset];
+        scalarProd += (*left.values)[leftOffset] * (*right.values)[targetOffset];
       }
 
       const uint32_t resOffset = resRowOffset + col; // we can do this better via increments
-      res.values[resOffset] = scalarProd;
+      (*res.values)[resOffset] = scalarProd;
     }
   }
 
@@ -83,7 +144,7 @@ Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
  * segmentation faults or wrong results. For safe method use static function multiply().
  */
 Tensor Tensor::operator*(const Tensor& other) const {
-  if(device==Device::CUDA){
+  if(values->device==Device::CUDA){
     __throw_invalid_argument("Not implemented");
   }
 
@@ -113,4 +174,8 @@ Tensor multiply(const Tensor& left, const Tensor& right) {
   }
 
   return left * right;
+}
+
+const Dimension& Tensor::getDims() const noexcept {
+  return dims;
 }

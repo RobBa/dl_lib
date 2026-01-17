@@ -15,6 +15,7 @@
 
 #include <stdlib.h>
 #include <unordered_map>
+#include <memory>
 
 #include <concepts>
 #include <cassert>
@@ -35,6 +36,7 @@ consteval const char* DeviceToString(Device d) {
 
 struct Tensor final {
     enum class TensorType {
+        Scalar,
         OneD,
         TwoD,
         ThreeD,
@@ -42,10 +44,49 @@ struct Tensor final {
     };
 
     private:
-        ftype* values = nullptr;
-        Dimension dims;
+        /**
+         * @brief Here we encapsulate the tensor's values. 
+         * Enables us to use a shared_ptr, as well as encapsulate all the 
+         * logic that could branch out, e.g. memory management through
+         * different devices like a GPU.
+         * 
+         * WARNING: Only Tensor should be seeing this class.
+         */
+        struct value_t final {
+        public:
+            Device device;
+            ftype* values = nullptr;
 
-        Device device;
+            value_t() = delete;
+            explicit value_t(Device d);
+            ~value_t() noexcept;
+
+            value_t(const value_t& other) noexcept = delete;
+            value_t& value(const value_t& other) noexcept = delete;
+
+            value_t(value_t&& other) noexcept;
+            value_t& operator=(value_t&& other) noexcept;
+
+            explicit operator bool() const;
+            ftype& operator[](int idx);
+
+            template<typename T>
+            requires (std::is_integral_v< std::remove_const_t<T> >)
+            void allocValues(const T size) {
+                switch(this->device){
+                    case Device::CPU:
+                    values = static_cast<ftype*>( malloc(size * sizeof(ftype)) );
+                    break;
+                    case Device::CUDA:
+                    std::__throw_invalid_argument("Not implemented yet.");
+                    break;
+                }
+            }
+        };
+
+        std::shared_ptr<value_t> values = nullptr;
+
+        Dimension dims;
         TensorType type;
 
         /**
@@ -58,96 +99,89 @@ struct Tensor final {
             return (x * ...);
         }
 
-        template<typename T>
-        requires (std::is_integral_v< std::remove_const_t<T> >)
-        void allocValues(const T size, const Device d) {
-            switch(d){
-                case Device::CPU:
-                    values = static_cast<ftype*>( malloc(size * sizeof(ftype)) );
-                    break;
-                case Device::CUDA:
-                    std::__throw_invalid_argument("Not implemented yet.");
-                    break;
-            }
-        }
-
         Tensor multiply1D(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
 
     public:
-        ~Tensor() noexcept;
-
-        /** copy ctor. Does not copy content, but only copies
-         * dimensions and other properties, then allocates space
-         * without populating the content of the new tensor.
+        /** 
+         * @brief Copying. 
+         * 
+         * WARNING: only copy dimensions and other properties, but
+         * underlying array of values shared among the instances via
+         * pointer.
          */
-        Tensor(const Tensor& other);
+        Tensor(const Tensor& other) noexcept;
+        Tensor& operator=(const Tensor& other) noexcept;
 
         /**
-         * @brief Move assignment operator. Currently not intented 
-         * to be used, therefore let the compiler tell us when we do.
+         * @brief Moving. Move array of values
+         * to new instance as well.
          */
-        Tensor& operator=(Tensor&& other) = delete;
+        Tensor(Tensor&& other) noexcept;
+        Tensor& operator=(Tensor&& other) noexcept;
 
-        Tensor(Device d=Device::CPU)
-            : device(d) {
-            type = TensorType::OneD;
+        explicit Tensor(Device d=Device::CPU) {
+            type = TensorType::Scalar;
             dims[0] = 1;
-            allocValues(1, d);
+
+            values = std::make_shared<value_t>(d);
+            values->allocValues(1);
         }
         
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, Device d=Device::CPU)
-            : device(d) {
+        Tensor(T dim1, Device d=Device::CPU) {
             assert(dim1 >= 0);
 
+            type = TensorType::OneD;
             dims[0] = dim1;
-            allocValues(dim1, d);
+            
+            values = std::make_shared<value_t>(d);
+            values->allocValues(dim1);
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, Device d=Device::CPU)
-            : device(d) {
+        Tensor(T dim1, T dim2, Device d=Device::CPU) {
             assert(dim1 >= 0);
             assert(dim2 >= 0);
 
+            type = TensorType::TwoD;
             dims[0] = dim1;
             dims[1] = dim2;
 
-            auto size = varProduct(dim1, dim2);
-            allocValues(size, d);
+            values = std::make_shared<value_t>(d);
+            values->allocValues(varProduct(dim1, dim2));
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, T dim3, Device d=Device::CPU)
-            : device(d) { 
+        Tensor(T dim1, T dim2, T dim3, Device d=Device::CPU) { 
             assert(dim1 >= 0);
             assert(dim2 >= 0);
             assert(dim3 >= 0);
 
+            type = TensorType::ThreeD;
             dims[0] = dim1;
             dims[1] = dim2;
             dims[2] = dim3;
 
-            auto size = varProduct(dim1, dim2, dim3);
-            allocValues(size, d);
+            values = std::make_shared<value_t>(d);
+            values->allocValues(varProduct(dim1, dim2, dim3));
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, T dim3, T dim4, Device d=Device::CPU)
-            : device(d) { 
+        Tensor(T dim1, T dim2, T dim3, T dim4, Device d=Device::CPU) { 
             assert(dim1 >= 0);
             assert(dim2 >= 0);
             assert(dim3 >= 0);
             assert(dim4 >= 0);
 
+            type = TensorType::FourD;
             dims[0] = dim1; 
             dims[1] = dim2; 
             dims[2] = dim3; 
             dims[3] = dim4;
 
-            auto size = varProduct(dim1, dim2, dim3, dim4);
-            allocValues(size, d);
+            values = std::make_shared<value_t>(d);
+            values->allocValues(varProduct(dim1, dim2, dim3, dim4));
         }
 
         const Dimension& getDims() const noexcept;
