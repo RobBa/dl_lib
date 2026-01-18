@@ -21,7 +21,7 @@ FfLayer::FfLayer(const tensorDim_t in_size, const tensorDim_t out_size) {
     auto initializer = utility::InitializerFactory::getInitializer();
 
     weights.emplace(in_size, out_size);
-    // TODO: init the weigths randomly
+    weights->initialize(initializer);
 
     //v1 = make_unique<Tensor>(out_size);
 }

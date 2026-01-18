@@ -21,12 +21,12 @@ namespace {
     class GaussianInitializer final : public InitializerBase {
     public:
         GaussianInitializer();
-        ftype getRandomNumber() const override;
+        ftype drawNumber() const override;
     };
 
     GaussianInitializer::GaussianInitializer() : InitializerBase() {}
 
-    ftype GaussianInitializer::getRandomNumber() const {
+    ftype GaussianInitializer::drawNumber() const {
         static std::random_device rd;
         static std::mt19937 gen{rd()};
         static std::normal_distribution<ftype> dist;

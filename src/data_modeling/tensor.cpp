@@ -40,13 +40,20 @@ Tensor::value_t& Tensor::value_t::operator=(value_t&& other) noexcept {
 }
 
 Tensor::value_t::~value_t() noexcept {
-  #ifndef NDEBUG
-    if(values != nullptr){
+#ifndef NDEBUG
+    if(values == nullptr){
       cerr << "value is nullptr in destructor of Tensor::value_t" << endl;
     }
-  #endif // NDEBUG
+#endif // NDEBUG
 
-  free(values);
+  switch(device){
+    case Device::CPU:
+      free(values);
+      break;
+    case Device::CUDA:
+      std::__throw_invalid_argument("Not implemented yet.");
+      break;
+  }
 }
 
 /**
@@ -54,11 +61,11 @@ Tensor::value_t::~value_t() noexcept {
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
-Tensor::value_t Tensor::value_t::createDeepCopy(const Tensor::value_t& other) {
-  value_t res(other.device);
-  res.resize<tensorSize_t>(other.size);
-  for(tensorSize_t i=0; i<other.size; i++){
-    res[i] = other.values[i];
+Tensor::value_t Tensor::value_t::createDeepCopy(const Tensor::value_t& v) {
+  value_t res(v.device);
+  res.resize<tensorSize_t>(v.size);
+  for(tensorSize_t i=0; i<v.size; i++){
+    res[i] = v.values[i];
   }
   return res;
 }
@@ -69,6 +76,10 @@ void Tensor::value_t::setDevice(const Device d) noexcept {
 
 Device Tensor::value_t::getDevice() const noexcept {
   return this->device;
+}
+
+tensorSize_t Tensor::value_t::getSize() const noexcept {
+  return this->size;
 }
 
 Tensor::value_t::operator bool() const noexcept {
@@ -189,7 +200,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
  * operator*(), with the responsibility of the dimensionality check going to
  * the network. This is a safe version of that functionality. 
  */
-Tensor multiply(const Tensor& left, const Tensor& right) {
+Tensor Tensor::multiply(const Tensor& left, const Tensor& right) {
   if(left.getDims().get(0) != right.getDims().get(1)){
     // TODO: show meaningful message in python without exception
     __throw_invalid_argument("Dimensions don't match");
@@ -198,6 +209,21 @@ Tensor multiply(const Tensor& left, const Tensor& right) {
   return left * right;
 }
 
+/**
+ * @brief Populates the tensor with values drawn according to initializer.
+ */
+void Tensor::initialize(const unique_ptr<utility::InitializerBase>& init) {
+  for(tensorSize_t i=0; i<values->getSize(); i++){
+    (*values)[i] = init->drawNumber();
+  }
+}
+
 const Dimension& Tensor::getDims() const noexcept {
   return dims;
+}
+
+ostream& operator<<(ostream& os, const Tensor& t) noexcept {
+  os << "Dims: " << t.getDims();
+  os << *(t.values);
+  return os;
 }

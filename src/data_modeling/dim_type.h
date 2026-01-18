@@ -14,6 +14,8 @@
 #include "global_params.h"
 
 #include <array>
+
+#include <iostream>
 #include <cassert>
 
 template <typename T>
@@ -42,17 +44,7 @@ class Dimension final {
       return this->dims == other.dims;
     }
 
-    /**
-     * @brief Get the total size of the dimension as a product of all dimension sizes.
-     */
-    std::uint32_t getTotalSize() const noexcept {
-      std::uint32_t res = 1;
-      for(const auto x : dims){
-        if(x==0){
-          return res;
-        }
-        res *= x;
-      }
-      return res;
-    }
+    tensorSize_t getTotalSize() const noexcept;
+
+    friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
 };

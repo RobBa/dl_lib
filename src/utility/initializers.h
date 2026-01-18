@@ -21,7 +21,7 @@ namespace utility{
         public:
             InitializerBase() = default;
             virtual ~InitializerBase() = default;
-            virtual ftype getRandomNumber() const = 0;
+            virtual ftype drawNumber() const = 0;
     };
 
     class InitializerFactory final {

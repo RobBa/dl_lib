@@ -25,6 +25,7 @@ BOOST_PYTHON_MODULE(py_data_modeling)
     class_<Dimension>("Dimension", no_init)
         .def("get", &Dimension::get)
         .def("getTotalSize", &Dimension::getTotalSize)
+        .def(str(self))
     ;
 
     enum_<Device>("Device")
@@ -37,8 +38,9 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def(init<tensorDim_t, tensorDim_t, optional<Device> >())
         .def(init<tensorDim_t, tensorDim_t, tensorDim_t, optional<Device> >())
         .def(init<tensorDim_t, tensorDim_t, tensorDim_t, tensorDim_t, optional<Device> >())
-        .def("getDims", &Tensor::getDims, return_internal_reference<>())
+        .def("dim", &Tensor::getDims, return_internal_reference<>())
         .def(self * self)
+        .def(str(self))
     ;
 
 }

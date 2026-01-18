@@ -12,10 +12,14 @@
 #pragma once
 
 #include "dim_type.h"
+
 #include "global_params.h"
+#include "initializers.h"
 
 #include <unordered_map>
 #include <memory>
+
+#include <iostream>
 
 #include <concepts>
 #include <cassert>
@@ -29,7 +33,7 @@ enum class Device {
     CUDA
 };
 
-consteval const char* DeviceToString(Device d) {
+constexpr const char* DeviceToString(Device d) {
     switch(d){
         case Device::CPU:
             return "CPU";
@@ -53,12 +57,10 @@ struct Tensor final {
          * Enables us to use a shared_ptr, as well as encapsulate all the 
          * logic that could branch out, e.g. memory management through
          * different devices like a GPU.
-         * 
-         * WARNING: Only Tensor should be seeing this class.
          */
         struct value_t final {
         private:
-            tensorSize_t size;
+            tensorSize_t size = 0;
             ftype* values = nullptr;
             Device device;
 
@@ -79,6 +81,8 @@ struct Tensor final {
             void setDevice(const Device d) noexcept;
             Device getDevice() const noexcept;
 
+            tensorSize_t getSize() const noexcept;
+
             template<typename T>
             requires (std::is_integral_v< std::remove_const_t<T> >)
             void resize(const T size) {
@@ -86,15 +90,32 @@ struct Tensor final {
 
                 switch(this->device){
                     case Device::CPU:
-                    values = static_cast<ftype*>( malloc(size * sizeof(ftype)) );
-                    break;
+                        values = static_cast<ftype*>( std::malloc(size * sizeof(ftype)) );
+                        break;
                     case Device::CUDA:
-                    std::__throw_invalid_argument("Not implemented yet.");
-                    break;
+                        std::__throw_invalid_argument("Not implemented yet.");
+                        break;
                 }
             }
 
-            static value_t createDeepCopy(const value_t& other);
+            static value_t createDeepCopy(const value_t& v);
+
+            friend std::ostream& operator<<(std::ostream& os, const value_t& v) noexcept {
+                os << "Device: " << DeviceToString(v.device) << "\n";
+
+                switch(v.device){
+                    case Device::CPU:
+                        for(tensorSize_t i; i<std::min(static_cast<tensorSize_t>(8), v.size); i++){
+                            os << v.values[i];
+                        }
+                        break;
+                    case Device::CUDA:
+                        std::__throw_invalid_argument("Not implemented yet.");
+                        break;
+                }
+                os << "\n";
+                return os;
+            }
         };
 
         std::shared_ptr<value_t> values = nullptr;
@@ -221,9 +242,11 @@ struct Tensor final {
             values->resize(varProduct(dim1, dim2, dim3, dim4));
         }
 
+        void initialize(const std::unique_ptr<utility::InitializerBase>& init);
         const Dimension& getDims() const noexcept;
 
         Tensor operator*(Tensor const& t) const;
-
         static Tensor multiply(const Tensor& left, const Tensor& right);
+
+        friend std::ostream& operator<<(std::ostream& os, const Tensor& dt) noexcept;
 };
