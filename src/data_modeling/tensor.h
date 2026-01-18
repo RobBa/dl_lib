@@ -20,6 +20,10 @@
 #include <concepts>
 #include <cassert>
 
+#ifndef NDEBUG
+    #include <limits>
+#endif // NDEBUG
+
 enum class Device {
     CPU,
     CUDA
@@ -64,7 +68,7 @@ struct Tensor final {
             ~value_t() noexcept;
 
             value_t(const value_t& other) noexcept = delete;
-            value_t& value(const value_t& other) noexcept = delete;
+            value_t& operator=(const value_t& other) noexcept = delete;
 
             value_t(value_t&& other) noexcept;
             value_t& operator=(value_t&& other) noexcept;
@@ -98,16 +102,40 @@ struct Tensor final {
         Dimension dims;
         TensorType type;
 
+#ifndef NDEBUG
+        /**
+         * @brief Helps us to detect overflows in the folding expression below.
+         */
+        struct SafeMultiplier_t {
+            tensorSize_t value;
+            
+            SafeMultiplier_t(tensorSize_t v) : value(v) {}
+            
+            SafeMultiplier_t operator*(const SafeMultiplier_t& other) const {
+                if (other.value != 0 && 
+                    value > std::numeric_limits<tensorSize_t>::max() / other.value) {
+                    throw std::overflow_error("Multiplication overflow");
+                }
+                return SafeMultiplier_t(value * other.value);
+            }
+        };
+#endif // NDEBUG
+
         /**
          * @brief Folding expression since C++17: Does the 
          * product of the variadic templated types and returns 
          * them.
          */
         template<typename... T>
-        tensorSize_t varProduct(T... x){
-            return (static_cast<tensorSize_t>(x) * ...);
+        tensorSize_t varProduct(T... x) {
+            static_assert(sizeof...(x) >= 2);
+#ifndef NDEBUG
+            return (SafeMultiplier_t(x) * ...).value; // detects overflows
+#else
+            return (static_cast<tensorSize_t>(x) * ...); // does not detect overflows
+#endif // NDEBUG
         }
-
+    
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
 
