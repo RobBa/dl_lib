@@ -33,10 +33,10 @@ BOOST_PYTHON_MODULE(py_data_modeling)
     ;
 
     class_<Tensor>("Tensor", init< optional<Device> >())
-        .def(init<std::uint16_t, optional<Device> >())
-        .def(init<std::uint16_t, std::uint16_t, optional<Device> >())
-        .def(init<std::uint16_t, std::uint16_t, std::uint16_t, optional<Device> >())
-        .def(init<std::uint16_t, std::uint16_t, std::uint16_t, std::uint16_t, optional<Device> >())
+        .def(init<tensorDim_t, optional<Device> >())
+        .def(init<tensorDim_t, tensorDim_t, optional<Device> >())
+        .def(init<tensorDim_t, tensorDim_t, tensorDim_t, optional<Device> >())
+        .def(init<tensorDim_t, tensorDim_t, tensorDim_t, tensorDim_t, optional<Device> >())
         .def("getDims", &Tensor::getDims, return_internal_reference<>())
         .def(self * self)
     ;

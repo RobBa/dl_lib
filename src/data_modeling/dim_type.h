@@ -14,28 +14,27 @@
 #include "global_params.h"
 
 #include <array>
-#include <cstdint>
 #include <cassert>
 
 template <typename T>
 concept is_valid_dim = requires(T x) {
     requires std::is_integral_v<std::remove_const_t<T>>;
-    requires std::convertible_to<std::remove_const_t<T>, std::uint16_t>;
+    requires std::convertible_to<std::remove_const_t<T>, tensorDim_t>;
     x >= 0;
 };
 
 class Dimension final {
   private:
-    std::array<std::uint16_t, MAX_TENSOR_SIZE> dims; // assumption: maximum dimension of Tensor is 4
+    std::array<tensorDim_t, MAX_TENSOR_DIMS> dims; // assumption: maximum dimension of Tensor is 4
 
   public:
-    std::uint16_t& operator[](int idx){
-      assert(idx < MAX_TENSOR_SIZE);
+    tensorDim_t& operator[](int idx){
+      assert(idx < MAX_TENSOR_DIMS);
       return dims[idx];
     }
 
-    std::uint16_t get(int idx) const {
-      assert(idx < MAX_TENSOR_SIZE);
+    tensorDim_t get(int idx) const {
+      assert(idx < MAX_TENSOR_DIMS);
       return dims[idx];
     }
 

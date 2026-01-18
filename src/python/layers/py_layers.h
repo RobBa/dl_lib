@@ -40,7 +40,7 @@ BOOST_PYTHON_MODULE(py_layers)
         //.def("backward", &FfLayer::backward)
     ;
 
-    class_<layers::FfLayer, bases<layers::LayerBase> >("FfLayer", init<std::uint16_t, std::uint16_t>())
+    class_<layers::FfLayer, bases<layers::LayerBase> >("FfLayer", init<tensorDim_t, tensorDim_t>())
         .def("forward", &layers::FfLayer::forward)
         //.def("backward", &FfLayer::backward)
     ;

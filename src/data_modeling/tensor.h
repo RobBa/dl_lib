@@ -12,8 +12,8 @@
 #pragma once
 
 #include "dim_type.h"
+#include "global_params.h"
 
-#include <stdlib.h>
 #include <unordered_map>
 #include <memory>
 
@@ -53,10 +53,12 @@ struct Tensor final {
          * WARNING: Only Tensor should be seeing this class.
          */
         struct value_t final {
-        public:
-            Device device;
+        private:
+            tensorSize_t size;
             ftype* values = nullptr;
+            Device device;
 
+        public:
             value_t() = delete;
             explicit value_t(Device d);
             ~value_t() noexcept;
@@ -67,12 +69,17 @@ struct Tensor final {
             value_t(value_t&& other) noexcept;
             value_t& operator=(value_t&& other) noexcept;
 
-            explicit operator bool() const;
+            explicit operator bool() const noexcept;
             ftype& operator[](int idx);
+
+            void setDevice(const Device d) noexcept;
+            Device getDevice() const noexcept;
 
             template<typename T>
             requires (std::is_integral_v< std::remove_const_t<T> >)
-            void allocValues(const T size) {
+            void resize(const T size) {
+                this->size = static_cast<tensorSize_t>(size);
+
                 switch(this->device){
                     case Device::CPU:
                     values = static_cast<ftype*>( malloc(size * sizeof(ftype)) );
@@ -82,6 +89,8 @@ struct Tensor final {
                     break;
                 }
             }
+
+            static value_t createDeepCopy(const value_t& other);
         };
 
         std::shared_ptr<value_t> values = nullptr;
@@ -95,11 +104,11 @@ struct Tensor final {
          * them.
          */
         template<typename... T>
-        auto varProduct(T... x){
-            return (x * ...);
+        tensorSize_t varProduct(T... x){
+            return (static_cast<tensorSize_t>(x) * ...);
         }
 
-        Tensor multiply1D(const Tensor& scalar, const Tensor& other) const;
+        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
 
     public:
@@ -125,7 +134,7 @@ struct Tensor final {
             dims[0] = 1;
 
             values = std::make_shared<value_t>(d);
-            values->allocValues(1);
+            values->resize(1);
         }
         
         template<typename T> requires (is_valid_dim<T>)
@@ -136,7 +145,7 @@ struct Tensor final {
             dims[0] = dim1;
             
             values = std::make_shared<value_t>(d);
-            values->allocValues(dim1);
+            values->resize(dim1);
         }
 
         template<typename T> requires (is_valid_dim<T>)
@@ -149,7 +158,7 @@ struct Tensor final {
             dims[1] = dim2;
 
             values = std::make_shared<value_t>(d);
-            values->allocValues(varProduct(dim1, dim2));
+            values->resize(varProduct(dim1, dim2));
         }
 
         template<typename T> requires (is_valid_dim<T>)
@@ -164,7 +173,7 @@ struct Tensor final {
             dims[2] = dim3;
 
             values = std::make_shared<value_t>(d);
-            values->allocValues(varProduct(dim1, dim2, dim3));
+            values->resize(varProduct(dim1, dim2, dim3));
         }
 
         template<typename T> requires (is_valid_dim<T>)
@@ -181,7 +190,7 @@ struct Tensor final {
             dims[3] = dim4;
 
             values = std::make_shared<value_t>(d);
-            values->allocValues(varProduct(dim1, dim2, dim3, dim4));
+            values->resize(varProduct(dim1, dim2, dim3, dim4));
         }
 
         const Dimension& getDims() const noexcept;

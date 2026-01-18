@@ -23,7 +23,7 @@ using namespace std;
 *************************** value_t *********************************
 ********************************************************************/
 
-Tensor::value_t::value_t(Device d) : device(d) { }
+Tensor::value_t::value_t(Device d) : device(d) {}
 
 Tensor::value_t::value_t(value_t&& other) noexcept {
   this->device = other.device;
@@ -49,7 +49,29 @@ Tensor::value_t::~value_t() noexcept {
   free(values);
 }
 
-Tensor::value_t::operator bool() const {
+/**
+ * @brief For convenience, since copy- and move-constructors and assigment operators
+ * do not create a deepcopy, but construct another pointer pointing to the same piece
+ * of memory.
+ */
+Tensor::value_t Tensor::value_t::createDeepCopy(const Tensor::value_t& other) {
+  value_t res(other.device);
+  res.resize<tensorSize_t>(other.size);
+  for(tensorSize_t i=0; i<other.size; i++){
+    res[i] = other.values[i];
+  }
+  return res;
+}
+
+void Tensor::value_t::setDevice(const Device d) noexcept {
+  this->device = d;
+}
+
+Device Tensor::value_t::getDevice() const noexcept {
+  return this->device;
+}
+
+Tensor::value_t::operator bool() const noexcept {
   return values != nullptr;
 }
 
@@ -98,7 +120,7 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
  * @brief Scalar multiplication, capable of broadcasting. First argument assumed
  * to be the scalar tensor.
  */
-Tensor Tensor::multiply1D(const Tensor& scalar, const Tensor& right) const {
+Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
   Tensor res(right);
   for(int i=0; i<right.dims.getTotalSize(); ++i){
     (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
@@ -108,14 +130,14 @@ Tensor Tensor::multiply1D(const Tensor& scalar, const Tensor& right) const {
 
 /**
  * @brief Just like in normal matrix multiplication order matters.
- * Not commutative -> a*b != b*a
+ * Not commutative as per usual for matrices -> a*b != b*a
  * 
  * We assume here that the dimensions of the tensors already do match!
  * The check of whether they do or not is to be performed by the surrounding
  * network class object instance upon construction. 
  */
 Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
-  Tensor res(left.dims.get(0), right.dims.get(1), this->values->device);
+  Tensor res(left.dims.get(0), right.dims.get(1), this->values->getDevice());
 
   for(uint16_t row=0; row<left.dims.get(0); row++){
     const uint32_t leftRowOffset = row * left.dims.get(1);
@@ -144,17 +166,17 @@ Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
  * segmentation faults or wrong results. For safe method use static function multiply().
  */
 Tensor Tensor::operator*(const Tensor& other) const {
-  if(values->device==Device::CUDA){
+  if(this->values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Not implemented");
   }
 
   if(other.type == TensorType::OneD){
-    multiply1D(other, *this);
+    multiplyScalar(other, *this);
   }
 
   switch(type){      
     case TensorType::OneD:
-      return multiply1D(*this, other);
+      return multiplyScalar(*this, other);
     case TensorType::TwoD:
       return multiply2D(*this, other);
     default:

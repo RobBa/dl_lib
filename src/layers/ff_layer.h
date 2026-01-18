@@ -23,10 +23,10 @@ namespace layers {
             // TODO: necessary?
             //mutable std::optional<Tensor> v1;
 
-            //void resetVector(ftype* v, std::uint16_t size) const noexcept;
+            //void resetVector(ftype* v, tensorDim_t size) const noexcept;
 
         public:
-            FfLayer(std::uint16_t in_size, std::uint16_t out_size);
+            FfLayer(tensorDim_t in_size, tensorDim_t out_size);
 
             Tensor forward(const Tensor& input) const override;
             //ftype* backward(ftype* input) override;
