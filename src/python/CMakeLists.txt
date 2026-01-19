@@ -2,6 +2,7 @@ include_directories(
         "${CMAKE_CURRENT_SOURCE_DIR}/../layers"
         "${CMAKE_CURRENT_SOURCE_DIR}/../data_modeling"
         "${CMAKE_CURRENT_SOURCE_DIR}/layers"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python_utility"
         )
 
 # remove the lib... prefix 

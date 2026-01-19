@@ -13,7 +13,7 @@
 
 #include "tensor.h"
 #include "dim_type.h"
-#include "global_templates.h"
+#include "python_templates.h"
 
 #include <boost/python.hpp>
 #include <boost/python/enum.hpp>
