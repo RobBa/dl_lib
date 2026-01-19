@@ -16,7 +16,6 @@
 #include "global_params.h"
 #include "initializers.h"
 
-#include <unordered_map>
 #include <memory>
 
 #include <iostream>
@@ -101,19 +100,19 @@ struct Tensor final {
             static value_t createDeepCopy(const value_t& v);
 
             friend std::ostream& operator<<(std::ostream& os, const value_t& v) noexcept {
-                os << "Device: " << DeviceToString(v.device) << "\n";
+                os << "Device: " << DeviceToString(v.device) << "\n(";
 
                 switch(v.device){
                     case Device::CPU:
-                        for(tensorSize_t i; i<std::min(static_cast<tensorSize_t>(8), v.size); i++){
-                            os << v.values[i];
+                        for(tensorSize_t i=0; i<std::min(static_cast<tensorSize_t>(8), v.size); i++){
+                            os << v.values[i] << " ";
                         }
                         break;
                     case Device::CUDA:
                         std::__throw_invalid_argument("Not implemented yet.");
                         break;
                 }
-                os << "\n";
+                os << ")\n";
                 return os;
             }
         };
@@ -184,10 +183,14 @@ struct Tensor final {
 
             values = std::make_shared<value_t>(d);
             values->resize(1);
+
+#ifndef NDEBUG
+            std::cout << "Created scalar tensor" << std::endl;
+#endif // NDEBUG
         }
         
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, Device d=Device::CPU) {
+        explicit Tensor(T dim1, Device d=Device::CPU) {
             assert(dim1 >= 0);
 
             type = TensorType::OneD;
@@ -195,10 +198,14 @@ struct Tensor final {
             
             values = std::make_shared<value_t>(d);
             values->resize(dim1);
+
+#ifndef NDEBUG
+            std::cout << "Created 1D tensor with dim (" << dim1 << ")" << std::endl;
+#endif // NDEBUG
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, Device d=Device::CPU) {
+        explicit Tensor(T dim1, T dim2, Device d=Device::CPU) {
             assert(dim1 >= 0);
             assert(dim2 >= 0);
 
@@ -208,10 +215,16 @@ struct Tensor final {
 
             values = std::make_shared<value_t>(d);
             values->resize(varProduct(dim1, dim2));
+
+#ifndef NDEBUG
+            std::cout << "Created 2D tensor with dims (" << dim1 << "," << dim2 
+                << ")" << "\n" << "Dims: (" << dims[0] << "," << dims[1] << ")"
+                << "\nSize: " << values->getSize() << std::endl;
+#endif // NDEBUG
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, T dim3, Device d=Device::CPU) { 
+        explicit Tensor(T dim1, T dim2, T dim3, Device d=Device::CPU) { 
             assert(dim1 >= 0);
             assert(dim2 >= 0);
             assert(dim3 >= 0);
@@ -223,10 +236,15 @@ struct Tensor final {
 
             values = std::make_shared<value_t>(d);
             values->resize(varProduct(dim1, dim2, dim3));
+
+#ifndef NDEBUG
+            std::cout << "Created 3D tensor with dims (" << dim1 << "," << dim2 
+                << "," << dim3 << ")" << std::endl;
+#endif // NDEBUG
         }
 
         template<typename T> requires (is_valid_dim<T>)
-        Tensor(T dim1, T dim2, T dim3, T dim4, Device d=Device::CPU) { 
+        explicit Tensor(T dim1, T dim2, T dim3, T dim4, Device d=Device::CPU) { 
             assert(dim1 >= 0);
             assert(dim2 >= 0);
             assert(dim3 >= 0);
@@ -240,6 +258,11 @@ struct Tensor final {
 
             values = std::make_shared<value_t>(d);
             values->resize(varProduct(dim1, dim2, dim3, dim4));
+
+#ifndef NDEBUG
+            std::cout << "Created 4D tensor with dims (" << dim1 << "," << dim2 
+                << "," << dim3 << "," << dim4 << ")" << std::endl;
+#endif // NDEBUG
         }
 
         void initialize(const std::unique_ptr<utility::InitializerBase>& init);

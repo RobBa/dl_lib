@@ -22,9 +22,6 @@ class SequentialNetwork {
         std::vector<layers::LayerBase> layers;
         bool assertDims(const layers::LayerBase& layer) const noexcept;
 
-    public:
-        SequentialNetwork() = default;
-
         template <typename T>
         requires (std::derived_from< std::remove_const_t<T>, layers::LayerBase >)
         void addLayer(T&& layer) {
@@ -34,6 +31,9 @@ class SequentialNetwork {
             }
             layers.push_back(std::forward<T>(layer));
         }
+
+    public:
+        SequentialNetwork() = default;
 
         Tensor forward(const Tensor& input) const;
 };
