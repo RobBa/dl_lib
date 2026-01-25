@@ -54,28 +54,30 @@ struct Tensor final {
         /**
          * @brief Here we encapsulate the tensor's values. 
          * Enables us to use a shared_ptr, as well as encapsulate all the 
-         * logic that could branch out, e.g. memory management through
-         * different devices like a GPU.
+         * memory management logic for different devices, like a GPU.
+         * Structured as a flat array, the logic for multiple dimensions 
+         * encapsulated by surrounding tensor object. 
          */
-        struct value_t final {
+        struct tensorValues_t final {
         private:
             tensorSize_t size = 0;
             ftype* values = nullptr;
             Device device;
 
         public:
-            value_t() = delete;
-            explicit value_t(Device d);
-            ~value_t() noexcept;
+            tensorValues_t() = delete;
+            explicit tensorValues_t(Device d);
+            ~tensorValues_t() noexcept;
 
-            value_t(const value_t& other) noexcept = delete;
-            value_t& operator=(const value_t& other) noexcept = delete;
+            tensorValues_t(const tensorValues_t& other) noexcept = delete;
+            tensorValues_t& operator=(const tensorValues_t& other) noexcept = delete;
 
-            value_t(value_t&& other) noexcept;
-            value_t& operator=(value_t&& other) noexcept;
+            tensorValues_t(tensorValues_t&& other) noexcept;
+            tensorValues_t& operator=(tensorValues_t&& other) noexcept;
 
             explicit operator bool() const noexcept;
             ftype& operator[](int idx);
+            ftype get(int idx) const;
 
             void setDevice(const Device d) noexcept;
             Device getDevice() const noexcept;
@@ -97,9 +99,9 @@ struct Tensor final {
                 }
             }
 
-            static value_t createDeepCopy(const value_t& v);
+            static tensorValues_t createDeepCopy(const tensorValues_t& v);
 
-            friend std::ostream& operator<<(std::ostream& os, const value_t& v) noexcept {
+            friend std::ostream& operator<<(std::ostream& os, const tensorValues_t& v) noexcept {
                 os << "Device: " << DeviceToString(v.device) << "\n(";
 
                 switch(v.device){
@@ -117,7 +119,7 @@ struct Tensor final {
             }
         };
 
-        std::shared_ptr<value_t> values = nullptr;
+        std::shared_ptr<tensorValues_t> values = nullptr;
 
         Dimension dims;
         TensorType type;
@@ -181,7 +183,7 @@ struct Tensor final {
             type = TensorType::Scalar;
             dims[0] = 1;
 
-            values = std::make_shared<value_t>(d);
+            values = std::make_shared<tensorValues_t>(d);
             values->resize(1);
 
 #ifndef NDEBUG
@@ -196,7 +198,7 @@ struct Tensor final {
             type = TensorType::OneD;
             dims[0] = dim1;
             
-            values = std::make_shared<value_t>(d);
+            values = std::make_shared<tensorValues_t>(d);
             values->resize(dim1);
 
 #ifndef NDEBUG
@@ -213,7 +215,7 @@ struct Tensor final {
             dims[0] = dim1;
             dims[1] = dim2;
 
-            values = std::make_shared<value_t>(d);
+            values = std::make_shared<tensorValues_t>(d);
             values->resize(varProduct(dim1, dim2));
 
 #ifndef NDEBUG
@@ -234,7 +236,7 @@ struct Tensor final {
             dims[1] = dim2;
             dims[2] = dim3;
 
-            values = std::make_shared<value_t>(d);
+            values = std::make_shared<tensorValues_t>(d);
             values->resize(varProduct(dim1, dim2, dim3));
 
 #ifndef NDEBUG
@@ -256,7 +258,7 @@ struct Tensor final {
             dims[2] = dim3; 
             dims[3] = dim4;
 
-            values = std::make_shared<value_t>(d);
+            values = std::make_shared<tensorValues_t>(d);
             values->resize(varProduct(dim1, dim2, dim3, dim4));
 
 #ifndef NDEBUG
@@ -272,4 +274,16 @@ struct Tensor final {
         static Tensor multiply(const Tensor& left, const Tensor& right);
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& dt) noexcept;
+
+        ftype get() const;
+        ftype get(int idx) const;
+        ftype get(int idx1, int idx2) const;
+        ftype get(int idx1, int idx2, int idx3) const;
+        ftype get(int idx1, int idx2, int idx3, int idx4) const;
+
+        void set(ftype item);
+        void set(ftype item, int idx);
+        void set(ftype item, int idx1, int idx2);
+        void set(ftype item, int idx1, int idx2, int idx3);
+        void set(ftype item, int idx1, int idx2, int idx3, int idx4);
 };

@@ -20,17 +20,17 @@
 using namespace std;
 
 /******************************************************************** 
-*************************** value_t *********************************
+*************************** tensorValues_t *********************************
 ********************************************************************/
 
-Tensor::value_t::value_t(Device d) : device(d) {}
+Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
 
-Tensor::value_t::value_t(value_t&& other) noexcept {
+Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept {
   this->device = other.device;
   this->values = other.values;
 }
 
-Tensor::value_t& Tensor::value_t::operator=(value_t&& other) noexcept {
+Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other) noexcept {
   if (this == &other) return *this;
 
   this->device = other.device;
@@ -39,10 +39,10 @@ Tensor::value_t& Tensor::value_t::operator=(value_t&& other) noexcept {
   return *this;
 }
 
-Tensor::value_t::~value_t() noexcept {
+Tensor::tensorValues_t::~tensorValues_t() noexcept {
 #ifndef NDEBUG
     if(values == nullptr){
-      cerr << "value is nullptr in destructor of Tensor::value_t" << endl;
+      cerr << "value is nullptr in destructor of Tensor::tensorValues_t" << endl;
     }
 #endif // NDEBUG
 
@@ -51,7 +51,7 @@ Tensor::value_t::~value_t() noexcept {
       free(values);
       break;
     case Device::CUDA:
-      std::__throw_invalid_argument("Not implemented yet.");
+      std::__throw_invalid_argument("Cuda destructor not implemented yet.");
       break;
   }
 }
@@ -61,8 +61,8 @@ Tensor::value_t::~value_t() noexcept {
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
-Tensor::value_t Tensor::value_t::createDeepCopy(const Tensor::value_t& v) {
-  value_t res(v.device);
+Tensor::tensorValues_t Tensor::tensorValues_t::createDeepCopy(const Tensor::tensorValues_t& v) {
+  tensorValues_t res(v.device);
   res.resize<tensorSize_t>(v.size);
   for(tensorSize_t i=0; i<v.size; i++){
     res[i] = v.values[i];
@@ -70,26 +70,42 @@ Tensor::value_t Tensor::value_t::createDeepCopy(const Tensor::value_t& v) {
   return res;
 }
 
-void Tensor::value_t::setDevice(const Device d) noexcept {
+void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
   this->device = d;
 }
 
-Device Tensor::value_t::getDevice() const noexcept {
+Device Tensor::tensorValues_t::getDevice() const noexcept {
   return this->device;
 }
 
-tensorSize_t Tensor::value_t::getSize() const noexcept {
+tensorSize_t Tensor::tensorValues_t::getSize() const noexcept {
   return this->size;
 }
 
-Tensor::value_t::operator bool() const noexcept {
+Tensor::tensorValues_t::operator bool() const noexcept {
   return values != nullptr;
 }
 
-ftype& Tensor::value_t::operator[](int idx) {
-  return values[idx];
+ftype& Tensor::tensorValues_t::operator[](int idx) {
+  if(idx >= size)
+    throw std::out_of_range("Out of range for tensor");
+  switch(device){
+    case Device::CPU:
+      return values[idx];
+    case Device::CUDA:
+      __throw_invalid_argument("Cuda operator[] not implemented");
+  }
 }
 
+ftype Tensor::tensorValues_t::get(const int idx) const {
+  assert(idx<size);
+  switch(device){
+    case Device::CPU:
+      return values[idx];
+    case Device::CUDA:
+      __throw_invalid_argument("Cuda getter not implemented");
+  }
+}
 
 /******************************************************************** 
 *************************** Tensor **********************************
@@ -226,4 +242,50 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << *(t.values);
   return os;
+}
+
+ftype Tensor::get() const {
+  assert(type==TensorType::Scalar);
+  return values->get(0);
+}
+
+ftype Tensor::get(const int idx) const {
+  assert(type==TensorType::OneD);
+  return values->get(idx);
+}
+
+ftype Tensor::get(const int idx1, const int idx2) const {
+  assert(type==TensorType::TwoD);
+  return values->get(idx1 * dims.get(1) + idx2);  
+}
+
+ftype Tensor::get(const int idx1, const int idx2, const int idx3) const {
+  __throw_runtime_error("3D indexing not implemented yet");
+}
+
+ftype Tensor::get(const int idx, const int idx2, const int idx3, const int idx4) const {
+  __throw_runtime_error("4D indexing not implemented yet");
+}
+
+void Tensor::set(ftype item) {
+  assert(type==TensorType::Scalar);
+  (*values)[0] = item;
+}
+
+void Tensor::set(ftype item, int idx) {
+  assert(type==TensorType::OneD);
+  (*values)[idx] = item;
+}
+
+void Tensor::set(ftype item, int idx1, int idx2) {
+  assert(type==TensorType::TwoD);
+  (*values)[idx1 * dims.get(1) + idx2] = item;  
+}
+
+void Tensor::set(ftype item, int idx1, int idx2, int idx3) {
+  __throw_runtime_error("3D indexing not implemented yet");
+}
+
+void Tensor::set(ftype item, int idx, int idx2, int idx3, int idx4) {
+  __throw_runtime_error("4D indexing not implemented yet");
 }
