@@ -22,7 +22,7 @@
 
 namespace Py_DataModeling {
     ftype tensorGetItem(const Tensor& self, boost::python::object index);
-    ftype tensorSetItem(Tensor& self, boost::python::object index, ftype value);
+    void tensorSetItem(Tensor& self, boost::python::object index, ftype value);
 }
 
 BOOST_PYTHON_MODULE(py_data_modeling)

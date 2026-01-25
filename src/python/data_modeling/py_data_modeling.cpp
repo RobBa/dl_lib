@@ -61,11 +61,10 @@ ftype Py_DataModeling::tensorGetItem(const Tensor& self, boost::python::object i
 
 void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, ftype value) {
   extract<int> int_extractor(index);
-        
-  // Single integer index (1D)
   if(int_extractor.check()) {
       int i0 = int_extractor();
       self.set(value, i0);
+      return;
   }
         
   // Tuple index (2D, 3D, or 4D)
@@ -96,6 +95,7 @@ void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, f
         PyErr_SetString(PyExc_IndexError, "Unsupported number of dimensions");
         throw_error_already_set();
       }
+      return;
   }
         
   PyErr_SetString(PyExc_TypeError, "Index must be an integer or tuple");
