@@ -17,7 +17,6 @@
 #include "initializers.h"
 
 #include <memory>
-
 #include <iostream>
 
 #include <concepts>
@@ -100,24 +99,7 @@ struct Tensor final {
             }
 
             static tensorValues_t createDeepCopy(const tensorValues_t& v);
-
-            friend std::ostream& operator<<(std::ostream& os, const tensorValues_t& v) noexcept {
-                os << "Device: " << DeviceToString(v.device) << "\n(";
-
-                switch(v.device){
-                    case Device::CPU:
-                        for(tensorSize_t i=0; i<std::min(static_cast<tensorSize_t>(8), v.size); i++){
-                            os << v.values[i] << " ";
-                        }
-                        break;
-                    case Device::CUDA:
-                        std::__throw_invalid_argument("Not implemented yet.");
-                        break;
-                }
-                os << ")\n";
-                return os;
-            }
-        };
+        }; 
 
         std::shared_ptr<tensorValues_t> values = nullptr;
 
@@ -160,6 +142,8 @@ struct Tensor final {
     
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
+
+        friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
     public:
         /** 
@@ -273,7 +257,7 @@ struct Tensor final {
         Tensor operator*(Tensor const& t) const;
         static Tensor multiply(const Tensor& left, const Tensor& right);
 
-        friend std::ostream& operator<<(std::ostream& os, const Tensor& dt) noexcept;
+        friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         ftype get(int idx) const;
         ftype get(int idx1, int idx2) const;

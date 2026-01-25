@@ -241,9 +241,44 @@ const Dimension& Tensor::getDims() const noexcept {
   return dims;
 }
 
+void printValuesCpu(std::ostream& os, const Tensor& t) {
+  const auto& dims = t.getDims();
+  const auto MAX_IDX = static_cast<tensorDim_t>(5);
+
+  if(dims.get(3)>0){
+    std::__throw_invalid_argument("Printing 4D tensor not implemented");
+  }
+  else if(dims.get(2)>0){
+    std::__throw_invalid_argument("Printing 3D tensor not implemented");
+  }
+  else if(dims.get(1)>0){
+    for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
+      for(uint8_t j=0; j<min(MAX_IDX, dims.get(1)); j++){
+        os << t.get(i, j) << " ";
+      }
+      os << "\n";
+    }
+  }
+  else{
+    for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
+      os << t.get(i);
+    }
+  }
+}
+
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
-  os << "Dims: " << t.getDims();
-  os << *(t.values);
+  os << "Dims: " << t.getDims() << "\n";
+  os << "Device: " << DeviceToString(t.values->getDevice()) << "\n";
+
+  switch(t.values->getDevice()){
+    case Device::CPU:
+      printValuesCpu(os, t);
+      break;
+    case Device::CUDA:
+      __throw_invalid_argument("CUDA not supported yet in printing");
+      break;
+  }
+
   return os;
 }
 
