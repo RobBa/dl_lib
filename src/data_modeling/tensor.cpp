@@ -89,6 +89,7 @@ Tensor::tensorValues_t::operator bool() const noexcept {
 ftype& Tensor::tensorValues_t::operator[](int idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
+
   switch(device){
     case Device::CPU:
       return values[idx];
@@ -98,7 +99,9 @@ ftype& Tensor::tensorValues_t::operator[](int idx) {
 }
 
 ftype Tensor::tensorValues_t::get(const int idx) const {
-  assert(idx<size);
+  if(idx >= size)
+    throw std::out_of_range("Out of range for tensor");
+
   switch(device){
     case Device::CPU:
       return values[idx];
@@ -244,11 +247,6 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   return os;
 }
 
-ftype Tensor::get() const {
-  assert(type==TensorType::Scalar);
-  return values->get(0);
-}
-
 ftype Tensor::get(const int idx) const {
   assert(type==TensorType::OneD);
   return values->get(idx);
@@ -265,11 +263,6 @@ ftype Tensor::get(const int idx1, const int idx2, const int idx3) const {
 
 ftype Tensor::get(const int idx, const int idx2, const int idx3, const int idx4) const {
   __throw_runtime_error("4D indexing not implemented yet");
-}
-
-void Tensor::set(ftype item) {
-  assert(type==TensorType::Scalar);
-  (*values)[0] = item;
 }
 
 void Tensor::set(ftype item, int idx) {

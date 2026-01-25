@@ -21,8 +21,8 @@
 #include <boost/python/object.hpp>
 
 namespace Py_DataModeling {
-    ftype get_item(boost::python::object index);
-    ftype set_item(boost::python::object index);
+    ftype tensorGetItem(const Tensor& self, boost::python::object index);
+    ftype tensorSetItem(Tensor& self, boost::python::object index, ftype value);
 }
 
 BOOST_PYTHON_MODULE(py_data_modeling)
@@ -40,14 +40,6 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .value("CUDA", Device::CUDA)
     ;
 
-    ftype (Tensor::*get0)(void)               const = &Tensor::get;
-
-    void (Tensor::*set0)(ftype)                     = &Tensor::set;
-    void (Tensor::*set1)(ftype, int)                = &Tensor::set;
-    void (Tensor::*set2)(ftype, int, int)           = &Tensor::set;
-    void (Tensor::*set3)(ftype, int, int, int)      = &Tensor::set;
-    void (Tensor::*set4)(ftype, int, int, int, int) = &Tensor::set;
-
     class_<Tensor>("Tensor", init< optional<Device> >())
         .def(init<tensorDim_t, optional<Device> >())
         .def(init<tensorDim_t, tensorDim_t, optional<Device> >())
@@ -56,13 +48,8 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("dim", &Tensor::getDims, return_internal_reference<>())
         .def(self * self)
         .def("__str__", &toString<Tensor>)
-        .def("__getitem__", get0)
-        .def("__getitem__", &Py_DataModeling::get_item)
-        .def("__setitem__", set0)
-        .def("__setitem__", set1)
-        .def("__setitem__", set2)
-        .def("__setitem__", set3)
-        .def("__setitem__", set4)
+        .def("__getitem__", &Py_DataModeling::tensorGetItem)
+        .def("__setitem__", &Py_DataModeling::tensorSetItem)
     ;
 
 }

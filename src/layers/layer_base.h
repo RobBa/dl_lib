@@ -36,13 +36,11 @@ namespace layers {
                 return weights.value().getDims(); 
             }
 
-            ftype get() const;
             ftype get(int idx) const;
             ftype get(int idx1, int idx2) const;
             ftype get(int idx1, int idx2, int idx3) const;
             ftype get(int idx1, int idx2, int idx3, int idx4) const;
 
-            void set(ftype item);
             void set(ftype item, int idx);
             void set(ftype item, int idx1, int idx2);
             void set(ftype item, int idx1, int idx2, int idx3);
