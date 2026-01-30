@@ -1,6 +1,13 @@
 
 
-# Troubleshooting
+## Required
+
+- Python 3.10 (might work with lower versions, but not verified)
+- Boost Python
+- Cmake > 3.24
+- Compiler capable of C++20 at least
+
+## Troubleshooting
 
 
 ### Building on Windows
