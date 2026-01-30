@@ -1,0 +1,72 @@
+name: CI - Build and test
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build project
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        gcc-version: [13]
+        cmake-version: ['3.31.3']
+      fail-fast: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: ${{ matrix.cmake-version }}
+
+      - name: Setup GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-${{ matrix.gcc-version }} g++-${{ matrix.gcc-version }}
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.gcc-version }} 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.gcc-version }} 100
+
+      - name: Verify versions
+        run: |
+          gcc --version
+          cmake --version
+
+      - name: Build in Debug Mode
+        run: |
+          mkdir build && cd build && cmake -DCMake_Build_Type=Debug ..
+          make
+
+      - name: Build in Release Mode
+        run: |
+          echo "Deleting the debug build files in $(pwd)" 
+          rm -rf *
+          mkdir build && cd build && cmake -DCMake_Build_Type=Release ..
+          make
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: output/
+
+  # example of artifacts
+  #    - name: Upload artifacts
+  #      uses: actions/upload-artifact@v4
+  #      with:
+  #        name: build-${{ matrix.gcc-version }}-${{ github.run_id }}
+  #        path: output/
+  #
+  #test:
+  #  needs: build  # Runs after build job
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Download artifact
+  #      uses: actions/download-artifact@v4
+  #      with:
+  #        name: build-output
+  #        path: output/
