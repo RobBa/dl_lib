@@ -15,6 +15,7 @@
 #include "tensor.h"
 
 #include <optional>
+#include <iostream>
 
 namespace layers {
     /** 
@@ -45,5 +46,8 @@ namespace layers {
             void set(ftype item, int idx1, int idx2);
             void set(ftype item, int idx1, int idx2, int idx3);
             void set(ftype item, int idx1, int idx2, int idx3, int idx4);
+
+            virtual void print(std::ostream& os) const noexcept;
+            friend std::ostream& operator<<(std::ostream& os, const LayerBase& t) noexcept;
     };
 }

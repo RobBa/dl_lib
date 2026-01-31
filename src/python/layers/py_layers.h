@@ -12,6 +12,7 @@
 #pragma once
 
 #include "ff_layer.h"
+#include "python_templates.h"
 
 #include <boost/python.hpp>
 #include <boost/python/wrapper.hpp>
@@ -34,9 +35,12 @@ BOOST_PYTHON_MODULE(py_layers)
      * 
      */
     struct LayerBaseWrap : layers::LayerBase, wrapper<layers::LayerBase> {
-        Tensor forward(const Tensor& input) const
-        {
+        Tensor forward(const Tensor& input) const {
             return this->get_override("forward")(input);
+        }
+
+        void print(std::ostream& os) const noexcept {
+            this->get_override("print")(os);
         }
     };
 
@@ -47,6 +51,7 @@ BOOST_PYTHON_MODULE(py_layers)
         .def("getTensor", &layers::LayerBase::getDims, return_internal_reference<>())
         .def("__getitem__", &Py_Layers::layerGetItem)
         .def("__setitem__", &Py_Layers::layerSetItem)
+        .def("__str__", &toString<layers::LayerBase>)
     ;
 
     class_<layers::FfLayer, bases<layers::LayerBase> >("FfLayer", init<tensorDim_t, tensorDim_t>())

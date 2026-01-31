@@ -11,6 +11,7 @@
 
 #include "layer_base.h"
 
+using namespace std;
 using namespace layers;
 
 ftype LayerBase::get(int idx) const {
@@ -51,4 +52,14 @@ void LayerBase::set(ftype item, int idx1, int idx2, int idx3) {
 void LayerBase::set(ftype item, int idx1, int idx2, int idx3, int idx4) {
   assert(weights);
   weights.value().set(item, idx1, idx2, idx3, idx4);
+}
+
+void LayerBase::print(ostream& os) const noexcept {
+  assert(weights);
+  os << weights.value();
+}
+
+ostream& operator<<(ostream& os, const LayerBase& l) noexcept {
+  l.print(os);
+  return os;
 }
