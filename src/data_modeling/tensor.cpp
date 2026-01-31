@@ -23,6 +23,10 @@ using namespace std;
 *************************** tensorValues_t *********************************
 ********************************************************************/
 
+Tensor::tensorValues_t::tensorValues_t() {
+  device = defaultDevice;
+}
+
 Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
 
 Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept {
@@ -78,6 +82,14 @@ Device Tensor::tensorValues_t::getDevice() const noexcept {
   return this->device;
 }
 
+void Tensor::tensorValues_t::setDefaultDevice(const Device d) noexcept {
+  defaultDevice = d;
+}
+            
+Device Tensor::tensorValues_t::getDefaultDevice() noexcept {
+  return defaultDevice;
+}
+
 tensorSize_t Tensor::tensorValues_t::getSize() const noexcept {
   return this->size;
 }
@@ -96,6 +108,9 @@ ftype& Tensor::tensorValues_t::operator[](int idx) {
     case Device::CUDA:
       __throw_invalid_argument("Cuda operator[] not implemented");
   }
+
+  __throw_invalid_argument("Unexpected device encountered");
+  return values[0]; // never reached, suppress warning
 }
 
 ftype Tensor::tensorValues_t::get(const int idx) const {
@@ -108,6 +123,9 @@ ftype Tensor::tensorValues_t::get(const int idx) const {
     case Device::CUDA:
       __throw_invalid_argument("Cuda getter not implemented");
   }
+
+  __throw_invalid_argument("Unexpected device encountered");
+  return 0; // never reached, suppress warning
 }
 
 /******************************************************************** 
@@ -152,7 +170,7 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
  */
 Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
   Tensor res(right);
-  for(int i=0; i<right.dims.getTotalSize(); ++i){
+  for(int i=0; i<right.getSize(); ++i){
     (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
   }
   return res;
@@ -167,7 +185,7 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
  * network class object instance upon construction. 
  */
 Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
-  Tensor res(left.dims.get(0), right.dims.get(1), this->values->getDevice());
+  Tensor res(this->values->getDevice(), left.dims.get(0), right.dims.get(1));
 
   for(uint16_t row=0; row<left.dims.get(0); row++){
     const uint32_t leftRowOffset = row * left.dims.get(1);
@@ -229,9 +247,19 @@ Tensor Tensor::multiply(const Tensor& left, const Tensor& right) {
 }
 
 /**
+ * @brief Populates the tensor with value.
+ */
+void Tensor::reset(const ftype x) {
+  for(tensorSize_t i=0; i<values->getSize(); i++){
+    (*values)[i] = x;
+  }
+}
+
+/**
  * @brief Populates the tensor with values drawn according to initializer.
  */
-void Tensor::initialize(const unique_ptr<utility::InitializerBase>& init) {
+void Tensor::reset(const utility::InitClass ic) {
+  const auto init = utility::InitializerFactory::getInitializer(ic);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = init->drawNumber();
   }
@@ -241,9 +269,33 @@ const Dimension& Tensor::getDims() const noexcept {
   return dims;
 }
 
+tensorSize_t Tensor::getSize() const noexcept {
+  return values->getSize();
+}
+
+void Tensor::setDefaultDevice(const Device d) noexcept {
+  tensorValues_t::setDefaultDevice(d);
+}
+            
+Device Tensor::getDefaultDevice() noexcept {
+  return tensorValues_t::getDefaultDevice();
+}
+
+void Tensor::setDevice(const Device d) noexcept {
+  values->setDevice(d);
+}
+
+Device Tensor::getDevice() const noexcept {
+  return values->getDevice();
+}
+
 void printValuesCpu(std::ostream& os, const Tensor& t) {
   const auto& dims = t.getDims();
   const auto MAX_IDX = static_cast<tensorDim_t>(5);
+
+  for(int i=0; i<4; i++){
+    cout << "Dim " << i << ": " << dims.get(i) << endl;
+  }
 
   if(dims.get(3)>0){
     std::__throw_invalid_argument("Printing 4D tensor not implemented");

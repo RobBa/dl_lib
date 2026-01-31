@@ -18,19 +18,9 @@ using namespace std;
 using namespace layers;
 
 FfLayer::FfLayer(const tensorDim_t in_size, const tensorDim_t out_size) {
-    auto initializer = utility::InitializerFactory::getInitializer();
-
-    weights.emplace(in_size, out_size);
-    weights->initialize(initializer);
-
-    //v1 = make_unique<Tensor>(out_size);
+    weights.emplace(Device::CPU, in_size, out_size);
+    weights->reset(utility::InitClass::Gaussian);
 }
-
-/* void FfLayer::resetVector(ftype* v, const tensorDim_t size) const noexcept {
-    for(int i=0; i<size; ++i){
-        v[i]=0;
-    }
-} */
 
 Tensor FfLayer::forward(const Tensor& input) const {
     return *weights * input;

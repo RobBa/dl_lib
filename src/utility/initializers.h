@@ -17,6 +17,10 @@
 #include <type_traits>
 
 namespace utility{
+    enum class InitClass {
+        Gaussian    
+    };
+
     class InitializerBase {
         public:
             InitializerBase() = default;
@@ -27,6 +31,6 @@ namespace utility{
     class InitializerFactory final {
         public:
             InitializerFactory() = delete;
-            static std::unique_ptr<InitializerBase> getInitializer();
+            static std::unique_ptr<InitializerBase> getInitializer(InitClass ic);
     };
 }

@@ -61,10 +61,12 @@ struct Tensor final {
         private:
             tensorSize_t size = 0;
             ftype* values = nullptr;
+            
             Device device;
+            inline static Device defaultDevice = Device::CPU;
 
         public:
-            tensorValues_t() = delete;
+            explicit tensorValues_t();
             explicit tensorValues_t(Device d);
             ~tensorValues_t() noexcept;
 
@@ -77,9 +79,6 @@ struct Tensor final {
             explicit operator bool() const noexcept;
             ftype& operator[](int idx);
             ftype get(int idx) const;
-
-            void setDevice(const Device d) noexcept;
-            Device getDevice() const noexcept;
 
             tensorSize_t getSize() const noexcept;
 
@@ -97,8 +96,14 @@ struct Tensor final {
                         break;
                 }
             }
+            
+            void setDevice(const Device d) noexcept;
+            Device getDevice() const noexcept;
 
             static tensorValues_t createDeepCopy(const tensorValues_t& v);
+
+            static void setDefaultDevice(const Device d) noexcept;
+            static Device getDefaultDevice() noexcept;
         }; 
 
         std::shared_ptr<tensorValues_t> values = nullptr;
@@ -132,12 +137,24 @@ struct Tensor final {
          */
         template<typename... T>
         tensorSize_t varProduct(T... x) {
-            static_assert(sizeof...(x) >= 2);
+            static_assert(sizeof...(x) >= 0);
 #ifndef NDEBUG
             return (SafeMultiplier_t(x) * ...).value; // detects overflows
 #else
             return (static_cast<tensorSize_t>(x) * ...); // does not detect overflows
 #endif // NDEBUG
+        }
+
+        // base case
+        template<size_t idx>
+        void populateDims() {}
+
+        template<size_t idx, typename First, typename... Rest>
+        requires (is_valid_dim<First>)
+        void populateDims(First first, Rest... rest) {
+            assert(static_cast<tensorDim_t>(first) >= 0);
+            dims[idx] = static_cast<tensorDim_t>(first);
+            populateDims<idx+1>(rest...);
         }
     
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
@@ -145,7 +162,46 @@ struct Tensor final {
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
+        template<typename... T>
+        void constructTensor(Device d, T... dims) {
+            if constexpr(sizeof...(T)==4){
+                type = TensorType::FourD;
+            }
+            else if constexpr(sizeof...(T)==3){
+                type = TensorType::ThreeD;
+            }
+            else if constexpr(sizeof...(T)==2){
+                type = TensorType::TwoD;
+            }
+            else if constexpr(sizeof...(T)==1){
+                type = TensorType::OneD;
+            }
+            else if constexpr(sizeof...(T)==0){
+                type = TensorType::Scalar;
+            }
+
+            populateDims<0>(dims...);
+
+            values = std::make_shared<tensorValues_t>(d);
+            if constexpr (sizeof...(T)==0){
+                values->resize(1);
+            }
+            else {
+                values->resize(varProduct(dims...));
+            }
+        }
+
     public:
+        template<typename... T>
+        explicit Tensor(T... dims) {
+            constructTensor(tensorValues_t::getDefaultDevice(), dims...);
+        }
+
+        template<typename... T>
+        explicit Tensor(Device d, T... dims) {
+            constructTensor(d, dims...);
+        }
+
         /** 
          * @brief Copying. 
          * 
@@ -163,96 +219,11 @@ struct Tensor final {
         Tensor(Tensor&& other) noexcept;
         Tensor& operator=(Tensor&& other) noexcept;
 
-        explicit Tensor(Device d=Device::CPU) {
-            type = TensorType::Scalar;
-            dims[0] = 1;
-
-            values = std::make_shared<tensorValues_t>(d);
-            values->resize(1);
-
-#ifndef NDEBUG
-            std::cout << "Created scalar tensor" << std::endl;
-#endif // NDEBUG
-        }
+        void reset(const ftype x);
+        void reset(const utility::InitClass ic);
         
-        template<typename T> requires (is_valid_dim<T>)
-        explicit Tensor(T dim1, Device d=Device::CPU) {
-            assert(dim1 >= 0);
-
-            type = TensorType::OneD;
-            dims[0] = dim1;
-            
-            values = std::make_shared<tensorValues_t>(d);
-            values->resize(dim1);
-
-#ifndef NDEBUG
-            std::cout << "Created 1D tensor with dim (" << dim1 << ")" << std::endl;
-#endif // NDEBUG
-        }
-
-        template<typename T> requires (is_valid_dim<T>)
-        explicit Tensor(T dim1, T dim2, Device d=Device::CPU) {
-            assert(dim1 >= 0);
-            assert(dim2 >= 0);
-
-            type = TensorType::TwoD;
-            dims[0] = dim1;
-            dims[1] = dim2;
-
-            values = std::make_shared<tensorValues_t>(d);
-            values->resize(varProduct(dim1, dim2));
-
-#ifndef NDEBUG
-            std::cout << "Created 2D tensor with dims (" << dim1 << "," << dim2 
-                << ")" << "\n" << "Dims: (" << dims[0] << "," << dims[1] << ")"
-                << "\nSize: " << values->getSize() << std::endl;
-#endif // NDEBUG
-        }
-
-        template<typename T> requires (is_valid_dim<T>)
-        explicit Tensor(T dim1, T dim2, T dim3, Device d=Device::CPU) { 
-            assert(dim1 >= 0);
-            assert(dim2 >= 0);
-            assert(dim3 >= 0);
-
-            type = TensorType::ThreeD;
-            dims[0] = dim1;
-            dims[1] = dim2;
-            dims[2] = dim3;
-
-            values = std::make_shared<tensorValues_t>(d);
-            values->resize(varProduct(dim1, dim2, dim3));
-
-#ifndef NDEBUG
-            std::cout << "Created 3D tensor with dims (" << dim1 << "," << dim2 
-                << "," << dim3 << ")" << std::endl;
-#endif // NDEBUG
-        }
-
-        template<typename T> requires (is_valid_dim<T>)
-        explicit Tensor(T dim1, T dim2, T dim3, T dim4, Device d=Device::CPU) { 
-            assert(dim1 >= 0);
-            assert(dim2 >= 0);
-            assert(dim3 >= 0);
-            assert(dim4 >= 0);
-
-            type = TensorType::FourD;
-            dims[0] = dim1; 
-            dims[1] = dim2; 
-            dims[2] = dim3; 
-            dims[3] = dim4;
-
-            values = std::make_shared<tensorValues_t>(d);
-            values->resize(varProduct(dim1, dim2, dim3, dim4));
-
-#ifndef NDEBUG
-            std::cout << "Created 4D tensor with dims (" << dim1 << "," << dim2 
-                << "," << dim3 << "," << dim4 << ")" << std::endl;
-#endif // NDEBUG
-        }
-
-        void initialize(const std::unique_ptr<utility::InitializerBase>& init);
         const Dimension& getDims() const noexcept;
+        tensorSize_t getSize() const noexcept;
 
         Tensor operator*(Tensor const& t) const;
         static Tensor multiply(const Tensor& left, const Tensor& right);
@@ -268,4 +239,11 @@ struct Tensor final {
         void set(ftype item, int idx1, int idx2);
         void set(ftype item, int idx1, int idx2, int idx3);
         void set(ftype item, int idx1, int idx2, int idx3, int idx4);
+
+        void setDevice(const Device d) noexcept;
+        Device getDevice() const noexcept;
+
+        // these two should not be exposed to the python interface
+        static void setDefaultDevice(const Device d) noexcept;
+        static Device getDefaultDevice() noexcept;
 };

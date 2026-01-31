@@ -44,7 +44,5 @@ class Dimension final {
       return this->dims == other.dims;
     }
 
-    tensorSize_t getTotalSize() const noexcept;
-
     friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
 };

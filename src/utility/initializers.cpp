@@ -35,6 +35,12 @@ namespace {
     }
 }
 
-unique_ptr<InitializerBase> InitializerFactory::getInitializer() {
-    return make_unique<GaussianInitializer>();
+unique_ptr<InitializerBase> InitializerFactory::getInitializer(InitClass ic) {
+    switch(ic){
+        case InitClass::Gaussian:
+            return make_unique<GaussianInitializer>();
+        default:
+            __throw_invalid_argument("Init class not implemented yet");
+    }
+    return nullptr; // never reached, suppress warning
 }

@@ -23,8 +23,6 @@ namespace layers {
             // TODO: necessary?
             //mutable std::optional<Tensor> v1;
 
-            //void resetVector(ftype* v, tensorDim_t size) const noexcept;
-
         public:
             FfLayer(tensorDim_t in_size, tensorDim_t out_size);
 
