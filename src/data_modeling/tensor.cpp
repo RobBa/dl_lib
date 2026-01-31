@@ -293,9 +293,11 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
   const auto& dims = t.getDims();
   const auto MAX_IDX = static_cast<tensorDim_t>(5);
 
+#ifndef NDEBUG
   for(int i=0; i<4; i++){
     cout << "Dim " << i << ": " << dims.get(i) << endl;
   }
+#endif // NDEBUG
 
   if(dims.get(3)>0){
     std::__throw_invalid_argument("Printing 4D tensor not implemented");

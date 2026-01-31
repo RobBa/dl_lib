@@ -30,6 +30,12 @@ class Dimension final {
     std::array<tensorDim_t, MAX_TENSOR_DIMS> dims; // assumption: maximum dimension of Tensor is 4
 
   public:
+    /**
+     * @brief Explicit default ctor, so that dims is zero initialized.
+     * Otherwise we will encounter undefined behavior.
+     */
+    Dimension() : dims{} {}
+
     tensorDim_t& operator[](int idx){
       assert(idx < MAX_TENSOR_DIMS);
       return dims[idx];

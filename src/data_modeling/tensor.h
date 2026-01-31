@@ -148,6 +148,11 @@ struct Tensor final {
         // base case
         template<size_t idx>
         void populateDims() {}
+    
+        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
+        Tensor multiply2D(const Tensor& left, const Tensor& right) const;
+
+        friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
         template<size_t idx, typename First, typename... Rest>
         requires (is_valid_dim<First>)
@@ -156,14 +161,9 @@ struct Tensor final {
             dims[idx] = static_cast<tensorDim_t>(first);
             populateDims<idx+1>(rest...);
         }
-    
-        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
-        Tensor multiply2D(const Tensor& left, const Tensor& right) const;
-
-        friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
         template<typename... T>
-        void constructTensor(Device d, T... dims) {
+        void constructTensor(Device d, T... dimensions) {
             if constexpr(sizeof...(T)==4){
                 type = TensorType::FourD;
             }
@@ -180,27 +180,27 @@ struct Tensor final {
                 type = TensorType::Scalar;
             }
 
-            populateDims<0>(dims...);
+            populateDims<0>(dimensions...);
 
             values = std::make_shared<tensorValues_t>(d);
             if constexpr (sizeof...(T)==0){
                 values->resize(1);
             }
             else {
-                values->resize(varProduct(dims...));
+                values->resize(varProduct(dimensions...));
             }
         }
 
     public:
         template<typename... T>
-        explicit Tensor(T... dims) {
-            constructTensor(tensorValues_t::getDefaultDevice(), dims...);
+        explicit Tensor(Device d, T... dimensions) {
+            constructTensor(d, dimensions...);
         }
 
         template<typename... T>
-        explicit Tensor(Device d, T... dims) {
-            constructTensor(d, dims...);
-        }
+        explicit Tensor(T... dimensions) : 
+            Tensor(tensorValues_t::getDefaultDevice(), dimensions...) 
+        {}
 
         /** 
          * @brief Copying. 
