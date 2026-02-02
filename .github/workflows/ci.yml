@@ -65,6 +65,7 @@ jobs:
         with:
           name: build-output
           path: build/
+          retention-days: 1
 
   # example of artifacts
   #    - name: Upload artifacts
