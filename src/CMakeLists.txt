@@ -4,6 +4,8 @@ include_directories(
         "${CMAKE_CURRENT_SOURCE_DIR}/utility"
         "${CMAKE_CURRENT_SOURCE_DIR}/layers"
         "${CMAKE_CURRENT_SOURCE_DIR}/system"
+        "${CMAKE_CURRENT_SOURCE_DIR}/training/loss_functions"
+        "${CMAKE_CURRENT_SOURCE_DIR}/training/optimizers"
         )
 
 # compiling the libraries
