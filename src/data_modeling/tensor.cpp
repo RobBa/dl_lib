@@ -185,6 +185,10 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
  * network class object instance upon construction. 
  */
 Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
+  if(left.dims.get(1) != right.dims.get(0)){
+    __throw_runtime_error("Tensor dimensions do not match");
+  }
+
   Tensor res(this->values->getDevice(), left.dims.get(0), right.dims.get(1));
 
   for(uint16_t row=0; row<left.dims.get(0); row++){
@@ -315,7 +319,7 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
   }
   else{
     for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
-      os << t.get(i);
+      os << t.get(i) << " ";
     }
   }
 }
@@ -370,4 +374,8 @@ void Tensor::set(ftype item, int idx1, int idx2, int idx3) {
 
 void Tensor::set(ftype item, int idx, int idx2, int idx3, int idx4) {
   __throw_runtime_error("4D indexing not implemented yet");
+}
+
+ftype& Tensor::operator[](const tensorSize_t idx) {
+  return (*values)[idx];
 }

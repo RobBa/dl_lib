@@ -24,6 +24,7 @@ namespace layers {
     class LayerBase {       
         protected:
             std::optional<Tensor> weights = std::nullopt;
+            std::optional<Tensor> bias = std::nullopt;
 
         public:
             LayerBase() = default;

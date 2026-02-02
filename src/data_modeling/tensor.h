@@ -240,6 +240,8 @@ struct Tensor final {
         void set(ftype item, int idx1, int idx2, int idx3);
         void set(ftype item, int idx1, int idx2, int idx3, int idx4);
 
+        ftype& operator[](const tensorSize_t idx);
+
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
 
