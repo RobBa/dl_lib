@@ -11,6 +11,9 @@
 
 #include "tensor.h"
 
+#include "graph_node.h"
+#include "topological_sort.h"
+
 #include <utility>
 
 #ifndef NDEBUG
@@ -98,6 +101,27 @@ Tensor::tensorValues_t::operator bool() const noexcept {
   return values != nullptr;
 }
 
+void Tensor::tensorValues_t::addOtherCpu(const Tensor::tensorValues_t& other) noexcept {
+  for(tensorSize_t i=0; i<this->size; i++){
+    this->values[i] += other.values[i];
+  }
+}
+
+Tensor::tensorValues_t& 
+Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
+  assert(this->size==other.size && this->device == other.device);
+  
+  switch(device) {
+    case Device::CPU:
+      addOtherCpu(other);
+      break;
+    case Device::CUDA:
+      __throw_invalid_argument("CUDA not supported yet for += operation");
+  }
+
+  return *this;
+}
+
 ftype& Tensor::tensorValues_t::operator[](int idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
@@ -132,27 +156,9 @@ ftype Tensor::tensorValues_t::get(const int idx) const {
 *************************** Tensor **********************************
 ********************************************************************/
 
-Tensor::Tensor(const Tensor& other) noexcept {
-  this->dims = other.dims;
-  this->type = other.type;
-  this->values = other.values;
-}
-
-Tensor& Tensor::operator=(const Tensor& other) noexcept {
-  if (this == &other) return *this;
-  
-  this->dims = other.dims;
-  this->type = other.type;
-  this->values = other.values;
-
-  return *this;
-}
-
-Tensor::Tensor(Tensor&& other) noexcept {  
-  this->type = other.type;
-  this->dims = move(other.dims);
-  this->values = move(other.values);
-}
+Tensor::Tensor(Tensor&& other) noexcept
+  : dims{move(other.dims)}, type{other.type}, values{move(other.values)} 
+{ }
 
 Tensor& Tensor::operator=(Tensor&& other) noexcept {
   if (this == &other) return *this;
@@ -165,11 +171,20 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
 }
 
 /**
+ * @brief Creates an empty copy of this tensor.
+ * Metadata all filled, but gradients not initialized, and 
+ * values are reserved in memory, but uninitialized.
+ */
+Tensor Tensor::createEmptyCopy() const {
+  return Tensor(values->getDevice(), dims);
+}
+
+/**
  * @brief Scalar multiplication, capable of broadcasting. First argument assumed
  * to be the scalar tensor.
  */
 Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
-  Tensor res(right);
+  Tensor res(values->getDevice(), dims);
   for(int i=0; i<right.getSize(); ++i){
     (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
   }
@@ -248,6 +263,25 @@ Tensor Tensor::multiply(const Tensor& left, const Tensor& right) {
   }
 
   return left * right;
+}
+
+void Tensor::backward() {
+  if(!requiresGrad){
+    __throw_runtime_error("Invoking backward on Tensor with no grad");
+  }
+
+  if (!grads) {
+    assert(MAX_TENSOR_DIMS<=4);
+    grads.emplace(values->getDevice(), dims.get(0), dims.get(1), dims.get(2), dims.get(3));
+  }
+
+  vector<Tensor*> sortedTensors = graph::TopologicalSort::reverseSort(this);
+  for(auto tPtr: sortedTensors){
+    auto& tensor = *tPtr;
+    if(tensor.cgNode){
+      auto previousGrads = tensor.cgNode->backward(*tensor.grads);
+    }
+  }
 }
 
 /**

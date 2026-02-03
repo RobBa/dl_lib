@@ -12,11 +12,15 @@
 #pragma once
 
 #include "dim_type.h"
+#include "topological_sort.h"
+#include "graph_node.h"
 
 #include "global_params.h"
 #include "initializers.h"
 
 #include <memory>
+#include <optional>
+
 #include <iostream>
 
 #include <concepts>
@@ -25,6 +29,12 @@
 #ifndef NDEBUG
     #include <limits>
 #endif // NDEBUG
+
+// break circular dependency
+namespace graph {
+    class GraphNode;
+    class TopologicalSort;
+}
 
 enum class Device {
     CPU,
@@ -40,7 +50,7 @@ constexpr const char* DeviceToString(Device d) {
     }
 }
 
-struct Tensor final {
+class Tensor final {
     enum class TensorType {
         Scalar,
         OneD,
@@ -48,6 +58,8 @@ struct Tensor final {
         ThreeD,
         FourD
     };
+
+    friend class graph::TopologicalSort;
 
     private:
         /**
@@ -57,13 +69,15 @@ struct Tensor final {
          * Structured as a flat array, the logic for multiple dimensions 
          * encapsulated by surrounding tensor object. 
          */
-        struct tensorValues_t final {
+        class tensorValues_t final {
         private:
             tensorSize_t size = 0;
             ftype* values = nullptr;
             
             Device device;
             inline static Device defaultDevice = Device::CPU;
+
+            void addOtherCpu(const tensorValues_t& other) noexcept;
 
         public:
             explicit tensorValues_t();
@@ -81,6 +95,9 @@ struct Tensor final {
             ftype get(int idx) const;
 
             tensorSize_t getSize() const noexcept;
+
+            // needed for gradient descent
+            tensorValues_t& operator+=(const tensorValues_t& other);
 
             template<typename T>
             requires (std::is_integral_v< std::remove_const_t<T> >)
@@ -106,7 +123,12 @@ struct Tensor final {
             static Device getDefaultDevice() noexcept;
         }; 
 
-        std::shared_ptr<tensorValues_t> values = nullptr;
+
+        bool requiresGrad = false;
+        std::optional<Tensor> grads = std::nullopt; // gradients
+
+        std::shared_ptr<tensorValues_t> values = nullptr; // values of tensor
+        std::shared_ptr<graph::GraphNode> cgNode = nullptr;
 
         Dimension dims;
         TensorType type;
@@ -191,6 +213,27 @@ struct Tensor final {
             }
         }
 
+        explicit Tensor(Device d, Dimension dim) {
+            assert(MAX_TENSOR_DIMS <= 4);
+            switch(type){
+                case TensorType::FourD:
+                    constructTensor(d, dim.get(0), dim.get(1), dim.get(2), dim.get(3));
+                    break;
+                case TensorType::ThreeD:
+                    constructTensor(d, dim.get(0), dim.get(1), dim.get(2));
+                    break;
+                case TensorType::TwoD:
+                    constructTensor(d, dim.get(0), dim.get(1));
+                    break;
+                case TensorType::OneD:
+                    constructTensor(d, dim.get(0));
+                    break;
+                case TensorType::Scalar:
+                    constructTensor(d);
+                    break;
+            }
+        }
+
     public:
         template<typename... T>
         explicit Tensor(Device d, T... dimensions) {
@@ -203,14 +246,14 @@ struct Tensor final {
         {}
 
         /** 
-         * @brief Copying. 
-         * 
-         * WARNING: only copy dimensions and other properties, but
-         * underlying array of values shared among the instances via
-         * pointer.
+         * Tensors can become very large. Deleting those two
+         * helps us to not accidentally copy something we do not 
+         * intend to copy. We create extra methods for that.
          */
-        Tensor(const Tensor& other) noexcept;
-        Tensor& operator=(const Tensor& other) noexcept;
+        Tensor(const Tensor& other) = delete;
+        Tensor& operator=(const Tensor& other) = delete;
+
+        Tensor createEmptyCopy() const;
 
         /**
          * @brief Moving. Move array of values
@@ -227,6 +270,8 @@ struct Tensor final {
 
         Tensor operator*(Tensor const& t) const;
         static Tensor multiply(const Tensor& left, const Tensor& right);
+
+        void backward();
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 

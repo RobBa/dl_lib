@@ -11,6 +11,9 @@
 
 #pragma once
 
-class LossBase {
+#include "tensor.h"
 
+class LossBase {
+  public:
+    virtual Tensor operator()(Tensor& y, const Tensor& y_target) const noexcept = 0;
 };
