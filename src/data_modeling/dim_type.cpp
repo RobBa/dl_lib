@@ -11,7 +11,27 @@
 
 #include "dim_type.h"
 
+#include <utility>
+
 using namespace std;
+
+Dimension::Dimension(const Dimension& other) : dims{other.dims} { }
+
+Dimension& Dimension::operator=(const Dimension& other) {
+  if(this==&other) return *this;
+
+  dims = other.dims;
+  return *this;
+}
+
+Dimension::Dimension(Dimension&& other) noexcept : dims{move(other.dims)} { }
+
+Dimension& Dimension::operator=(Dimension&& other) noexcept {
+  if(this==&other) return *this;
+
+  dims = move(other.dims);
+  return *this;
+}
 
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {
   os << "(";

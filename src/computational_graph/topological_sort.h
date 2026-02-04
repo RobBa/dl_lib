@@ -21,7 +21,7 @@ namespace graph {
   /**
    * @brief Topological sort class. 
    * 
-   * Unlike Kahn's algorithm this one only expects one single starting node.
+   * Kahn's algorithm, except that this one expects only one single starting node.
    * We use it for the backpropagation algorithm.
    */
   class TopologicalSort final {

@@ -84,8 +84,8 @@ class Tensor final {
             explicit tensorValues_t(Device d);
             ~tensorValues_t() noexcept;
 
-            tensorValues_t(const tensorValues_t& other) noexcept = delete;
-            tensorValues_t& operator=(const tensorValues_t& other) noexcept = delete;
+            tensorValues_t(const tensorValues_t& other) = delete;
+            tensorValues_t& operator=(const tensorValues_t& other) = delete;
 
             tensorValues_t(tensorValues_t&& other) noexcept;
             tensorValues_t& operator=(tensorValues_t&& other) noexcept;
@@ -117,12 +117,11 @@ class Tensor final {
             void setDevice(const Device d) noexcept;
             Device getDevice() const noexcept;
 
-            static tensorValues_t createDeepCopy(const tensorValues_t& v);
+            static void copyValues(tensorValues_t& target, const tensorValues_t& origin);
 
             static void setDefaultDevice(const Device d) noexcept;
             static Device getDefaultDevice() noexcept;
-        }; 
-
+        };
 
         bool requiresGrad = false;
         std::optional<Tensor> grads = std::nullopt; // gradients
@@ -166,10 +165,6 @@ class Tensor final {
             return (static_cast<tensorSize_t>(x) * ...); // does not detect overflows
 #endif // NDEBUG
         }
-
-        // base case
-        template<size_t idx>
-        void populateDims() {}
     
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
@@ -184,8 +179,12 @@ class Tensor final {
             populateDims<idx+1>(rest...);
         }
 
+        // base case
+        template<size_t idx>
+        void populateDims() {}
+
         template<typename... T>
-        void constructTensor(Device d, T... dimensions) {
+        void constructTensor(bool requiresGrad, Device d, T... dimensions) {
             if constexpr(sizeof...(T)==4){
                 type = TensorType::FourD;
             }
@@ -202,6 +201,8 @@ class Tensor final {
                 type = TensorType::Scalar;
             }
 
+            this->requiresGrad = requiresGrad;
+
             populateDims<0>(dimensions...);
 
             values = std::make_shared<tensorValues_t>(d);
@@ -213,37 +214,49 @@ class Tensor final {
             }
         }
 
-        explicit Tensor(Device d, Dimension dim) {
-            assert(MAX_TENSOR_DIMS <= 4);
-            switch(type){
-                case TensorType::FourD:
-                    constructTensor(d, dim.get(0), dim.get(1), dim.get(2), dim.get(3));
-                    break;
-                case TensorType::ThreeD:
-                    constructTensor(d, dim.get(0), dim.get(1), dim.get(2));
-                    break;
-                case TensorType::TwoD:
-                    constructTensor(d, dim.get(0), dim.get(1));
-                    break;
-                case TensorType::OneD:
-                    constructTensor(d, dim.get(0));
-                    break;
-                case TensorType::Scalar:
-                    constructTensor(d);
-                    break;
-            }
-        }
-
     public:
         template<typename... T>
-        explicit Tensor(Device d, T... dimensions) {
-            constructTensor(d, dimensions...);
+        explicit Tensor(bool requiresGrad, Device d, T... dimensions) {
+            static_assert(sizeof...(dimensions)<=MAX_TENSOR_DIMS, 
+                          "Too many dimensions given for ctor");
+            
+            constructTensor(requiresGrad, d, dimensions...);
         }
 
         template<typename... T>
         explicit Tensor(T... dimensions) : 
-            Tensor(tensorValues_t::getDefaultDevice(), dimensions...) 
+            Tensor(false, tensorValues_t::getDefaultDevice(), dimensions...) 
         {}
+
+        template<typename... T>
+        explicit Tensor(bool requiresGrad, T... dimensions) : 
+            Tensor(requiresGrad, tensorValues_t::getDefaultDevice(), dimensions...) 
+        {}
+
+        template<typename... T>
+        explicit Tensor(Device d, T... dimensions) :
+            Tensor(false, d, dimensions...)
+        {}
+
+        explicit Tensor(bool requiresGrad, Device d, Dimension dim) {
+            switch(type){
+                case TensorType::FourD:
+                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1), dim.get(2), dim.get(3));
+                    break;
+                case TensorType::ThreeD:
+                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1), dim.get(2));
+                    break;
+                case TensorType::TwoD:
+                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1));
+                    break;
+                case TensorType::OneD:
+                    constructTensor(requiresGrad, d, dim.get(0));
+                    break;
+                case TensorType::Scalar:
+                    constructTensor(requiresGrad, d);
+                    break;
+            }
+        }
 
         /** 
          * Tensors can become very large. Deleting those two
@@ -254,6 +267,7 @@ class Tensor final {
         Tensor& operator=(const Tensor& other) = delete;
 
         Tensor createEmptyCopy() const;
+        Tensor createDeepCopy() const;
 
         /**
          * @brief Moving. Move array of values

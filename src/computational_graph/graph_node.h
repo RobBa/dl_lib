@@ -19,6 +19,7 @@
 namespace graph {
   class GraphNode {
     friend class TopologicalSort;
+    
     protected:
       std::vector< std::shared_ptr<Tensor> > parents;
 

@@ -32,26 +32,21 @@ Tensor::tensorValues_t::tensorValues_t() {
 
 Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
 
-Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept {
-  this->device = other.device;
-  this->values = other.values;
-}
+Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept 
+  : device{move(other.device)}, size{move(other.size)}, values{move(other.values)} { }
 
 Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other) noexcept {
   if (this == &other) return *this;
 
-  this->device = other.device;
-  this->values = std::move(other.values);
+  device = move(other.device);
+  size = move(other.size);
+  values = move(other.values);
 
   return *this;
 }
 
 Tensor::tensorValues_t::~tensorValues_t() noexcept {
-#ifndef NDEBUG
-    if(values == nullptr){
-      cerr << "value is nullptr in destructor of Tensor::tensorValues_t" << endl;
-    }
-#endif // NDEBUG
+  assert(values != nullptr);
 
   switch(device){
     case Device::CPU:
@@ -68,21 +63,27 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
-Tensor::tensorValues_t Tensor::tensorValues_t::createDeepCopy(const Tensor::tensorValues_t& v) {
-  tensorValues_t res(v.device);
-  res.resize<tensorSize_t>(v.size);
-  for(tensorSize_t i=0; i<v.size; i++){
-    res[i] = v.values[i];
+void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target, 
+                                            const Tensor::tensorValues_t& origin) {
+  assert(origin.device==target.device && origin.size==target.size);
+
+  switch(origin.device){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<origin.size; i++){
+        target[i] = origin.values[i];
+      }
+      break;
+    case Device::CUDA:
+      __throw_runtime_error("CUDA not implemented for deep copy");
   }
-  return res;
 }
 
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
-  this->device = d;
+  device = d;
 }
 
 Device Tensor::tensorValues_t::getDevice() const noexcept {
-  return this->device;
+  return device;
 }
 
 void Tensor::tensorValues_t::setDefaultDevice(const Device d) noexcept {
@@ -94,7 +95,7 @@ Device Tensor::tensorValues_t::getDefaultDevice() noexcept {
 }
 
 tensorSize_t Tensor::tensorValues_t::getSize() const noexcept {
-  return this->size;
+  return size;
 }
 
 Tensor::tensorValues_t::operator bool() const noexcept {
@@ -178,6 +179,12 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
 Tensor Tensor::createEmptyCopy() const {
   return Tensor(values->getDevice(), dims);
 }
+
+Tensor Tensor::createDeepCopy() const {
+  auto res = Tensor(values->getDevice(), dims);
+  tensorValues_t::copyValues(*res.values, *this->values);
+}
+
 
 /**
  * @brief Scalar multiplication, capable of broadcasting. First argument assumed
@@ -270,16 +277,19 @@ void Tensor::backward() {
     __throw_runtime_error("Invoking backward on Tensor with no grad");
   }
 
+  // can this happen in first place?
   if (!grads) {
-    assert(MAX_TENSOR_DIMS<=4);
-    grads.emplace(values->getDevice(), dims.get(0), dims.get(1), dims.get(2), dims.get(3));
+    grads.emplace(false, values->getDevice(), dims);
+    for(tensorSize_t i=0; i<values->getSize(); i++){
+      (*grads.value().values)[i] = 1;
+    }
   }
 
   vector<Tensor*> sortedTensors = graph::TopologicalSort::reverseSort(this);
   for(auto tPtr: sortedTensors){
     auto& tensor = *tPtr;
     if(tensor.cgNode){
-      auto previousGrads = tensor.cgNode->backward(*tensor.grads);
+      auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
     }
   }
 }

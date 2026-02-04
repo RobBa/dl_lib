@@ -36,6 +36,14 @@ class Dimension final {
      */
     Dimension() : dims{} {}
 
+    Dimension(const Dimension& other);
+    Dimension& operator=(const Dimension& other);
+
+    Dimension(Dimension&& other) noexcept;
+    Dimension& operator=(Dimension&& other) noexcept;
+
+    ~Dimension() noexcept = default;
+
     tensorDim_t& operator[](int idx){
       assert(idx < MAX_TENSOR_DIMS);
       return dims[idx];

@@ -10,10 +10,11 @@
  */
 
 #include "add_node.h"
+#include "tensor.h"
 
 using namespace std;
 using namespace graph;
 
 vector<Tensor> AddNode::backward(const Tensor& upstream_grad) {
-  // TODO
+  return {upstream_grad.createDeepCopy(), upstream_grad.createDeepCopy()};
 }
