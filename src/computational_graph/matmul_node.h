@@ -22,6 +22,14 @@ namespace graph {
         parents = {t1, t2};
       }
 
+      MatMulNode(const MatMulNode& other) = delete;
+      MatMulNode& operator=(const MatMulNode& other) = delete;
+
+      MatMulNode(MatMulNode&& other) = delete;
+      MatMulNode& operator=(MatMulNode&& other) = delete;
+
+      ~MatMulNode() noexcept = default; 
+
       std::vector<Tensor> backward(const Tensor& upstream_grad) override;
   };
 }

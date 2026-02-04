@@ -20,6 +20,14 @@ namespace graph {
         parents = {t1, t2};
       }
 
+      AddNode(const AddNode& other) = delete;
+      AddNode& operator=(const AddNode& other) = delete;
+
+      AddNode(AddNode&& other) = delete;
+      AddNode& operator=(AddNode&& other) = delete;
+
+      ~AddNode() noexcept = default; 
+
       std::vector<Tensor> backward(const Tensor& upstream_grad) override;
   };
 }
