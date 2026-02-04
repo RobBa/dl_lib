@@ -1,5 +1,5 @@
 /**
- * @file igraph_node.h
+ * @file graph_node.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -14,14 +14,13 @@
 #include "topological_sort.h"
 
 #include <vector>
-#include <memory>
 
 namespace graph {
   class GraphNode {
     friend class TopologicalSort;
-    
+
     protected:
-      std::vector< std::shared_ptr<Tensor> > parents;
+      std::vector<Tensor*> parents;
 
     public:
       virtual std::vector<Tensor> backward(const Tensor& upstream_grad) = 0;

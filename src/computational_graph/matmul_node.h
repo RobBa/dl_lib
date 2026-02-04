@@ -18,7 +18,7 @@
 namespace graph {
   class MatMulNode final : public GraphNode {
     public:
-      MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
+      MatMulNode(Tensor* t1, Tensor* t2) {
         parents = {t1, t2};
       }
 

@@ -126,7 +126,7 @@ class Tensor final {
         bool requiresGrad = false;
         std::optional<Tensor> grads = std::nullopt; // gradients
 
-        std::shared_ptr<tensorValues_t> values = nullptr; // values of tensor
+        std::unique_ptr<tensorValues_t> values = nullptr; // values of tensor TODO: make unique?
         std::shared_ptr<graph::GraphNode> cgNode = nullptr;
 
         Dimension dims;
@@ -166,7 +166,7 @@ class Tensor final {
 #endif // NDEBUG
         }
     
-        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const;
+        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const noexcept;
         Tensor multiply2D(const Tensor& left, const Tensor& right) const;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
@@ -205,7 +205,7 @@ class Tensor final {
 
             populateDims<0>(dimensions...);
 
-            values = std::make_shared<tensorValues_t>(d);
+            values = std::make_unique<tensorValues_t>(d);
             if constexpr (sizeof...(T)==0){
                 values->resize(1);
             }
@@ -283,7 +283,12 @@ class Tensor final {
         tensorSize_t getSize() const noexcept;
 
         Tensor operator*(Tensor const& t) const;
-        static Tensor multiply(const Tensor& left, const Tensor& right);
+        Tensor matMul(const Tensor& other) const;
+
+        Tensor operator+(const Tensor& other) const;
+        Tensor add(const Tensor& other) const;
+
+        Tensor elementwiseMul(const Tensor& other) const;
 
         void backward();
 

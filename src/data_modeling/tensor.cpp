@@ -12,6 +12,9 @@
 #include "tensor.h"
 
 #include "graph_node.h"
+#include "add_node.h"
+#include "matmul_node.h"
+#include "elementwise_mul_node.h"
 #include "topological_sort.h"
 
 #include <utility>
@@ -190,7 +193,7 @@ Tensor Tensor::createDeepCopy() const {
  * @brief Scalar multiplication, capable of broadcasting. First argument assumed
  * to be the scalar tensor.
  */
-Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const {
+Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const noexcept {
   Tensor res(values->getDevice(), dims);
   for(int i=0; i<right.getSize(); ++i){
     (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
@@ -240,37 +243,108 @@ Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
  * segmentation faults or wrong results. For safe method use static function multiply().
  */
 Tensor Tensor::operator*(const Tensor& other) const {
-  if(this->values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Not implemented");
+  if(values->getDevice()==Device::CUDA){
+    __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
 
+  if(values->getDevice()==other.values->getDevice()){
+    __throw_runtime_error("Tensors on different devices.");
+  }
+
+  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+    if (this->requiresGrad || other.requiresGrad) {
+        t.requiresGrad = true;
+        t.cgNode = std::make_shared<graph::MatMulNode>(this, &other);
+    }
+    return t;
+  };
+
   if(other.type == TensorType::OneD){
-    multiplyScalar(other, *this);
+    return createGraphNode(multiplyScalar(other, *this));
   }
 
   switch(type){      
-    case TensorType::OneD:
-      return multiplyScalar(*this, other);
-    case TensorType::TwoD:
-      return multiply2D(*this, other);
+    case TensorType::OneD: 
+      return createGraphNode(multiplyScalar(*this, other));
+    case TensorType::TwoD: {
+      return createGraphNode(multiply2D(*this, other));
+    }
     default:
       __throw_invalid_argument("Multiplication of tensors of higher order than 2 not implemented");
   }
 }
 
 /**
- * @brief Because we try to save runtime, we omit a dimensionality check in 
- * operator*(), with the responsibility of the dimensionality check going to
- * the network. This is a safe version of that functionality. 
+ * @brief Similar to operator*, but clearer.
  */
-Tensor Tensor::multiply(const Tensor& left, const Tensor& right) {
-  if(left.getDims().get(0) != right.getDims().get(1)){
-    // TODO: show meaningful message in python without exception
-    __throw_invalid_argument("Dimensions don't match");
+Tensor Tensor::matMul(const Tensor& other) const {
+  return *this * other;
+}
+
+Tensor Tensor::operator+(const Tensor& other) const {
+  if(values->getDevice()==Device::CUDA){
+    __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
 
-  return left * right;
+  if(this->dims != other.dims){
+    __throw_invalid_argument("Tensors need same dimensions");
+  }
+  else if(values->getDevice()==other.values->getDevice()){
+    __throw_runtime_error("Tensors on different devices.");
+  }
+
+  assert(values->getSize()==other.values->getSize());
+
+  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+    if (this->requiresGrad || other.requiresGrad) {
+        t.requiresGrad = true;
+        t.cgNode = std::make_shared<graph::AddNode>(this, &other);
+    }
+    return t;
+  };
+
+  Tensor res(requiresGrad || other.requiresGrad, values->getDevice(), dims);
+  for(tensorSize_t i=0; i<values->getSize(); i++){
+    (*res.values)[i] = values->get(i) + other.values->get(i);
+  }
+
+  return res;
 }
+
+Tensor Tensor::add(const Tensor& other) const {
+  return *this + other;
+}
+
+Tensor Tensor::elementwiseMul(const Tensor& other) const {
+  if(values->getDevice()==Device::CUDA){
+    __throw_invalid_argument("Multiplication not implemented on CUDA");
+  }
+
+  if(this->dims != other.dims){
+    __throw_invalid_argument("Tensors need same dimensions");
+  }
+  else if(values->getDevice()==other.values->getDevice()){
+    __throw_runtime_error("Tensors on different devices.");
+  }
+
+  assert(values->getSize()==other.values->getSize());
+
+  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+    if (this->requiresGrad || other.requiresGrad) {
+        t.requiresGrad = true;
+        t.cgNode = std::make_shared<graph::ElementwiseMulNode>(this, &other);
+    }
+    return t;
+  };
+
+  Tensor res(requiresGrad || other.requiresGrad, values->getDevice(), dims);
+  for(tensorSize_t i=0; i<values->getSize(); i++){
+    (*res.values)[i] = values->get(i) * other.values->get(i);
+  }
+
+  return res;
+}
+
 
 void Tensor::backward() {
   if(!requiresGrad){
@@ -290,6 +364,7 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     if(tensor.cgNode){
       auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
+      // TODO: continue
     }
   }
 }
@@ -369,7 +444,7 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
 }
 
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
-  os << "Dims: " << t.getDims() << "\n";
+  os << "\nDims: " << t.getDims() << "\n";
   os << "Device: " << DeviceToString(t.values->getDevice()) << "\n";
 
   switch(t.values->getDevice()){

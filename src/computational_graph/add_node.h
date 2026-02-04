@@ -16,7 +16,7 @@
 namespace graph {
   class AddNode final : public GraphNode {  
     public:
-      AddNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
+      AddNode(Tensor* t1, Tensor* t2) {
         parents = {t1, t2};
       }
 
