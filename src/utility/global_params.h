@@ -26,6 +26,5 @@ using ftype = float; // TODO: make compiler flag
  * FOR OVERFLOWS. Similarly, we assume that all dimensions you
  * request fit into datatype tensorDim_t.
  */ 
-constexpr int MAX_TENSOR_DIMS = 4;
 using tensorDim_t = std::uint16_t;
 using tensorSize_t = std::uint32_t;

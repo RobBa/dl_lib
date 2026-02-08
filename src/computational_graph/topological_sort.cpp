@@ -50,7 +50,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
     nodeQueue.pop();
 
     const auto& parents = tensorPtr->cgNode->parents;
-    for(const auto& parent: parents){
+    for(const auto& parent: parents){ // TODO: check for requiresGrad to save runtime?
       edgeCounts[parent]--;
       if(edgeCounts[parent]==0){
         nodeQueue.push(parent);

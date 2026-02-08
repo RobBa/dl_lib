@@ -13,7 +13,7 @@
 
 #include "global_params.h"
 
-#include <array>
+#include <vector>
 
 #include <iostream>
 #include <cassert>
@@ -27,14 +27,17 @@ concept is_valid_dim = requires(T x) {
 
 class Dimension final {
   private:
-    std::array<tensorDim_t, MAX_TENSOR_DIMS> dims; // assumption: maximum dimension of Tensor is 4
+    std::vector<tensorDim_t> dims;
+    tensorSize_t size = 0;
+
+    tensorDim_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
 
   public:
     /**
      * @brief Explicit default ctor, so that dims is zero initialized.
      * Otherwise we will encounter undefined behavior.
      */
-    Dimension() : dims{} {}
+    Dimension(const std::vector<tensorDim_t>& dims);
 
     Dimension(const Dimension& other);
     Dimension& operator=(const Dimension& other);
@@ -44,17 +47,32 @@ class Dimension final {
 
     ~Dimension() noexcept = default;
 
-    tensorDim_t& operator[](int idx){
-      assert(idx < MAX_TENSOR_DIMS);
-      return dims[idx];
+    void resize(const std::vector<tensorDim_t>& dims);
+    tensorSize_t getSize() const noexcept {
+      assert(size!=0);
+      return size;
     }
 
     tensorDim_t get(int idx) const {
-      assert(idx < MAX_TENSOR_DIMS);
+      assert(size!=0);
+      if(idx<0){
+        idx = dims.size() + idx; // -1 is last idx, -2 second last and so forth
+      }
+
       return dims[idx];
     }
 
+    std::vector<tensorDim_t> toVector() const noexcept{
+      return dims;
+    }
+
+    size_t nDims() const noexcept {
+      assert(size!=0);
+      return dims.size();
+    }
+
     bool operator==(const Dimension& other) const {
+      assert(size!=0);
       return this->dims == other.dims;
     }
 

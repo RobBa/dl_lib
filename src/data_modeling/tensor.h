@@ -26,10 +26,6 @@
 #include <concepts>
 #include <cassert>
 
-#ifndef NDEBUG
-    #include <limits>
-#endif // NDEBUG
-
 // break circular dependency
 namespace graph {
     class GraphNode;
@@ -51,14 +47,6 @@ constexpr const char* DeviceToString(Device d) {
 }
 
 class Tensor final {
-    enum class TensorType {
-        Scalar,
-        OneD,
-        TwoD,
-        ThreeD,
-        FourD
-    };
-
     friend class graph::TopologicalSort;
 
     private:
@@ -124,138 +112,37 @@ class Tensor final {
         };
 
         bool requiresGrad = false;
-        std::optional<Tensor> grads = std::nullopt; // gradients
+        std::shared_ptr<Tensor> grads = nullptr; // gradients
 
         std::unique_ptr<tensorValues_t> values = nullptr; // values of tensor TODO: make unique?
         std::shared_ptr<graph::GraphNode> cgNode = nullptr;
 
         Dimension dims;
-        TensorType type;
-
-#ifndef NDEBUG
-        /**
-         * @brief Helps us to detect overflows in the folding expression below.
-         */
-        struct SafeMultiplier_t {
-            tensorSize_t value;
-            
-            SafeMultiplier_t(tensorSize_t v) : value(v) {}
-            
-            SafeMultiplier_t operator*(const SafeMultiplier_t& other) const {
-                if (other.value != 0 && 
-                    value > std::numeric_limits<tensorSize_t>::max() / other.value) {
-                    throw std::overflow_error("Multiplication overflow");
-                }
-                return SafeMultiplier_t(value * other.value);
-            }
-        };
-#endif // NDEBUG
-
-        /**
-         * @brief Folding expression since C++17: Does the 
-         * product of the variadic templated types and returns 
-         * them.
-         */
-        template<typename... T>
-        tensorSize_t varProduct(T... x) {
-            static_assert(sizeof...(x) >= 0);
-#ifndef NDEBUG
-            return (SafeMultiplier_t(x) * ...).value; // detects overflows
-#else
-            return (static_cast<tensorSize_t>(x) * ...); // does not detect overflows
-#endif // NDEBUG
-        }
     
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const noexcept;
-        Tensor multiply2D(const Tensor& left, const Tensor& right) const;
+        void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
+
+        Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
+
+        void transpose2D(Tensor& t) noexcept;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
-        template<size_t idx, typename First, typename... Rest>
-        requires (is_valid_dim<First>)
-        void populateDims(First first, Rest... rest) {
-            assert(static_cast<tensorDim_t>(first) >= 0);
-            dims[idx] = static_cast<tensorDim_t>(first);
-            populateDims<idx+1>(rest...);
-        }
+        tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
 
-        // base case
-        template<size_t idx>
-        void populateDims() {}
-
-        template<typename... T>
-        void constructTensor(bool requiresGrad, Device d, T... dimensions) {
-            if constexpr(sizeof...(T)==4){
-                type = TensorType::FourD;
-            }
-            else if constexpr(sizeof...(T)==3){
-                type = TensorType::ThreeD;
-            }
-            else if constexpr(sizeof...(T)==2){
-                type = TensorType::TwoD;
-            }
-            else if constexpr(sizeof...(T)==1){
-                type = TensorType::OneD;
-            }
-            else if constexpr(sizeof...(T)==0){
-                type = TensorType::Scalar;
-            }
-
-            this->requiresGrad = requiresGrad;
-
-            populateDims<0>(dimensions...);
-
-            values = std::make_unique<tensorValues_t>(d);
-            if constexpr (sizeof...(T)==0){
-                values->resize(1);
-            }
-            else {
-                values->resize(varProduct(dimensions...));
-            }
-        }
+        template<typename T> 
+        requires (std::is_same_v<std::remove_cv_t<T>, Dimension>)
+        explicit Tensor(T&& dims, Device d, bool requiresGrad)
+            : Tensor{std::forward<Dimension>(dims.toVector()), tensorValues_t::getDefaultDevice(), requiresGrad}
+        { }
 
     public:
-        template<typename... T>
-        explicit Tensor(bool requiresGrad, Device d, T... dimensions) {
-            static_assert(sizeof...(dimensions)<=MAX_TENSOR_DIMS, 
-                          "Too many dimensions given for ctor");
-            
-            constructTensor(requiresGrad, d, dimensions...);
-        }
 
-        template<typename... T>
-        explicit Tensor(T... dimensions) : 
-            Tensor(false, tensorValues_t::getDefaultDevice(), dimensions...) 
-        {}
-
-        template<typename... T>
-        explicit Tensor(bool requiresGrad, T... dimensions) : 
-            Tensor(requiresGrad, tensorValues_t::getDefaultDevice(), dimensions...) 
-        {}
-
-        template<typename... T>
-        explicit Tensor(Device d, T... dimensions) :
-            Tensor(false, d, dimensions...)
-        {}
-
-        explicit Tensor(bool requiresGrad, Device d, Dimension dim) {
-            switch(type){
-                case TensorType::FourD:
-                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1), dim.get(2), dim.get(3));
-                    break;
-                case TensorType::ThreeD:
-                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1), dim.get(2));
-                    break;
-                case TensorType::TwoD:
-                    constructTensor(requiresGrad, d, dim.get(0), dim.get(1));
-                    break;
-                case TensorType::OneD:
-                    constructTensor(requiresGrad, d, dim.get(0));
-                    break;
-                case TensorType::Scalar:
-                    constructTensor(requiresGrad, d);
-                    break;
-            }
+        explicit Tensor(const Dimension& dims, Device d, bool requiresGrad=false) :
+            dims{dims}, requiresGrad{requiresGrad} {            
+            values = std::make_unique<tensorValues_t>(d);
+            values->resize(this->dims.getSize());
         }
 
         /** 
@@ -292,17 +179,12 @@ class Tensor final {
 
         void backward();
 
+        void transpose() noexcept;
+
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
-        ftype get(int idx) const;
-        ftype get(int idx1, int idx2) const;
-        ftype get(int idx1, int idx2, int idx3) const;
-        ftype get(int idx1, int idx2, int idx3, int idx4) const;
-
-        void set(ftype item, int idx);
-        void set(ftype item, int idx1, int idx2);
-        void set(ftype item, int idx1, int idx2, int idx3);
-        void set(ftype item, int idx1, int idx2, int idx3, int idx4);
+        ftype get(const std::vector<tensorDim_t>&& idx) const;
+        void set(ftype item, const std::vector<tensorDim_t>&& idx);
 
         ftype& operator[](const tensorSize_t idx);
 

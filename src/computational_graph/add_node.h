@@ -23,11 +23,11 @@ namespace graph {
       AddNode(const AddNode& other) = delete;
       AddNode& operator=(const AddNode& other) = delete;
 
-      AddNode(AddNode&& other) = delete;
-      AddNode& operator=(AddNode&& other) = delete;
+      AddNode(AddNode&& other) = default;
+      AddNode& operator=(AddNode&& other) = default;
 
       ~AddNode() noexcept = default; 
 
-      std::vector<Tensor> backward(const Tensor& upstream_grad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
 }

@@ -20,6 +20,7 @@
 #include <utility>
 
 #ifndef NDEBUG
+  #include "safe_arithmetics.h"
   #include <iostream>
 #endif // NDEBUG
 
@@ -161,15 +162,14 @@ ftype Tensor::tensorValues_t::get(const int idx) const {
 ********************************************************************/
 
 Tensor::Tensor(Tensor&& other) noexcept
-  : dims{move(other.dims)}, type{other.type}, values{move(other.values)} 
+  : dims{move(other.dims)}, values{move(other.values)} 
 { }
 
 Tensor& Tensor::operator=(Tensor&& other) noexcept {
   if (this == &other) return *this;
   
-  this->type = other.type;
-  this->dims = move(other.dims);
-  this->values = move(other.values);
+  dims = move(other.dims);
+  values = move(other.values);
 
   return *this;
 }
@@ -205,42 +205,71 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const n
  * @brief Just like in normal matrix multiplication order matters.
  * Not commutative as per usual for matrices -> a*b != b*a
  * 
+ * Multiply dimension left.dims.size()-1 of left with dimension right.dims.size()-2 of right.
+ * Output shape will be (left.dim(0), left.dim(1), ..., left.dim(-2), right.dim(-1))
+ * 
  * We assume here that the dimensions of the tensors already do match!
  * The check of whether they do or not is to be performed by the surrounding
  * network class object instance upon construction. 
  */
-Tensor Tensor::multiply2D(const Tensor& left, const Tensor& right) const {
-  if(left.dims.get(1) != right.dims.get(0)){
+Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
+  if(left.dims.get(-1) != right.dims.get(-2)){
     __throw_runtime_error("Tensor dimensions do not match");
   }
 
-  Tensor res(this->values->getDevice(), left.dims.get(0), right.dims.get(1));
+  if(abs(static_cast<int>(right.dims.nDims()) - static_cast<int>(left.dims.nDims())) > 1){
+    auto str = "Tensor dimension assumptions violated. See file 'assumption_matrices.md'.";
+    __throw_invalid_argument(str);
+  }
 
-  for(uint16_t row=0; row<left.dims.get(0); row++){
-    const uint32_t leftRowOffset = row * left.dims.get(1);
-    const uint32_t resRowOffset = row * right.dims.get(1);
+  auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
+  resDims[resDims.size()-1] = right.dims.get(-1);
+  resDims[resDims.size()-2] = left.dims.get(-2);
+  Tensor res(resDims, values->getDevice());
+
+  for(size_t dimension = 0; dimension<resDims.size(); dimension++){
     
-    // TODO: can we optimize mem-access for right matrix?
-    for(uint16_t col=0; col<right.dims.get(1); col++){
-      ftype scalarProd = 0;
-      
-      for(uint16_t idx=0; idx<left.dims.get(1); idx++){
-        const uint32_t leftOffset = leftRowOffset + idx;
-        const uint32_t targetOffset = col + idx * right.dims.get(1); // we can do this better via increments
-        scalarProd += (*left.values)[leftOffset] * (*right.values)[targetOffset];
-      }
-
-      const uint32_t resOffset = resRowOffset + col; // we can do this better via increments
-      (*res.values)[resOffset] = scalarProd;
-    }
   }
 
   return res;
 }
 
 /**
- * @brief Multiplies two matrices in unsafe manner. If dimensions don't match this can lead to 
- * segmentation faults or wrong results. For safe method use static function multiply().
+ * @brief Name says it all. Inplace operation on res
+ */
+void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) const {
+
+  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
+  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
+  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-1));
+  const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
+
+  for(tensorSize_t row=0; row<nRowsLeft; row++){
+    const tensorSize_t leftRowOffset = row * nColsLeft;
+    const tensorSize_t resRowOffset = row * nColsRight;
+    
+    tensorSize_t resIdx = resOffset + resRowOffset;
+    // TODO: can we optimize mem-access for right matrix?
+    for(tensorSize_t col=0; col<nColsRight; col++){
+      ftype scalarProd = 0;
+      
+      tensorSize_t leftIdx = leftOffset + leftRowOffset;
+      tensorSize_t rightIdx = rightOffset + col;
+      for(tensorSize_t idx=0; idx<nColsLeft; idx++){
+        scalarProd += (*left.values)[leftIdx] * (*right.values)[rightIdx];
+        
+        leftIdx++;
+        rightIdx += nColsRight;
+      }
+
+      (*res.values)[resIdx] = scalarProd;
+    }
+  }
+}
+
+/**
+ * @brief Matrix multiplication.
  */
 Tensor Tensor::operator*(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
@@ -259,28 +288,26 @@ Tensor Tensor::operator*(const Tensor& other) const {
     return t;
   };
 
-  if(other.type == TensorType::OneD){
+  if(other.dims.getSize()==1){
     return createGraphNode(multiplyScalar(other, *this));
   }
 
-  switch(type){      
-    case TensorType::OneD: 
-      return createGraphNode(multiplyScalar(*this, other));
-    case TensorType::TwoD: {
-      return createGraphNode(multiply2D(*this, other));
-    }
-    default:
-      __throw_invalid_argument("Multiplication of tensors of higher order than 2 not implemented");
-  }
+  if(dims.getSize()==1)
+    return createGraphNode(multiplyScalar(*this, other)); // TODO: check what to do about this gradient
+  
+  return createGraphNode(matMulImpl(*this, other));
 }
 
 /**
- * @brief Similar to operator*, but clearer.
+ * @brief Named version of operator*.
  */
 Tensor Tensor::matMul(const Tensor& other) const {
   return *this * other;
 }
 
+/**
+ * @brief Elementise addition.
+ */
 Tensor Tensor::operator+(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
@@ -303,7 +330,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
     return t;
   };
 
-  Tensor res(requiresGrad || other.requiresGrad, values->getDevice(), dims);
+  Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*res.values)[i] = values->get(i) + other.values->get(i);
   }
@@ -311,6 +338,9 @@ Tensor Tensor::operator+(const Tensor& other) const {
   return res;
 }
 
+/**
+ * @brief Named version of operator +.
+ */
 Tensor Tensor::add(const Tensor& other) const {
   return *this + other;
 }
@@ -337,7 +367,7 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
     return t;
   };
 
-  Tensor res(requiresGrad || other.requiresGrad, values->getDevice(), dims);
+  Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*res.values)[i] = values->get(i) * other.values->get(i);
   }
@@ -351,11 +381,11 @@ void Tensor::backward() {
     __throw_runtime_error("Invoking backward on Tensor with no grad");
   }
 
-  // can this happen in first place?
+  // check this one out for sure
   if (!grads) {
-    grads.emplace(false, values->getDevice(), dims);
+    grads = make_unique<Tensor>(false, values->getDevice(), dims);
     for(tensorSize_t i=0; i<values->getSize(); i++){
-      (*grads.value().values)[i] = 1;
+      (*grads->values)[i] = 1;
     }
   }
 
@@ -364,8 +394,48 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     if(tensor.cgNode){
       auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
-      // TODO: continue
+      const auto& parents = tensor.cgNode->getParents();
+
+      for(size_t i=0; i<parents.size(); i++){
+        auto parent = parents[i];
+        if(!parent->requiresGrad){
+          continue;
+        }
+        else if(!parent->grads){
+          parent->grads = incomingGrads[i];
+        }
+        else{
+          *parent->grads->values += *incomingGrads[i]->values;
+        }
+      }
     }
+  }
+}
+
+/**
+ * @brief 2D transposition. 
+ * 
+ * Can we generalize this to a higher degree without having special implementations
+ * for each type of tensor? 
+ */
+void Tensor::transpose2D(Tensor& t) noexcept {
+  if(values->getDevice()==Device::CUDA){
+    __throw_runtime_error("2D transposition not implemented for CUDA");
+  }
+  
+  const auto offset0 = dims.get(0);
+  const auto offset1 = dims.get(1);
+}
+
+/**
+ * @brief In place transpose.
+ * 
+ */
+void Tensor::transpose() noexcept {
+  // TODO: transpose
+  transpose2D(*this);
+  if(grads){ // TODO: does this make sense?
+    transpose2D(*grads);
   }
 }
 
@@ -412,33 +482,30 @@ Device Tensor::getDevice() const noexcept {
   return values->getDevice();
 }
 
+/**
+ * @brief Prints only sample of up to 2D tensors.
+ */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
   const auto& dims = t.getDims();
   const auto MAX_IDX = static_cast<tensorDim_t>(5);
 
 #ifndef NDEBUG
-  for(int i=0; i<4; i++){
+  for(int i=0; i<dims.nDims(); i++){
     cout << "Dim " << i << ": " << dims.get(i) << endl;
   }
 #endif // NDEBUG
 
-  if(dims.get(3)>0){
-    std::__throw_invalid_argument("Printing 4D tensor not implemented");
-  }
-  else if(dims.get(2)>0){
-    std::__throw_invalid_argument("Printing 3D tensor not implemented");
-  }
-  else if(dims.get(1)>0){
+  if(dims.nDims()>1){
     for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
       for(uint8_t j=0; j<min(MAX_IDX, dims.get(1)); j++){
-        os << t.get(i, j) << " ";
+        os << t.get({i, j}) << " ";
       }
       os << "\n";
     }
   }
   else{
     for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
-      os << t.get(i) << " ";
+      os << t.get({i}) << " ";
     }
   }
 }
@@ -459,42 +526,53 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   return os;
 }
 
-ftype Tensor::get(const int idx) const {
-  assert(type==TensorType::OneD);
-  return values->get(idx);
+/**
+ * @brief Computes the 1D index from a set of indices. 
+ * 
+ * WARNING: Does not check for overflow in release build.
+ */
+tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
+  if(idx.size()!=dims.nDims()) {
+    __throw_invalid_argument("Number of idxs should match number of dimensions.");
+  }
+  else if(idx.size()==0){
+    return 1;
+  }
+
+  auto lastIdx = idx.size()-1;
+#ifndef NDEBUG
+  tensorSize_t res = idx[lastIdx];
+#else 
+  SafeArithmetics_t<tensorSize_t> res(idx[lastIdx]);
+#endif // NDEBUG
+
+  tensorSize_t offsetFactor = dims.get(lastIdx);
+  for(size_t i=idx.size()-2; 0<=i; i--){
+#ifndef NDEBUG
+    res += idx[i] * offsetFactor;
+#else
+    res += SafeArithmetics_t<tensorSize_t>(idx[i]) * offsetFactor;
+#endif // NDEBUG
+    offsetFactor *= dims.get(i);
+  }
+
+#ifndef NDEBUG
+  return res;
+#else
+  return res.value;
+#endif // NDEBUG
 }
 
-ftype Tensor::get(const int idx1, const int idx2) const {
-  assert(type==TensorType::TwoD);
-  return values->get(idx1 * dims.get(1) + idx2);  
+/**
+ * @brief No explanation needed.
+ */
+ftype Tensor::get(const std::vector<tensorDim_t>&& idx) const {
+  return values->get(computeIdx(idx)); 
 }
 
-ftype Tensor::get(const int idx1, const int idx2, const int idx3) const {
-  __throw_runtime_error("3D indexing not implemented yet");
-}
-
-ftype Tensor::get(const int idx, const int idx2, const int idx3, const int idx4) const {
-  __throw_runtime_error("4D indexing not implemented yet");
-}
-
-void Tensor::set(ftype item, int idx) {
-  assert(type==TensorType::OneD);
-  (*values)[idx] = item;
-}
-
-void Tensor::set(ftype item, int idx1, int idx2) {
-  assert(type==TensorType::TwoD);
-  (*values)[idx1 * dims.get(1) + idx2] = item;  
-}
-
-void Tensor::set(ftype item, int idx1, int idx2, int idx3) {
-  __throw_runtime_error("3D indexing not implemented yet");
-}
-
-void Tensor::set(ftype item, int idx, int idx2, int idx3, int idx4) {
-  __throw_runtime_error("4D indexing not implemented yet");
-}
-
-ftype& Tensor::operator[](const tensorSize_t idx) {
-  return (*values)[idx];
+/**
+ * @brief No explanation needed.
+ */
+void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
+  (*values)[computeIdx(idx)] = item;
 }

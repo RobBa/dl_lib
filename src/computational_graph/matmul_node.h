@@ -25,11 +25,11 @@ namespace graph {
       MatMulNode(const MatMulNode& other) = delete;
       MatMulNode& operator=(const MatMulNode& other) = delete;
 
-      MatMulNode(MatMulNode&& other) = delete;
-      MatMulNode& operator=(MatMulNode&& other) = delete;
+      MatMulNode(MatMulNode&& other) = default;
+      MatMulNode& operator=(MatMulNode&& other) = default;
 
       ~MatMulNode() noexcept = default; 
 
-      std::vector<Tensor> backward(const Tensor& upstream_grad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
 }

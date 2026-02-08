@@ -23,11 +23,11 @@ namespace graph {
       ElementwiseMulNode(const ElementwiseMulNode& other) = delete;
       ElementwiseMulNode& operator=(const ElementwiseMulNode& other) = delete;
 
-      ElementwiseMulNode(ElementwiseMulNode&& other) = delete;
-      ElementwiseMulNode& operator=(ElementwiseMulNode&& other) = delete;
+      ElementwiseMulNode(ElementwiseMulNode&& other) = default;
+      ElementwiseMulNode& operator=(ElementwiseMulNode&& other) = default;
 
       ~ElementwiseMulNode() noexcept = default; 
 
-      std::vector<Tensor> backward(const Tensor& upstream_grad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
 }

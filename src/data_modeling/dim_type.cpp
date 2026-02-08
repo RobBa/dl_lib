@@ -10,10 +10,47 @@
  */
 
 #include "dim_type.h"
+#include "safe_arithmetics.h"
 
 #include <utility>
 
 using namespace std;
+
+tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const noexcept {
+  tensorDim_t res = 1;
+
+#ifndef NDEBUG
+  SafeArithmetics_t<tensorSize_t> mult(1);
+  for(auto dim: dims){
+    mult * dim;
+  }
+
+  res = mult.value;
+#else 
+  for(auto dim: dims){
+    res *= dim;
+  }
+#endif // NDEBUG
+
+  return res;
+}
+
+Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
+  size = multVector(dims);
+
+  if(size==0){
+    __throw_invalid_argument("Tensor-Dims must all be greater than 0.");
+  }
+}
+
+void Dimension::resize(const std::vector<tensorDim_t>& dims) {
+  this->dims = dims;
+  size = multVector(dims);
+
+  if(size==0){
+    __throw_invalid_argument("Tensor-Dims must all be greater than 0.");
+  }
+}
 
 Dimension::Dimension(const Dimension& other) : dims{other.dims} { }
 
@@ -35,10 +72,8 @@ Dimension& Dimension::operator=(Dimension&& other) noexcept {
 
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {
   os << "(";
-  for(int i=0; i<MAX_TENSOR_DIMS; i++){
+  for(int i=0; i<d.nDims(); i++){
     os << d.get(i);
-    if(i==MAX_TENSOR_DIMS-1 || d.get(i+1)==0)
-      break;
     os << ",";
   }
   os << ")\n";

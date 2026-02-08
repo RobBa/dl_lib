@@ -23,6 +23,10 @@ namespace graph {
       std::vector<Tensor*> parents;
 
     public:
-      virtual std::vector<Tensor> backward(const Tensor& upstream_grad) = 0;
+      virtual std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) = 0;
+      
+      const auto& getParents() const noexcept {
+        return parents;
+      }
   };
 }
