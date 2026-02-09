@@ -130,6 +130,7 @@ class Tensor final {
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
         tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
+        tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
 
         template<typename T> 
         requires (std::is_same_v<std::remove_cv_t<T>, Dimension>)
@@ -180,6 +181,9 @@ class Tensor final {
         void backward();
 
         void transpose() noexcept;
+        void transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept;
+        
+        void permute(const std::vector<tensorDim_t>&& newOrder) noexcept;
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 

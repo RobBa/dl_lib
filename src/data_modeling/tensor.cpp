@@ -180,11 +180,11 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
  * values are reserved in memory, but uninitialized.
  */
 Tensor Tensor::createEmptyCopy() const {
-  return Tensor(values->getDevice(), dims);
+  return Tensor(dims, values->getDevice());
 }
 
 Tensor Tensor::createDeepCopy() const {
-  auto res = Tensor(values->getDevice(), dims);
+  auto res = Tensor(dims, values->getDevice());
   tensorValues_t::copyValues(*res.values, *this->values);
 }
 
@@ -194,7 +194,7 @@ Tensor Tensor::createDeepCopy() const {
  * to be the scalar tensor.
  */
 Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const noexcept {
-  Tensor res(values->getDevice(), dims);
+  Tensor res(dims, values->getDevice());
   for(int i=0; i<right.getSize(); ++i){
     (*res.values)[i] = (*this->values)[0] * (*right.values)[i];
   }
@@ -225,10 +225,10 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
   resDims[resDims.size()-1] = right.dims.get(-1);
   resDims[resDims.size()-2] = left.dims.get(-2);
-  Tensor res(resDims, values->getDevice());
 
+  Tensor res(resDims, values->getDevice());
   for(size_t dimension = 0; dimension<resDims.size(); dimension++){
-    
+    // TODO here
   }
 
   return res;
@@ -428,14 +428,60 @@ void Tensor::transpose2D(Tensor& t) noexcept {
 }
 
 /**
- * @brief In place transpose.
+ * @brief Swap dim1 and dim2.
+ * 
+ * Out of place operation.
+ */
+void Tensor::transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept {
+  // large dim wraps small dim
+  const auto largeDim = dim1 < dim2 ? dim1 : dim2;
+  const auto smallDim = dim1 < dim2 ? dim2 : dim1;
+
+  const auto largeDimSize = getTotalDimSize(largeDim);
+  const auto smallDimSize = getTotalDimSize(smallDim);
+
+  auto res = make_unique<tensorValues_t>(values->getDevice());
+  res->resize(values->getSize());
+
+  tensorSize_t resIdx = 0;
+  for(tensorSize_t smallDimCount=0; smallDimCount<dims.get(smallDim); smallDimCount++){
+    for(tensorSize_t largeDimCount=0; largeDimCount<dims.get(largeDim); largeDimCount++){
+      tensorSize_t offset = largeDimCount * largeDimSize + smallDimCount * smallDimSize;
+
+      for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimSize; smallDimIdx++){
+        (*res)[resIdx] = (*values)[smallDimIdx + largeDimCount];
+        resIdx++;
+        offset++;
+      }
+    }
+  }
+
+  values = move(res);
+  dims.swap(dim1, dim2);
+}
+
+/**
+ * @brief Out of place transposition of last two axes.
  * 
  */
 void Tensor::transpose() noexcept {
-  // TODO: transpose
-  transpose2D(*this);
-  if(grads){ // TODO: does this make sense?
-    transpose2D(*grads);
+  if(dims.nDims()<2){
+    return;
+  }
+
+  transpose(dims.nDims()-1, dims.nDims()-2);
+}
+
+/**
+ * @brief Reorder according to the newOrder. 
+ * 
+ * New order aligns axes newly. E.g. (2, 3, 1, 0)
+ */
+void Tensor::permute(const std::vector<tensorDim_t>&& newOrder) noexcept {
+  // TODO: highly inefficient -> refactor
+  assert(newOrder.size()<=std::numeric_limits<tensorDim_t>::max());
+  for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++){
+    transpose(i, newOrder[i]);
   }
 }
 
@@ -561,6 +607,21 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
 #else
   return res.value;
 #endif // NDEBUG
+}
+
+/**
+ * @brief Gets the total size of a dimension. E.g. if dims=(2, 3, 4),
+ * the offset of dim1 is 3*4==12, and that of dim0 is 2*3*4==24.
+ */
+tensorSize_t Tensor::getTotalDimSize(const tensorDim_t dim) const {
+  tensorSize_t res = 1; // minimum possible offset
+
+  for(size_t idx = dims.nDims()-1; idx>=dim; idx--){
+    res *= dims.get(idx);
+  }
+
+  assert(res!=0);
+  return res;
 }
 
 /**

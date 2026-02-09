@@ -12,10 +12,10 @@ Trivial
 ## 2D and larger
 
 We assume the last two dimensions to represent rows and columns. 
-In dimensions of order higher than 2 the first dimension is always assumed
-to be the batchsize. So a 2D matrix would be something like (nrows, ncols), a 
+In dimensions of order higher than 2 the first dimension is usually is 
+the batchsize. So a 2D matrix would be something like (nrows, ncols), a 
 3D matrix something like (nbatches, nrows, ncols), a 4D matrix something like 
-(nbatches, timestep, nrows, ncols), ...
+(nbatches, timesteps/channels, nrows, ncols), ...
 
 In memory, we do have rows encapsulated by columns and so on. 
 2D matrix: 
@@ -44,7 +44,7 @@ Higher orders always do encapsulate from right to left, in this order. E.g. a 3D
   // ...
 ]
 
-For 4D tensors, sticking with the example above, the timestep encloses the individual 
+For 4D tensors, sticking with the example above, the timesteps/channels enclose the individual 
 2D matrices. Then the batches enclose the timesteps, and so forth.
 
 

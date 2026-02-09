@@ -35,7 +35,8 @@ tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const no
   return res;
 }
 
-Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
+void Dimension::resize(const std::vector<tensorDim_t>& dims) {
+  this->dims = dims;
   size = multVector(dims);
 
   if(size==0){
@@ -43,8 +44,16 @@ Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
   }
 }
 
-void Dimension::resize(const std::vector<tensorDim_t>& dims) {
-  this->dims = dims;
+/**
+ * @brief Swap along the two given dimensions.
+ */
+void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
+  tensorDim_t tmp = dims[dim1];
+  dims[dim1] = dims[dim2];
+  dims[dim2] = move(tmp);
+}
+
+Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
   size = multVector(dims);
 
   if(size==0){

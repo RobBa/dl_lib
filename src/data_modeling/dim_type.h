@@ -66,6 +66,8 @@ class Dimension final {
       return dims;
     }
 
+    void swap(const tensorDim_t dim1, const tensorDim_t dim2);
+
     size_t nDims() const noexcept {
       assert(size!=0);
       return dims.size();
