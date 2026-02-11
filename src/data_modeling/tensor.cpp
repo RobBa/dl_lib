@@ -228,7 +228,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
 
   Tensor res(resDims, values->getDevice());
   for(size_t dimension = 0; dimension<resDims.size(); dimension++){
-    // TODO here
+    // TODO here: recursive calls, or just pre-compute all the offsets beforehand
   }
 
   return res;
@@ -413,21 +413,6 @@ void Tensor::backward() {
 }
 
 /**
- * @brief 2D transposition. 
- * 
- * Can we generalize this to a higher degree without having special implementations
- * for each type of tensor? 
- */
-void Tensor::transpose2D(Tensor& t) noexcept {
-  if(values->getDevice()==Device::CUDA){
-    __throw_runtime_error("2D transposition not implemented for CUDA");
-  }
-  
-  const auto offset0 = dims.get(0);
-  const auto offset1 = dims.get(1);
-}
-
-/**
  * @brief Swap dim1 and dim2.
  * 
  * Out of place operation.
@@ -458,6 +443,10 @@ void Tensor::transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept 
 
   values = move(res);
   dims.swap(dim1, dim2);
+
+  if(grads){
+    grads->transpose(dim1, dim2);
+  }
 }
 
 /**

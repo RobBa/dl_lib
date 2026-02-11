@@ -111,21 +111,19 @@ class Tensor final {
             static Device getDefaultDevice() noexcept;
         };
 
-        bool requiresGrad = false;
-        std::shared_ptr<Tensor> grads = nullptr; // gradients
+        Dimension dims;
 
         std::unique_ptr<tensorValues_t> values = nullptr; // values of tensor TODO: make unique?
+        
+        bool requiresGrad = false;
+        std::shared_ptr<Tensor> grads = nullptr; // gradients
         std::shared_ptr<graph::GraphNode> cgNode = nullptr;
-
-        Dimension dims;
     
         Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const noexcept;
         void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
 
         Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
-
-        void transpose2D(Tensor& t) noexcept;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
