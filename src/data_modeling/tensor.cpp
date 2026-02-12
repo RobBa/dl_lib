@@ -37,14 +37,14 @@ Tensor::tensorValues_t::tensorValues_t() {
 Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
 
 Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept 
-  : device{move(other.device)}, size{move(other.size)}, values{move(other.values)} { }
+  : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)} { }
 
 Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other) noexcept {
   if (this == &other) return *this;
 
-  device = move(other.device);
-  size = move(other.size);
-  values = move(other.values);
+  device = std::move(other.device);
+  size = std::move(other.size);
+  values = std::move(other.values);
 
   return *this;
 }
@@ -63,7 +63,7 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
 }
 
 /**
- * @brief For convenience, since copy- and move-constructors and assigment operators
+ * @brief For convenience, since copy- and std::move-constructors and assigment operators
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
@@ -162,14 +162,14 @@ ftype Tensor::tensorValues_t::get(const int idx) const {
 ********************************************************************/
 
 Tensor::Tensor(Tensor&& other) noexcept
-  : dims{move(other.dims)}, values{move(other.values)} 
+  : dims{std::move(other.dims)}, values{std::move(other.values)} 
 { }
 
 Tensor& Tensor::operator=(Tensor&& other) noexcept {
   if (this == &other) return *this;
   
-  dims = move(other.dims);
-  values = move(other.values);
+  dims = std::move(other.dims);
+  values = std::move(other.values);
 
   return *this;
 }
@@ -180,12 +180,21 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
  * values are reserved in memory, but uninitialized.
  */
 Tensor Tensor::createEmptyCopy() const {
-  return Tensor(dims, values->getDevice());
+  auto res = Tensor(dims, values->getDevice(), requiresGrad);
+  return res;
 }
 
 Tensor Tensor::createDeepCopy() const {
-  auto res = Tensor(dims, values->getDevice());
+  assert(!grads->requiresGrad);
+
+  auto res = Tensor(dims, values->getDevice(), requiresGrad);
   tensorValues_t::copyValues(*res.values, *this->values);
+  if(grads){
+    res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
+  }
+
+  assert(!res.cgNode); // TODO: do we want to give it pointer ot same node?
+  return res;
 }
 
 
@@ -206,7 +215,7 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const n
  * Not commutative as per usual for matrices -> a*b != b*a
  * 
  * Multiply dimension left.dims.size()-1 of left with dimension right.dims.size()-2 of right.
- * Output shape will be (left.dim(0), left.dim(1), ..., left.dim(-2), right.dim(-1))
+ * Output shape: see document assumptions_matrices.md.
  * 
  * We assume here that the dimensions of the tensors already do match!
  * The check of whether they do or not is to be performed by the surrounding
@@ -223,12 +232,52 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
   }
 
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
-  resDims[resDims.size()-1] = right.dims.get(-1);
-  resDims[resDims.size()-2] = left.dims.get(-2);
+  resDims[resDims.size()-2] = left.dims.get(-2); // rows
+  resDims[resDims.size()-1] = right.dims.get(-1); // cols
 
   Tensor res(resDims, values->getDevice());
-  for(size_t dimension = 0; dimension<resDims.size(); dimension++){
-    // TODO here: recursive calls, or just pre-compute all the offsets beforehand
+
+  // sizes of the 2D matrices respectively
+  const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
+  const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
+  const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
+
+  tensorSize_t leftOffset = 0;
+  tensorSize_t rightOffset = 0;
+  tensorSize_t resOffset = 0;
+
+  // lambda expected to get inlined by compiler
+  auto multiplyNTimes = [&](const tensorDim_t n){
+    for(tensorDim_t i=0; i<n; i++){
+      matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+
+      leftOffset += leftSize;
+      rightOffset += rightSize;
+      resOffset += resSize;
+    }
+  };
+
+  if(left.dims.nDims() == right.dims.nDims()){
+    const auto nMultiplications = res.values->getSize() / resSize; // total size / size of 2D matrix
+    multiplyNTimes(nMultiplications);
+  }
+  else if(left.dims.nDims() > right.dims.nDims()) {
+    const auto nBatches = left.dims.get(0);
+
+    for(tensorDim_t batch = 0; batch < nBatches; batch++){
+      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);
+      multiplyNTimes(nMultsPerBatch);
+      rightOffset = 0;
+    }
+  }
+  else {
+    const auto nBatches = right.dims.get(0);
+
+    for(tensorDim_t batch = 0; batch < nBatches; batch++){
+      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);  
+      multiplyNTimes(nMultsPerBatch);
+      leftOffset = 0;
+    }
   }
 
   return res;
@@ -383,7 +432,7 @@ void Tensor::backward() {
 
   // check this one out for sure
   if (!grads) {
-    grads = make_unique<Tensor>(false, values->getDevice(), dims);
+    grads = make_unique<Tensor>(dims, values->getDevice(), false);
     for(tensorSize_t i=0; i<values->getSize(); i++){
       (*grads->values)[i] = 1;
     }
@@ -392,6 +441,8 @@ void Tensor::backward() {
   vector<Tensor*> sortedTensors = graph::TopologicalSort::reverseSort(this);
   for(auto tPtr: sortedTensors){
     auto& tensor = *tPtr;
+    assert(!tensor.grads->requiresGrad);
+
     if(tensor.cgNode){
       auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
       const auto& parents = tensor.cgNode->getParents();
@@ -441,7 +492,7 @@ void Tensor::transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept 
     }
   }
 
-  values = move(res);
+  values = std::move(res);
   dims.swap(dim1, dim2);
 
   if(grads){
@@ -576,25 +627,25 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
 
   auto lastIdx = idx.size()-1;
 #ifndef NDEBUG
-  tensorSize_t res = idx[lastIdx];
+  utility::SafeArithmetics_t<tensorSize_t> res(static_cast<tensorSize_t>(idx[lastIdx]));
 #else 
-  SafeArithmetics_t<tensorSize_t> res(idx[lastIdx]);
+  tensorSize_t res = idx[lastIdx];
 #endif // NDEBUG
 
   tensorSize_t offsetFactor = dims.get(lastIdx);
   for(size_t i=idx.size()-2; 0<=i; i--){
 #ifndef NDEBUG
-    res += idx[i] * offsetFactor;
+    res += utility::SafeArithmetics_t<tensorSize_t>(idx[i]) * offsetFactor;
 #else
-    res += SafeArithmetics_t<tensorSize_t>(idx[i]) * offsetFactor;
+    res += idx[i] * offsetFactor;
 #endif // NDEBUG
     offsetFactor *= dims.get(i);
   }
 
 #ifndef NDEBUG
-  return res;
-#else
   return res.value;
+#else
+  return res;
 #endif // NDEBUG
 }
 

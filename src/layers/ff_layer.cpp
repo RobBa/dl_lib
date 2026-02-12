@@ -18,8 +18,8 @@ using namespace std;
 using namespace layers;
 
 FfLayer::FfLayer(const tensorDim_t in_size, const tensorDim_t out_size) {
-    weights.emplace(Device::CPU, in_size, out_size);
-    weights->reset(utility::InitClass::Gaussian);
+    //weights.emplace(Device::CPU, in_size, out_size);
+    //weights->reset(utility::InitClass::Gaussian);
 }
 
 Tensor FfLayer::forward(const Tensor& input) const {

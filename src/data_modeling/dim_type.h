@@ -78,5 +78,9 @@ class Dimension final {
       return this->dims == other.dims;
     }
 
+    bool operator!=(const Dimension& other) const {
+      return !(*this == other);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
 };

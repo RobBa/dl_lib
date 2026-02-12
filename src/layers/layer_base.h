@@ -38,15 +38,9 @@ namespace layers {
                 return weights.value().getDims(); 
             }
 
-            ftype get(int idx) const;
-            ftype get(int idx1, int idx2) const;
-            ftype get(int idx1, int idx2, int idx3) const;
-            ftype get(int idx1, int idx2, int idx3, int idx4) const;
+            ftype get(std::vector<tensorDim_t>&& idx) const;
+            void set(ftype item, std::vector<tensorDim_t>&& idx);
 
-            void set(ftype item, int idx);
-            void set(ftype item, int idx1, int idx2);
-            void set(ftype item, int idx1, int idx2, int idx3);
-            void set(ftype item, int idx1, int idx2, int idx3, int idx4);
 
             virtual void print(std::ostream& os) const noexcept;
             friend std::ostream& operator<<(std::ostream& os, const LayerBase& t) noexcept;

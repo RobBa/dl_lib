@@ -193,6 +193,11 @@ class Tensor final {
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
 
+        bool getRequiresGrad() const noexcept { return requiresGrad; }
+        void setRequiresGrad(const bool requiresGrad) noexcept { 
+            this->requiresGrad=requiresGrad; 
+        }
+
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;
         static Device getDefaultDevice() noexcept;

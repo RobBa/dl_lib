@@ -16,6 +16,7 @@ using namespace std;
 using namespace graph;
 
 vector< shared_ptr<Tensor> > AddNode::backward(const Tensor& upstreamGrad) {
+  assert(!upstreamGrad.getRequiresGrad());
   auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
   return {res, res}; // TODO: make sure that this works as intended
 }

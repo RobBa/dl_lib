@@ -16,30 +16,32 @@
 #include <stdexcept>
 #include <limits>
 
-/**
- * @brief Helps us to detect overflows in the folding expression below.
- */
-template<typename T>
-struct SafeArithmetics_t {
-  T value;
-  
-  SafeArithmetics_t(T v) : value(v) {}
-  
-  SafeArithmetics_t operator*(const SafeArithmetics_t& other) const {
-    if (other.value != 0 && 
-      value > std::numeric_limits<T>::max() / other.value) {
-      throw std::overflow_error("Multiplication overflow");
+namespace utility {
+  /**
+   * @brief Helps us to detect overflows in the folding expression below.
+   */
+  template<typename T>
+  struct SafeArithmetics_t {
+    T value;
+    
+    explicit SafeArithmetics_t(T v) : value(v) {}
+    
+    SafeArithmetics_t operator*(const SafeArithmetics_t& other) const {
+      if (other.value != 0 && 
+        value > std::numeric_limits<T>::max() / other.value) {
+        throw std::overflow_error("Multiplication overflow");
+      }
+      return SafeArithmetics_t(value * other.value);
     }
-    return SafeArithmetics_t(value * other.value);
-  }
 
-  SafeArithmetics_t operator+(const SafeArithmetics_t& other) const {
-    if (other.value != 0 && 
-      value > std::numeric_limits<T>::max() - other.value) {
-      throw std::overflow_error("Addition overflow");
+    SafeArithmetics_t operator+(const SafeArithmetics_t& other) const {
+      if (other.value != 0 && 
+        value > std::numeric_limits<T>::max() - other.value) {
+        throw std::overflow_error("Addition overflow");
+      }
+      return SafeArithmetics_t(value + other.value);
     }
-    return SafeArithmetics_t(value + other.value);
-  }
-};
+  };
+}
 
 #endif // NDEBUG

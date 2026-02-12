@@ -11,47 +11,19 @@
 
 #include "layer_base.h"
 
+#include <utility>
+
 using namespace std;
 using namespace layers;
 
-ftype LayerBase::get(int idx) const {
+ftype LayerBase::get(vector<tensorDim_t>&&idx) const {
   assert(weights);
-  return weights.value().get(idx);
+  return weights.value().get(std::move(idx));
 }
 
-ftype LayerBase::get(int idx1, int idx2) const {
+void LayerBase::set(ftype item, vector<tensorDim_t>&& idx) {
   assert(weights);
-  return weights.value().get(idx1, idx2);
-}
-
-ftype LayerBase::get(int idx1, int idx2, int idx3) const {
-  assert(weights);
-  return weights.value().get(idx1, idx2, idx3);
-}
-
-ftype LayerBase::get(int idx1, int idx2, int idx3, int idx4) const {
-  assert(weights);
-  return weights.value().get(idx1, idx2, idx3, idx4);
-}
-
-void LayerBase::set(ftype item, int idx) {
-  assert(weights);
-  weights.value().set(item, idx);
-}
-
-void LayerBase::set(ftype item, int idx1, int idx2) {
-  assert(weights);
-  weights.value().set(item, idx1, idx2);
-}
-
-void LayerBase::set(ftype item, int idx1, int idx2, int idx3) {
-  assert(weights);
-  weights.value().set(item, idx1, idx2, idx3);
-}
-
-void LayerBase::set(ftype item, int idx1, int idx2, int idx3, int idx4) {
-  assert(weights);
-  weights.value().set(item, idx1, idx2, idx3, idx4);
+  weights.value().set(item, std::move(idx));
 }
 
 void LayerBase::print(ostream& os) const noexcept {
