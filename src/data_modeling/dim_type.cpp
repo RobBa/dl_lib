@@ -50,7 +50,7 @@ void Dimension::resize(const std::vector<tensorDim_t>& dims) {
 void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
   tensorDim_t tmp = dims[dim1];
   dims[dim1] = dims[dim2];
-  dims[dim2] = move(tmp);
+  dims[dim2] = tmp;
 }
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {

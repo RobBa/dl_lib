@@ -17,8 +17,6 @@
 
 namespace graph {
   class GraphNode {
-    friend class TopologicalSort;
-
     protected:
       std::vector<Tensor*> parents;
 

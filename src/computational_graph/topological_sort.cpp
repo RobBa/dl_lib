@@ -32,7 +32,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
 
   while(!nodeQueue.empty()){
     const auto& tensorPtr = nodeQueue.front();
-    const auto& parents = tensorPtr->cgNode->parents;
+    const auto& parents = tensorPtr->cgNode->getParents();
 
     edgeCounts[tensorPtr] = parents.size();
     for(const auto& parent: parents){
@@ -49,7 +49,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
     auto tensorPtr = nodeQueue.front();
     nodeQueue.pop();
 
-    const auto& parents = tensorPtr->cgNode->parents;
+    const auto& parents = tensorPtr->cgNode->getParents();
     for(const auto& parent: parents){ // TODO: check for requiresGrad to save runtime?
       edgeCounts[parent]--;
       if(edgeCounts[parent]==0){
@@ -57,7 +57,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
       }
     }
 
-    res.push_back(move(tensorPtr));
+    res.push_back(tensorPtr);
   }
 
   return res;

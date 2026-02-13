@@ -189,10 +189,11 @@ Tensor Tensor::createDeepCopy() const {
 
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
   tensorValues_t::copyValues(*res.values, *this->values);
-  if(grads){
+  /* if(grads){
     res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
-  }
+  } */
 
+  assert(!res.grads); // TODO: check this
   assert(!res.cgNode); // TODO: do we want to give it pointer ot same node?
   return res;
 }
@@ -329,10 +330,10 @@ Tensor Tensor::operator*(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
-        t.cgNode = std::make_shared<graph::MatMulNode>(this, &other);
+        t.cgNode = std::make_shared<graph::MatMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
   };
@@ -371,10 +372,10 @@ Tensor Tensor::operator+(const Tensor& other) const {
 
   assert(values->getSize()==other.values->getSize());
 
-  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
-        t.cgNode = std::make_shared<graph::AddNode>(this, &other);
+        t.cgNode = std::make_shared<graph::AddNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
   };
@@ -408,10 +409,10 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
 
   assert(values->getSize()==other.values->getSize());
 
-  static auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
-        t.cgNode = std::make_shared<graph::ElementwiseMulNode>(this, &other);
+        t.cgNode = std::make_shared<graph::ElementwiseMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
   };
