@@ -204,10 +204,10 @@ class Tensor final {
         ftype get(const std::vector<tensorDim_t>&& idx) const;
 
         // for convenience we provide some simple setters
-        ftype set(ftype item, tensorDim_t idx);
-        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
-        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
-        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
+        void set(ftype item, tensorDim_t idx);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
         void set(ftype item, const std::vector<tensorDim_t>&& idx);
 
         ftype& operator[](const tensorSize_t idx);

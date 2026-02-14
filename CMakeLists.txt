@@ -94,6 +94,12 @@ else()
       "-fcompare-debug-second") # This flag is only for me, to suppress notes
 endif()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options(
+        -Wreturn-type  # Specifically catch missing returns
+    )
+endif()
+
 include_directories("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_SOURCE_DIR}/examples")
 

@@ -701,18 +701,18 @@ void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
   (*values)[computeIdx(idx)] = item;
 }
 
-ftype Tensor::set(ftype item, tensorDim_t idx) { 
+void Tensor::set(ftype item, tensorDim_t idx) { 
   set(item, {idx});
 }
 
-ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
   set(item, {idx0, idx1});
 }
 
-ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
   set(item, {idx0, idx1, idx2});
 }
 
-ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
   set(item, {idx0, idx1, idx2, idx3});
 }

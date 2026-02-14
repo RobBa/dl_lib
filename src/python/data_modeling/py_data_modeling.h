@@ -27,8 +27,6 @@ namespace Py_DataModeling {
     ftype tensorGetItem(const Tensor& self, boost::python::object index);
     void tensorSetItem(Tensor& self, boost::python::object index, ftype value);
 
-
-
     // need wrappers for default arguments, see
     // https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/functions.html
     auto OnesWrapper0(std::vector<tensorDim_t> dims) { 
@@ -85,6 +83,12 @@ BOOST_PYTHON_MODULE(py_data_modeling)
 {
     using namespace boost::python;
 
+    // some macros to make code below easier to read
+    #define WRAP_TENSOR_METHOD_1(method) \
+    +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(self.method(other)); \
+    }
+
     converters::PyListToVectorConverter<tensorDim_t>();
 
     // classes
@@ -108,8 +112,7 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("__repr__", &toString<Tensor>)
         .def("__getitem__", &Py_DataModeling::tensorGetItem)
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
-        .def("__matmul__", +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> {
-            return std::make_shared<Tensor>(self.matmul(other));})
+        .def("__matmul__", WRAP_TENSOR_METHOD_1(matmul))
         .def(self + self)
         .def(self * self)
         .def("reset", Py_DataModeling::reset1)
