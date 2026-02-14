@@ -61,21 +61,24 @@ Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
   }
 }
 
-Dimension::Dimension(const Dimension& other) : dims{other.dims} { }
+Dimension::Dimension(const Dimension& other) : dims{other.dims}, size{other.size} { }
 
 Dimension& Dimension::operator=(const Dimension& other) {
   if(this==&other) return *this;
 
   dims = other.dims;
+  size = other.size;
+
   return *this;
 }
 
-Dimension::Dimension(Dimension&& other) noexcept : dims{move(other.dims)} { }
+Dimension::Dimension(Dimension&& other) noexcept : dims{move(other.dims)}, size{other.size} {}
 
 Dimension& Dimension::operator=(Dimension&& other) noexcept {
   if(this==&other) return *this;
 
   dims = move(other.dims);
+  size = other.size;
   return *this;
 }
 

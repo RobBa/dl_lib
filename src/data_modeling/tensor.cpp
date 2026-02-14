@@ -83,6 +83,7 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target,
 }
 
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
+  __throw_runtime_error("Not implemented yet.");
   device = d;
 }
 
@@ -321,7 +322,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
 /**
  * @brief Matrix multiplication.
  */
-Tensor Tensor::operator*(const Tensor& other) const {
+Tensor Tensor::matmul(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
@@ -333,6 +334,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
   auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
+        // Note: const_cast intentional. Node needs mutable pointers for backprop later
         t.cgNode = std::make_shared<graph::MatMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
@@ -342,17 +344,11 @@ Tensor Tensor::operator*(const Tensor& other) const {
     return createGraphNode(multiplyScalar(other, *this));
   }
 
-  if(dims.getSize()==1)
+  if(dims.getSize()==1){
     return createGraphNode(multiplyScalar(*this, other)); // TODO: check what to do about this gradient
+  }
   
   return createGraphNode(matMulImpl(*this, other));
-}
-
-/**
- * @brief Named version of operator*.
- */
-Tensor Tensor::matMul(const Tensor& other) const {
-  return *this * other;
 }
 
 /**
@@ -375,6 +371,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
   auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
+        // Note: const_cast intentional. Node needs mutable pointers for backprop later
         t.cgNode = std::make_shared<graph::AddNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
@@ -395,7 +392,10 @@ Tensor Tensor::add(const Tensor& other) const {
   return *this + other;
 }
 
-Tensor Tensor::elementwiseMul(const Tensor& other) const {
+/**
+ * @brief Elementwise multiplication.
+ */
+Tensor Tensor::operator*(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
@@ -412,10 +412,19 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
   auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
+        // Note: const_cast intentional. Node needs mutable pointers for backprop later
         t.cgNode = std::make_shared<graph::ElementwiseMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
     return t;
   };
+
+  if(other.dims.getSize()==1){
+    return createGraphNode(multiplyScalar(other, *this));
+  }
+
+  if(dims.getSize()==1){
+    return createGraphNode(multiplyScalar(*this, other)); // TODO: check what to do about this gradient
+  }
 
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
@@ -425,6 +434,12 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
   return res;
 }
 
+/**
+ * @brief Named version of operator *.
+ */
+Tensor Tensor::elementwiseMul(const Tensor& other) const {
+  return *this * other;
+}
 
 void Tensor::backward() {
   if(!requiresGrad){
@@ -573,26 +588,19 @@ Device Tensor::getDevice() const noexcept {
  * @brief Prints only sample of up to 2D tensors.
  */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
-  const auto& dims = t.getDims();
-  const auto MAX_IDX = static_cast<tensorDim_t>(5);
+  constexpr auto MAX_IDX = static_cast<tensorDim_t>(5);
 
-#ifndef NDEBUG
-  for(int i=0; i<dims.nDims(); i++){
-    cout << "Dim " << i << ": " << dims.get(i) << endl;
-  }
-#endif // NDEBUG
-
-  if(dims.nDims()>1){
-    for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
-      for(uint8_t j=0; j<min(MAX_IDX, dims.get(1)); j++){
+  if(t.dims.nDims()==2){
+    for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
+      for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.get(1)); j++){
         os << t.get({i, j}) << " ";
       }
       os << "\n";
     }
   }
   else{
-    for(uint8_t i=0; i<min(MAX_IDX, dims.get(0)); i++){
-      os << t.get({i}) << " ";
+    for(tensorDim_t i=0; i<min(MAX_IDX, static_cast<tensorDim_t>(t.values->getSize())); i++){
+      os << t.values->get(i) << " ";
     }
   }
 }
@@ -600,6 +608,7 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "\nDims: " << t.getDims() << "\n";
   os << "Device: " << DeviceToString(t.values->getDevice()) << "\n";
+  os << "requiresGrad: " << t.requiresGrad << "\n";
 
   switch(t.values->getDevice()){
     case Device::CPU:
@@ -620,10 +629,10 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
  */
 tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
   if(idx.size()!=dims.nDims()) {
-    __throw_invalid_argument("Number of idxs should match number of dimensions.");
+    __throw_invalid_argument("Number of idxs must match number of dimensions.");
   }
   else if(idx.size()==0){
-    return 1;
+    return 0; // TODO: this was 1. What is going on here?
   }
 
   auto lastIdx = idx.size()-1;
@@ -677,4 +686,36 @@ ftype Tensor::get(const std::vector<tensorDim_t>&& idx) const {
  */
 void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
   (*values)[computeIdx(idx)] = item;
+}
+
+ftype Tensor::get(tensorDim_t idx) const {
+  return get({idx});
+}
+
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1) const {
+  return get({idx0, idx1});
+}
+
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const {
+  return get({idx0, idx1, idx2});
+}
+
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const {
+  return get({idx0, idx1, idx2, idx3});
+}
+
+ftype Tensor::set(ftype item, tensorDim_t idx) { 
+  set(item, {idx});
+}
+
+ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
+  set(item, {idx0, idx1});
+}
+
+ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
+  set(item, {idx0, idx1, idx2});
+}
+
+ftype Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
+  set(item, {idx0, idx1, idx2, idx3});
 }

@@ -48,6 +48,7 @@ class Dimension final {
     ~Dimension() noexcept = default;
 
     void resize(const std::vector<tensorDim_t>& dims);
+    
     tensorSize_t getSize() const noexcept {
       assert(size!=0);
       return size;

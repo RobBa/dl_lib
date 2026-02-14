@@ -138,9 +138,13 @@ class Tensor final {
 
     public:
 
+        explicit Tensor(const Dimension& dims, bool requiresGrad=false) :
+            dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad} {            
+            values->resize(this->dims.getSize());
+        }
+
         explicit Tensor(const Dimension& dims, Device d, bool requiresGrad=false) :
-            dims{dims}, requiresGrad{requiresGrad} {            
-            values = std::make_unique<tensorValues_t>(d);
+            dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
 
@@ -168,13 +172,18 @@ class Tensor final {
         const Dimension& getDims() const noexcept;
         tensorSize_t getSize() const noexcept;
 
-        Tensor operator*(Tensor const& t) const;
-        Tensor matMul(const Tensor& other) const;
+        //Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
+        Tensor matmul(const Tensor& other) const;
 
         Tensor operator+(const Tensor& other) const;
         Tensor add(const Tensor& other) const;
 
+        // TODO: Tensor operator-(const Tensor& other) const;
+
+        Tensor operator*(Tensor const& t) const;
         Tensor elementwiseMul(const Tensor& other) const;
+
+        // TODO: Tensor operator/(const Tensor& other) const;
 
         void backward();
 
@@ -185,7 +194,19 @@ class Tensor final {
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
+        // for convenience we provide some simple getters
+        ftype get(tensorDim_t idx) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
+
         ftype get(const std::vector<tensorDim_t>&& idx) const;
+
+        // for convenience we provide some simple setters
+        ftype set(ftype item, tensorDim_t idx);
+        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
+        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
+        ftype set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
         void set(ftype item, const std::vector<tensorDim_t>&& idx);
 
         ftype& operator[](const tensorSize_t idx);

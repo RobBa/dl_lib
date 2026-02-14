@@ -15,8 +15,7 @@
 #include "tensor.h"
 #include "initializers.h"
 
-#include <memory>
-#include <type_traits>
+#include <utility>
 
 /**
  * @brief Class providing functions that can be used to create/manipulate tensors.
@@ -27,40 +26,34 @@
  */
 namespace TensorFunctions { // class name acts as namespace for us
     // Tensor creation
-    template<typename... T>
-    Tensor Zeros(Device d, T... dims) {
-      auto res = Tensor(d, dims...);
-      res.reset(0);
+    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+      auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
+      res->reset(0);
       return res;
     }
     
-    template<typename... T>
-    Tensor Zeros(T... dims) {
-      return Zeros(Tensor::getDefaultDevice(), dims...);
+    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+      return Zeros(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
     }
 
-    template<typename... T>
-    Tensor Ones(Device d, T... dims) {
-      auto res = Tensor(d, dims...);
-      res.reset(1);
-      return res;
-    }
-
-    template<typename... T>
-    Tensor Ones(T... dims) {
-      return Ones(Tensor::getDefaultDevice(), dims...);
-    }
-
-    template<typename... T>
-    Tensor Gaussian(Device d, T... dims) {
-      auto res = Tensor(d, dims...);
-      res.reset(utility::InitClass::Gaussian);
+    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+      auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
+      res->reset(1);
       return res;
     }
     
-    template<typename... T>
-    Tensor Gaussian(T... dims) {
-      return Gaussian(Tensor::getDefaultDevice(), dims...);
+    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+      return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
+    }
+
+    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+      auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
+      res->reset(utility::InitClass::Gaussian);
+      return res;
+    }
+    
+    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+      return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
     }
 
     // Tensor manipulation

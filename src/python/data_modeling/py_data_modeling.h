@@ -16,6 +16,7 @@
 #include "tensor_functions.h"
 
 #include "python_templates.h"
+#include "custom_converters.h"
 
 #include <boost/python.hpp>
 #include <boost/python/enum.hpp>
@@ -26,41 +27,48 @@ namespace Py_DataModeling {
     ftype tensorGetItem(const Tensor& self, boost::python::object index);
     void tensorSetItem(Tensor& self, boost::python::object index, ftype value);
 
-    Tensor    (*Ones00)()                              = &(TensorFunctions::Ones);
-    Tensor    (*Ones01)(int)                           = &(TensorFunctions::Ones);
-    Tensor    (*Ones02)(int, int)                      = &(TensorFunctions::Ones);
-    Tensor    (*Ones03)(int, int, int)                 = &(TensorFunctions::Ones);
-    Tensor    (*Ones04)(int, int, int, int)            = &(TensorFunctions::Ones);
 
-    Tensor    (*Ones10)(Device)                        = &(TensorFunctions::Ones);
-    Tensor    (*Ones11)(Device, int)                   = &(TensorFunctions::Ones);
-    Tensor    (*Ones12)(Device, int, int)              = &(TensorFunctions::Ones);
-    Tensor    (*Ones13)(Device, int, int, int)         = &(TensorFunctions::Ones);
-    Tensor    (*Ones14)(Device, int, int, int, int)    = &(TensorFunctions::Ones);
 
-    Tensor    (*Zeros00)()                              = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros01)(int)                           = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros02)(int, int)                      = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros03)(int, int, int)                 = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros04)(int, int, int, int)            = &(TensorFunctions::Zeros);
+    // need wrappers for default arguments, see
+    // https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/functions.html
+    auto OnesWrapper0(std::vector<tensorDim_t> dims) { 
+        return TensorFunctions::Ones(std::move(dims)); 
+    }
 
-    Tensor    (*Zeros10)(Device)                        = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros11)(Device, int)                   = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros12)(Device, int, int)              = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros13)(Device, int, int, int)         = &(TensorFunctions::Zeros);
-    Tensor    (*Zeros14)(Device, int, int, int, int)    = &(TensorFunctions::Zeros);
+    auto OnesWrapper1(std::vector<tensorDim_t> dims, Device d) { 
+        return TensorFunctions::Ones(std::move(dims), d); 
+    }
 
-    Tensor    (*Gaussian00)()                              = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian01)(int)                           = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian02)(int, int)                      = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian03)(int, int, int)                 = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian04)(int, int, int, int)            = &(TensorFunctions::Gaussian);
+    auto ZerosWrapper0(std::vector<tensorDim_t> dims) { 
+        return TensorFunctions::Zeros(std::move(dims)); 
+    }
 
-    Tensor    (*Gaussian10)(Device)                        = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian11)(Device, int)                   = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian12)(Device, int, int)              = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian13)(Device, int, int, int)         = &(TensorFunctions::Gaussian);
-    Tensor    (*Gaussian14)(Device, int, int, int, int)    = &(TensorFunctions::Gaussian);
+    auto ZerosWrapper1(std::vector<tensorDim_t> dims, Device d) { 
+        return TensorFunctions::Zeros(std::move(dims), d); 
+    }
+
+    auto GaussianWrapper0(std::vector<tensorDim_t> dims) { 
+        return TensorFunctions::Gaussian(std::move(dims)); 
+    }
+
+    auto GaussianWrapper1(std::vector<tensorDim_t> dims, Device d) { 
+        return TensorFunctions::Gaussian(std::move(dims), d); 
+    }
+
+    std::shared_ptr<Tensor>    (*Ones0)(std::vector<tensorDim_t>)                         = &OnesWrapper0;
+    std::shared_ptr<Tensor>    (*Ones1)(std::vector<tensorDim_t>, Device)                 = &OnesWrapper1;
+    std::shared_ptr<Tensor>    (*Ones2)(std::vector<tensorDim_t>, const bool)             = &(TensorFunctions::Ones);
+    std::shared_ptr<Tensor>    (*Ones3)(std::vector<tensorDim_t>, Device, const bool)     = &(TensorFunctions::Ones);
+
+    std::shared_ptr<Tensor>    (*Zeros0)(std::vector<tensorDim_t>)                        = &ZerosWrapper0;
+    std::shared_ptr<Tensor>    (*Zeros1)(std::vector<tensorDim_t>, Device)                = &ZerosWrapper1;
+    std::shared_ptr<Tensor>    (*Zeros2)(std::vector<tensorDim_t>, const bool)            = &(TensorFunctions::Zeros);
+    std::shared_ptr<Tensor>    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)    = &(TensorFunctions::Zeros);
+
+    std::shared_ptr<Tensor>    (*Gaussian0)(std::vector<tensorDim_t>)                     = &GaussianWrapper0;
+    std::shared_ptr<Tensor>    (*Gaussian1)(std::vector<tensorDim_t>, Device)             = &GaussianWrapper1;
+    std::shared_ptr<Tensor>    (*Gaussian2)(std::vector<tensorDim_t>, const bool)         = &(TensorFunctions::Gaussian);
+    std::shared_ptr<Tensor>    (*Gaussian3)(std::vector<tensorDim_t>, Device, const bool) = &(TensorFunctions::Gaussian);
 
     void    (Tensor::*reset1)(const ftype)                         = &Tensor::reset;
     void    (Tensor::*reset2)(const utility::InitClass)            = &Tensor::reset;
@@ -70,9 +78,11 @@ BOOST_PYTHON_MODULE(py_data_modeling)
 {
     using namespace boost::python;
 
+    converters::PyListToVectorConverter<tensorDim_t>();
+
     // classes
     class_<Dimension>("Dimension", no_init)
-        .def("get", &Dimension::get)
+        .add_property("list", &Dimension::get)
         .def("__str__", &toString<Dimension>)
     ;
 
@@ -81,60 +91,36 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .value("CUDA", Device::CUDA)
     ;
 
-    class_<Tensor>("Tensor")
-        .def(init<tensorDim_t>())
-        .def(init<tensorDim_t, tensorDim_t >())
-        .def(init<tensorDim_t, tensorDim_t, tensorDim_t >())
-        .def(init<tensorDim_t, tensorDim_t, tensorDim_t, tensorDim_t >())
-        .def(init<Device, tensorDim_t>())
-        .def(init<Device, tensorDim_t, tensorDim_t >())
-        .def(init<Device, tensorDim_t, tensorDim_t, tensorDim_t >())
-        .def(init<Device, tensorDim_t, tensorDim_t, tensorDim_t, tensorDim_t >())
+    // we manage via shared_ptr, since we deleted copy-ctor
+    class_<Tensor, std::shared_ptr<Tensor>, boost::noncopyable>("Tensor", no_init)
+        .def(init<const std::vector<tensorDim_t>&, optional<bool> >())
+        .def(init<const std::vector<tensorDim_t>&, optional<Device, bool> >())
+        .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
+        .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
         .def("__str__", &toString<Tensor>)
+        .def("__repr__", &toString<Tensor>)
         .def("__getitem__", &Py_DataModeling::tensorGetItem)
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
-        .def("dim", &Tensor::getDims, return_internal_reference<>())
+        .def("__matmul__", &Tensor::matmul)
+        .def(self + self)
         .def(self * self)
         .def("reset", Py_DataModeling::reset1)
         .def("reset", Py_DataModeling::reset2)
-        .def("setDevice", &Tensor::setDevice)
-        .def("getDevice", &Tensor::getDevice)
     ;
 
     // functions
-    def("Ones", Py_DataModeling::Ones00);
-    def("Ones", Py_DataModeling::Ones01);
-    def("Ones", Py_DataModeling::Ones02);
-    def("Ones", Py_DataModeling::Ones03);
-    def("Ones", Py_DataModeling::Ones04);
+    def("Ones", Py_DataModeling::Ones0);
+    def("Ones", Py_DataModeling::Ones1);
+    def("Ones", Py_DataModeling::Ones2);
+    def("Ones", Py_DataModeling::Ones3);
 
-    def("Ones", Py_DataModeling::Ones10);
-    def("Ones", Py_DataModeling::Ones11);
-    def("Ones", Py_DataModeling::Ones12);
-    def("Ones", Py_DataModeling::Ones13);
-    def("Ones", Py_DataModeling::Ones14);
+    def("Zeros", Py_DataModeling::Zeros0);
+    def("Zeros", Py_DataModeling::Zeros1);
+    def("Zeros", Py_DataModeling::Zeros2);
+    def("Zeros", Py_DataModeling::Zeros3);
 
-    def("Zeros", Py_DataModeling::Zeros00);
-    def("Zeros", Py_DataModeling::Zeros01);
-    def("Zeros", Py_DataModeling::Zeros02);
-    def("Zeros", Py_DataModeling::Zeros03);
-    def("Zeros", Py_DataModeling::Zeros04);
-
-    def("Zeros", Py_DataModeling::Zeros10);
-    def("Zeros", Py_DataModeling::Zeros11);
-    def("Zeros", Py_DataModeling::Zeros12);
-    def("Zeros", Py_DataModeling::Zeros13);
-    def("Zeros", Py_DataModeling::Zeros14);
-
-    def("Gaussian", Py_DataModeling::Gaussian00);
-    def("Gaussian", Py_DataModeling::Gaussian01);
-    def("Gaussian", Py_DataModeling::Gaussian02);
-    def("Gaussian", Py_DataModeling::Gaussian03);
-    def("Gaussian", Py_DataModeling::Gaussian04);
-
-    def("Gaussian", Py_DataModeling::Gaussian10);
-    def("Gaussian", Py_DataModeling::Gaussian11);
-    def("Gaussian", Py_DataModeling::Gaussian12);
-    def("Gaussian", Py_DataModeling::Gaussian13);
-    def("Gaussian", Py_DataModeling::Gaussian14);
+    def("Gaussian", Py_DataModeling::Gaussian0);
+    def("Gaussian", Py_DataModeling::Gaussian1);
+    def("Gaussian", Py_DataModeling::Gaussian2);
+    def("Gaussian", Py_DataModeling::Gaussian3);
 }
