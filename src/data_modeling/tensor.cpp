@@ -327,7 +327,7 @@ Tensor Tensor::matmul(const Tensor& other) const {
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
 
-  if(values->getDevice()==other.values->getDevice()){
+  if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
 
@@ -362,7 +362,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
-  else if(values->getDevice()==other.values->getDevice()){
+  else if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
 
@@ -403,7 +403,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
-  else if(values->getDevice()==other.values->getDevice()){
+  else if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
 
@@ -625,7 +625,16 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
 /**
  * @brief Computes the 1D index from a set of indices. 
  * 
- * WARNING: Does not check for overflow in release build.
+ * WARNING: Does not check for overflow.
+ */
+tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>&& idx) const {
+  return computeIdx(idx);
+}
+
+/**
+ * @brief Computes the 1D index from a set of indices. 
+ * 
+ * WARNING: Does not check for overflow.
  */
 tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
   if(idx.size()!=dims.nDims()) {
@@ -635,28 +644,16 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
     return 0; // TODO: this was 1. What is going on here?
   }
 
-  auto lastIdx = idx.size()-1;
-#ifndef NDEBUG
-  utility::SafeArithmetics_t<tensorSize_t> res(static_cast<tensorSize_t>(idx[lastIdx]));
-#else 
-  tensorSize_t res = idx[lastIdx];
-#endif // NDEBUG
-
+  const auto lastIdx = idx.size()-1;
   tensorSize_t offsetFactor = dims.get(lastIdx);
-  for(size_t i=idx.size()-2; 0<=i; i--){
-#ifndef NDEBUG
-    res += utility::SafeArithmetics_t<tensorSize_t>(idx[i]) * offsetFactor;
-#else
+  
+  tensorSize_t res = idx[lastIdx];
+  for(int i=lastIdx-1; i>=0; i--){
     res += idx[i] * offsetFactor;
-#endif // NDEBUG
     offsetFactor *= dims.get(i);
   }
 
-#ifndef NDEBUG
-  return res.value;
-#else
   return res;
-#endif // NDEBUG
 }
 
 /**
@@ -681,13 +678,6 @@ ftype Tensor::get(const std::vector<tensorDim_t>&& idx) const {
   return values->get(computeIdx(idx)); 
 }
 
-/**
- * @brief No explanation needed.
- */
-void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
-  (*values)[computeIdx(idx)] = item;
-}
-
 ftype Tensor::get(tensorDim_t idx) const {
   return get({idx});
 }
@@ -702,6 +692,13 @@ ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const {
 
 ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const {
   return get({idx0, idx1, idx2, idx3});
+}
+
+/**
+ * @brief No explanation needed.
+ */
+void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
+  (*values)[computeIdx(idx)] = item;
 }
 
 ftype Tensor::set(ftype item, tensorDim_t idx) { 

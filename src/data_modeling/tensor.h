@@ -127,6 +127,7 @@ class Tensor final {
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
+        tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
         tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
         tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
 

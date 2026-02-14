@@ -72,6 +72,13 @@ namespace Py_DataModeling {
 
     void    (Tensor::*reset1)(const ftype)                         = &Tensor::reset;
     void    (Tensor::*reset2)(const utility::InitClass)            = &Tensor::reset;
+
+    template<typename Func>
+    auto WrapReturnedTensor(Func f) {
+        return [f](const Tensor& self, auto&&... args) -> std::shared_ptr<Tensor> {
+            return std::make_shared<Tensor>(f(self, std::forward<decltype(args)>(args)...));
+        };
+    }
 }
 
 BOOST_PYTHON_MODULE(py_data_modeling)
@@ -101,7 +108,8 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("__repr__", &toString<Tensor>)
         .def("__getitem__", &Py_DataModeling::tensorGetItem)
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
-        .def("__matmul__", &Tensor::matmul)
+        .def("__matmul__", +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> {
+            return std::make_shared<Tensor>(self.matmul(other));})
         .def(self + self)
         .def(self * self)
         .def("reset", Py_DataModeling::reset1)
