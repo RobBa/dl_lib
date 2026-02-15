@@ -117,8 +117,8 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("__getitem__", &Py_DataModeling::tensorGetItem)
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
         .def("__matmul__", WRAP_TENSOR_METHOD_1(matmul))
-        .def(self + self) // elementwise add
-        .def(self * self) // elementwise mult
+        .def("__add__", WRAP_TENSOR_METHOD_1(operator+)) // elementwise add
+        .def("__mul__", WRAP_TENSOR_METHOD_1(operator*)) // elementwise mult
         .def("__mul__", WRAP_SCALAR(operator*, float))
         .def("__rmul__", WRAP_SCALAR_REVERSE(*, float))
         .def("__add__", WRAP_SCALAR(operator+, float))

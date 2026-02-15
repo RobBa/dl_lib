@@ -11,9 +11,10 @@
 
 #pragma once
 
-#include "topological_sort.h"
+#include "tensor.h"
 
 #include <vector>
+#include <memory>
 
 namespace graph {
   class GraphNode {

@@ -79,8 +79,8 @@ class Tensor final {
             tensorValues_t& operator=(tensorValues_t&& other) noexcept;
 
             explicit operator bool() const noexcept;
-            ftype& operator[](int idx);
-            ftype get(int idx) const;
+            ftype& operator[](const tensorSize_t idx);
+            ftype operator[](const tensorSize_t idx) const;
 
             tensorSize_t getSize() const noexcept;
 
@@ -112,8 +112,7 @@ class Tensor final {
         };
 
         Dimension dims;
-
-        std::unique_ptr<tensorValues_t> values = nullptr; // values of tensor TODO: make unique?
+        std::unique_ptr<tensorValues_t> values = nullptr; // contained values of tensor
         
         bool requiresGrad = false;
         std::shared_ptr<Tensor> grads = nullptr; // gradients
@@ -124,27 +123,29 @@ class Tensor final {
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
 
         Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
+        void transposeImpl(Tensor& t, int dim1, int dim2) const noexcept;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
+        // convenience functions that appear in multiple places
         tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
         tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
         tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
-
-        template<typename T> 
-        requires (std::is_same_v<std::remove_cv_t<T>, Dimension>)
-        explicit Tensor(T&& dims, Device d, bool requiresGrad)
-            : Tensor{std::forward<Dimension>(dims.toVector()), tensorValues_t::getDefaultDevice(), requiresGrad}
-        { }
+        tensorDim_t mapDim(const int dim) const;
 
     public:
+        template<typename T> 
+        requires (std::is_same_v<std::remove_cvref_t<T>, Dimension>)
+        explicit Tensor(T&& dims, Device d, bool requiresGrad=false)
+            : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
+        { }
 
-        explicit Tensor(const Dimension& dims, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false) :
             dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const Dimension& dims, Device d, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false) :
             dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
@@ -181,7 +182,7 @@ class Tensor final {
 
         // TODO: Tensor operator-(const Tensor& other) const;
 
-        Tensor operator*(Tensor const& t) const;
+        Tensor operator*(const Tensor& t) const;
         Tensor elementwiseMul(const Tensor& other) const;
 
         // TODO: Tensor operator/(const Tensor& other) const;
@@ -196,11 +197,17 @@ class Tensor final {
         friend Tensor operator*(ftype scalar, const Tensor& tensor);
         friend Tensor operator+(ftype scalar, const Tensor& tensor);
 
+        ftype& operator[](const tensorSize_t idx);
+        ftype operator[](const tensorSize_t idx) const;
+
         void backward();
 
-        void transpose() noexcept;
-        void transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept;
-        
+        void transposeThis() noexcept;
+        void transposeThis(int dim1, int dim2) noexcept;
+
+        Tensor transpose(int dim1, int dim2) const;
+        Tensor transpose(int dim1, int dim2, const bool requiresGrad) const;
+
         void permute(const std::vector<tensorDim_t>&& newOrder) noexcept;
 
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
@@ -219,8 +226,6 @@ class Tensor final {
         void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
         void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
         void set(ftype item, const std::vector<tensorDim_t>&& idx);
-
-        ftype& operator[](const tensorSize_t idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;

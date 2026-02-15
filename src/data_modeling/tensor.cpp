@@ -128,7 +128,7 @@ Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
   return *this;
 }
 
-ftype& Tensor::tensorValues_t::operator[](int idx) {
+ftype& Tensor::tensorValues_t::operator[](const tensorSize_t idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
@@ -143,7 +143,7 @@ ftype& Tensor::tensorValues_t::operator[](int idx) {
   return values[0]; // never reached, suppress warning
 }
 
-ftype Tensor::tensorValues_t::get(const int idx) const {
+ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
@@ -163,7 +163,11 @@ ftype Tensor::tensorValues_t::get(const int idx) const {
 ********************************************************************/
 
 Tensor::Tensor(Tensor&& other) noexcept
-  : dims{std::move(other.dims)}, values{std::move(other.values)} 
+  : dims{std::move(other.dims)}, 
+    values{std::move(other.values)}, 
+    requiresGrad{other.requiresGrad},
+    cgNode{std::move(other.cgNode)}, 
+    grads{std::move(other.grads)}
 { }
 
 Tensor& Tensor::operator=(Tensor&& other) noexcept {
@@ -171,6 +175,10 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
   
   dims = std::move(other.dims);
   values = std::move(other.values);
+
+  requiresGrad = other.requiresGrad;
+  cgNode = std::move(other.cgNode);
+  grads = std::move(other.grads);
 
   return *this;
 }
@@ -380,7 +388,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
 
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*res.values)[i] = values->get(i) + other.values->get(i);
+    (*res.values)[i] = (*values)[i] + (*other.values)[i];
   }
 
   return res;
@@ -429,7 +437,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
 
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*res.values)[i] = values->get(i) * other.values->get(i);
+    (*res.values)[i] = (*values)[i] * (*other.values)[i];
   }
 
   return res;
@@ -475,6 +483,7 @@ Tensor Tensor::operator-(ftype scalar) const {
 }
 
 Tensor operator*(ftype scalar, const Tensor& tensor) {
+  cout << "*2 t.grad " << tensor.requiresGrad;
   return tensor * scalar;
 }
 
@@ -521,11 +530,32 @@ void Tensor::backward() {
 }
 
 /**
- * @brief Swap dim1 and dim2.
- * 
- * Out of place operation.
+ * @brief Sometimes we do accept negative dim-values. In accordance with e.g. 
+ * NumPy we map from the end to the beginning in that case. 
  */
-void Tensor::transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept {
+tensorDim_t Tensor::mapDim(const int dim) const {
+  if(dim>0){
+    return dim;
+  }
+  else if(dim < 0 && dim + dims.nDims() < 0){
+    __throw_invalid_argument("Invalid dim value given.");
+  }
+  else if(dim < 0){
+    return dims.nDims() + dim;
+  }
+}
+
+/**
+ * @brief Transposes the tensor given in argument.
+ */
+void Tensor::transposeImpl(Tensor& t, int dim1, int dim2) const noexcept {
+  if(t.getDevice()==Device::CUDA){
+    __throw_runtime_error("Transposition for CUDA not implemented yet");
+  }
+
+  dim1 = mapDim(dim1);
+  dim2 = mapDim(dim2);
+
   // large dim wraps small dim
   const auto largeDim = dim1 < dim2 ? dim1 : dim2;
   const auto smallDim = dim1 < dim2 ? dim2 : dim1;
@@ -533,40 +563,70 @@ void Tensor::transpose(const tensorDim_t dim1, const tensorDim_t dim2) noexcept 
   const auto largeDimSize = getTotalDimSize(largeDim);
   const auto smallDimSize = getTotalDimSize(smallDim);
 
-  auto res = make_unique<tensorValues_t>(values->getDevice());
-  res->resize(values->getSize());
+  auto res = make_unique<tensorValues_t>(t.values->getDevice());
+  res->resize(t.values->getSize());
 
   tensorSize_t resIdx = 0;
-  for(tensorSize_t smallDimCount=0; smallDimCount<dims.get(smallDim); smallDimCount++){
-    for(tensorSize_t largeDimCount=0; largeDimCount<dims.get(largeDim); largeDimCount++){
+  for(tensorSize_t smallDimCount=0; smallDimCount<t.dims.get(smallDim); smallDimCount++){
+    for(tensorSize_t largeDimCount=0; largeDimCount<t.dims.get(largeDim); largeDimCount++){
       tensorSize_t offset = largeDimCount * largeDimSize + smallDimCount * smallDimSize;
 
       for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimSize; smallDimIdx++){
-        (*res)[resIdx] = (*values)[smallDimIdx + largeDimCount];
+        (*res)[resIdx] = (*t.values)[smallDimIdx + largeDimCount];
         resIdx++;
         offset++;
       }
     }
   }
 
-  values = std::move(res);
-  dims.swap(dim1, dim2);
+  t.values = std::move(res);
+  t.dims.swap(dim1, dim2);
 
-  if(grads){
-    grads->transpose(dim1, dim2);
+  if(t.grads){
+    t.grads->transpose(dim1, dim2); // TODO: do we need this?
   }
+}
+
+
+/**
+ * @brief Swap dim1 and dim2, modify this tensor.
+ * 
+ * Out of place operation.
+ */
+void Tensor::transposeThis(int dim1, int dim2) noexcept {
+  transposeImpl(*this, dim1, dim2);
 }
 
 /**
  * @brief Out of place transposition of last two axes.
  * 
  */
-void Tensor::transpose() noexcept {
+void Tensor::transposeThis() noexcept {
   if(dims.nDims()<2){
     return;
   }
 
-  transpose(dims.nDims()-1, dims.nDims()-2);
+  transpose(-1, -2);
+}
+
+/**
+ * @brief Like overloaded transpose with requiresGrad==false.
+ */
+Tensor Tensor::transpose(int dim1, int dim2) const {
+  return transpose(dim1, dim2, false);
+}
+
+/**
+ * @brief Like transposeThis, but returns a new tensor.
+ * We give requiresGrad as an optional argument to give more control of 
+ * what this tensor is intended to do. E.g. in backprop sometimes we do 
+ * need to create transposed tensors to multiply with, and with 
+ * requiresGrad==false we avoid unnecessary memory allocation overhead.
+ */
+Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
+  Tensor res(dims, values->getDevice(), requiresGrad);
+  transposeImpl(res, dim1, dim2);
+  return res;
 }
 
 /**
@@ -629,20 +689,28 @@ Device Tensor::getDevice() const noexcept {
  * @brief Prints only sample of up to 2D tensors.
  */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
-  constexpr auto MAX_IDX = static_cast<tensorDim_t>(5);
+  auto printVals = [&os](const Tensor& t){
+    constexpr auto MAX_IDX = static_cast<tensorDim_t>(5);
 
-  if(t.dims.nDims()==2){
-    for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
-      for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.get(1)); j++){
-        os << t.get({i, j}) << " ";
+    if(t.dims.nDims()==2){
+      for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
+        for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.get(1)); j++){
+          os << t.get({i, j}) << " ";
+        }
+        os << "\n";
       }
-      os << "\n";
     }
-  }
-  else{
-    for(tensorDim_t i=0; i<min(MAX_IDX, static_cast<tensorDim_t>(t.values->getSize())); i++){
-      os << t.values->get(i) << " ";
+    else{
+      for(tensorDim_t i=0; i<min(MAX_IDX, static_cast<tensorDim_t>(t.values->getSize())); i++){
+        os << (*t.values)[i] << " ";
+      }
     }
+  };
+
+  printVals(t);
+  if(t.grads){
+    os << "Grads:\n";
+    printVals(*t.grads);
   }
 }
 
@@ -716,11 +784,15 @@ tensorSize_t Tensor::getTotalDimSize(const tensorDim_t dim) const {
  * @brief No explanation needed.
  */
 ftype Tensor::get(const std::vector<tensorDim_t>&& idx) const {
-  return values->get(computeIdx(idx)); 
+  return (*values)[computeIdx(idx)]; 
 }
 
+/**
+ * @brief Special getter, indexes the contained underlying array linearly.
+ * Can lead to unexpected results in multidimensional tensors.
+ */
 ftype Tensor::get(tensorDim_t idx) const {
-  return get({idx});
+  return (*values)[idx];
 }
 
 ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1) const {
@@ -742,8 +814,12 @@ void Tensor::set(ftype item, const std::vector<tensorDim_t>&& idx) {
   (*values)[computeIdx(idx)] = item;
 }
 
+/**
+ * @brief Special setter, indexes the contained underlying array linearly.
+ * Can lead to unexpected results in multidimensional tensors.
+ */
 void Tensor::set(ftype item, tensorDim_t idx) { 
-  set(item, {idx});
+  (*values)[idx] = item;
 }
 
 void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
