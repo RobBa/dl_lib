@@ -186,6 +186,16 @@ class Tensor final {
 
         // TODO: Tensor operator/(const Tensor& other) const;
 
+        // the following operators all broadcast
+        Tensor operator*(ftype scalar) const;
+        Tensor operator/(ftype scalar) const;
+        Tensor operator+(ftype scalar) const;
+        Tensor operator-(ftype scalar) const;
+
+        // turn around the arguments as well: scalar *:+ tensor
+        friend Tensor operator*(ftype scalar, const Tensor& tensor);
+        friend Tensor operator+(ftype scalar, const Tensor& tensor);
+
         void backward();
 
         void transpose() noexcept;

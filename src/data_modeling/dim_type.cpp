@@ -86,8 +86,11 @@ ostream& operator<<(ostream& os, const Dimension& d) noexcept {
   os << "(";
   for(int i=0; i<d.nDims(); i++){
     os << d.get(i);
-    os << ",";
+
+    if(i+1<d.nDims()){
+      os << ",";
+    }
   }
-  os << ")\n";
+  os << ")";
   return os;
 }

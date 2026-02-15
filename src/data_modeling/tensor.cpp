@@ -315,6 +315,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
       }
 
       (*res.values)[resIdx] = scalarProd;
+      resIdx++;
     }
   }
 }
@@ -439,6 +440,46 @@ Tensor Tensor::operator*(const Tensor& other) const {
  */
 Tensor Tensor::elementwiseMul(const Tensor& other) const {
   return *this * other;
+}
+
+Tensor Tensor::operator*(ftype scalar) const {
+  Tensor res(dims, values->getDevice(), requiresGrad);
+  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+    (*res.values)[i] = (*values)[i] * scalar;
+  }
+  return res;
+}
+
+Tensor Tensor::operator/(ftype scalar) const {
+  Tensor res(dims, values->getDevice(), requiresGrad);
+  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+    (*res.values)[i] = (*values)[i] / scalar;
+  }
+  return res;
+}
+
+Tensor Tensor::operator+(ftype scalar) const {
+  Tensor res(dims, values->getDevice(), requiresGrad);
+  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+    (*res.values)[i] = (*values)[i] + scalar;
+  }
+  return res;
+}
+
+Tensor Tensor::operator-(ftype scalar) const {
+  Tensor res(dims, values->getDevice(), requiresGrad);
+  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+    (*res.values)[i] = (*values)[i] - scalar;
+  }
+  return res;
+}
+
+Tensor operator*(ftype scalar, const Tensor& tensor) {
+  return tensor * scalar;
+}
+
+Tensor operator+(ftype scalar, const Tensor& tensor) {
+  return tensor + scalar;
 }
 
 void Tensor::backward() {
@@ -606,9 +647,9 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
 }
 
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
-  os << "\nDims: " << t.getDims() << "\n";
-  os << "Device: " << DeviceToString(t.values->getDevice()) << "\n";
-  os << "requiresGrad: " << t.requiresGrad << "\n";
+  os << "Dims: " << t.getDims();
+  os << "\nDevice: " << DeviceToString(t.values->getDevice());
+  os << "\nrequiresGrad: " << t.requiresGrad << "\n\n";
 
   switch(t.values->getDevice()){
     case Device::CPU:

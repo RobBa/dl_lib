@@ -70,13 +70,6 @@ namespace Py_DataModeling {
 
     void    (Tensor::*reset1)(const ftype)                         = &Tensor::reset;
     void    (Tensor::*reset2)(const utility::InitClass)            = &Tensor::reset;
-
-    template<typename Func>
-    auto WrapReturnedTensor(Func f) {
-        return [f](const Tensor& self, auto&&... args) -> std::shared_ptr<Tensor> {
-            return std::make_shared<Tensor>(f(self, std::forward<decltype(args)>(args)...));
-        };
-    }
 }
 
 BOOST_PYTHON_MODULE(py_data_modeling)
@@ -89,12 +82,23 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         return std::make_shared<Tensor>(self.method(other)); \
     }
 
+    #define WRAP_SCALAR(method, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(self.method(val)); \
+    }
+
+    #define WRAP_SCALAR_REVERSE(op, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(val op self); \
+    }
+
+    // register implicit dtype conversion
     converters::PyListToVectorConverter<tensorDim_t>();
 
     // classes
     class_<Dimension>("Dimension", no_init)
         .add_property("list", &Dimension::get)
-        .def("__str__", &toString<Dimension>)
+        .def("__str__", &Py_Util::toString<Dimension>)
     ;
 
     enum_<Device>("Device")
@@ -108,13 +112,19 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def(init<const std::vector<tensorDim_t>&, optional<Device, bool> >())
         .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
         .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
-        .def("__str__", &toString<Tensor>)
-        .def("__repr__", &toString<Tensor>)
+        .def("__str__", &Py_Util::toString<Tensor>)
+        .def("__repr__", &Py_Util::toString<Tensor>)
         .def("__getitem__", &Py_DataModeling::tensorGetItem)
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
         .def("__matmul__", WRAP_TENSOR_METHOD_1(matmul))
-        .def(self + self)
-        .def(self * self)
+        .def(self + self) // elementwise add
+        .def(self * self) // elementwise mult
+        .def("__mul__", WRAP_SCALAR(operator*, float))
+        .def("__rmul__", WRAP_SCALAR_REVERSE(*, float))
+        .def("__add__", WRAP_SCALAR(operator+, float))
+        .def("__radd__", WRAP_SCALAR_REVERSE(+, float))
+        .def("__sub__", WRAP_SCALAR(operator-, float))
+        .def("__truediv__", WRAP_SCALAR(operator/, float))
         .def("reset", Py_DataModeling::reset1)
         .def("reset", Py_DataModeling::reset2)
     ;
