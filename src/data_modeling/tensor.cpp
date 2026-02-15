@@ -483,7 +483,6 @@ Tensor Tensor::operator-(ftype scalar) const {
 }
 
 Tensor operator*(ftype scalar, const Tensor& tensor) {
-  cout << "*2 t.grad " << tensor.requiresGrad;
   return tensor * scalar;
 }
 
@@ -492,7 +491,7 @@ Tensor operator+(ftype scalar, const Tensor& tensor) {
 }
 
 void Tensor::backward() {
-  if(!requiresGrad){
+  if(!requiresGrad || !cgNode){
     __throw_runtime_error("Invoking backward on Tensor with no grad");
   }
 
@@ -533,57 +532,65 @@ void Tensor::backward() {
  * @brief Sometimes we do accept negative dim-values. In accordance with e.g. 
  * NumPy we map from the end to the beginning in that case. 
  */
-tensorDim_t Tensor::mapDim(const int dim) const {
-  if(dim>0){
+tensorDim_t Tensor::mapDim(const int dim, optional<const Dimension> dimOpt) const {
+  const auto& dims = dimOpt ? dimOpt.value() : this->dims;
+
+  if(dim>=0){
     return dim;
   }
-  else if(dim < 0 && dim + dims.nDims() < 0){
+  else if(dim + dims.nDims() < 0){
     __throw_invalid_argument("Invalid dim value given.");
   }
-  else if(dim < 0){
-    return dims.nDims() + dim;
-  }
+
+  // dims < 0
+  return dims.nDims() + dim;
 }
 
 /**
- * @brief Transposes the tensor given in argument.
+ * @brief Transposes source and writes it into target.
  */
-void Tensor::transposeImpl(Tensor& t, int dim1, int dim2) const noexcept {
-  if(t.getDevice()==Device::CUDA){
+void Tensor::transposeImpl(Tensor& target, const Tensor& source, const int dim1, const int dim2) const noexcept {
+  assert(source.values->getSize()==target.values->getSize());
+
+  if(target.getDevice()==Device::CUDA){
     __throw_runtime_error("Transposition for CUDA not implemented yet");
   }
+  else if(dim1==dim2){
+    return;
+  }
 
-  dim1 = mapDim(dim1);
-  dim2 = mapDim(dim2);
+  auto dim1Mapped = mapDim(dim1, source.dims);
+  auto dim2Mapped = mapDim(dim2, source.dims);
 
   // large dim wraps small dim
-  const auto largeDim = dim1 < dim2 ? dim1 : dim2;
-  const auto smallDim = dim1 < dim2 ? dim2 : dim1;
+  const auto largeDim = dim1Mapped < dim2Mapped ? dim1Mapped : dim2Mapped;
+  const auto smallDim = dim1Mapped < dim2Mapped ? dim2Mapped : dim1Mapped;
 
+  // largeDimSize >= smallDimSize
   const auto largeDimSize = getTotalDimSize(largeDim);
   const auto smallDimSize = getTotalDimSize(smallDim);
 
-  auto res = make_unique<tensorValues_t>(t.values->getDevice());
-  res->resize(t.values->getSize());
+  auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
+  transposedValues->resize(source.values->getSize());
 
   tensorSize_t resIdx = 0;
-  for(tensorSize_t smallDimCount=0; smallDimCount<t.dims.get(smallDim); smallDimCount++){
-    for(tensorSize_t largeDimCount=0; largeDimCount<t.dims.get(largeDim); largeDimCount++){
+  for(tensorSize_t smallDimCount=0; smallDimCount<source.dims.get(smallDim); smallDimCount++){
+    for(tensorSize_t largeDimCount=0; largeDimCount<source.dims.get(largeDim); largeDimCount++){
       tensorSize_t offset = largeDimCount * largeDimSize + smallDimCount * smallDimSize;
 
       for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimSize; smallDimIdx++){
-        (*res)[resIdx] = (*t.values)[smallDimIdx + largeDimCount];
+        (*transposedValues)[resIdx] = (*source.values)[offset];
         resIdx++;
         offset++;
       }
     }
   }
 
-  t.values = std::move(res);
-  t.dims.swap(dim1, dim2);
+  target.values = std::move(transposedValues);
+  target.dims.swap(dim1Mapped, dim2Mapped);
 
-  if(t.grads){
-    t.grads->transpose(dim1, dim2); // TODO: do we need this?
+  if(source.grads){
+    source.grads->transposeImpl(*target.grads, *source.grads, dim1, dim2); // TODO: do we need this?
   }
 }
 
@@ -594,7 +601,7 @@ void Tensor::transposeImpl(Tensor& t, int dim1, int dim2) const noexcept {
  * Out of place operation.
  */
 void Tensor::transposeThis(int dim1, int dim2) noexcept {
-  transposeImpl(*this, dim1, dim2);
+  transposeImpl(*this, *this, dim1, dim2);
 }
 
 /**
@@ -605,8 +612,7 @@ void Tensor::transposeThis() noexcept {
   if(dims.nDims()<2){
     return;
   }
-
-  transpose(-1, -2);
+  transposeThis(-1, -2);
 }
 
 /**
@@ -625,7 +631,7 @@ Tensor Tensor::transpose(int dim1, int dim2) const {
  */
 Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
   Tensor res(dims, values->getDevice(), requiresGrad);
-  transposeImpl(res, dim1, dim2);
+  transposeImpl(res, *this, dim1, dim2);
   return res;
 }
 
@@ -770,14 +776,21 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
  * the offset of dim1 is 3*4==12, and that of dim0 is 2*3*4==24.
  */
 tensorSize_t Tensor::getTotalDimSize(const tensorDim_t dim) const {
-  tensorSize_t res = 1; // minimum possible offset
+  tensorSize_t res = 1; // minimum possible dimsize
 
-  for(size_t idx = dims.nDims()-1; idx>=dim; idx--){
+  for(size_t idx = dims.nDims()-1; idx>dim; idx--){
     res *= dims.get(idx);
   }
 
   assert(res!=0);
   return res;
+}
+
+/**
+ * @brief Like overload, but accepts negative dims.
+ */
+tensorSize_t Tensor::getTotalDimSize(const int dim) const {
+  return getTotalDimSize(mapDim(dim));
 }
 
 /**

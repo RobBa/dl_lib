@@ -48,7 +48,7 @@ void Dimension::resize(const std::vector<tensorDim_t>& dims) {
  * @brief Swap along the two given dimensions.
  */
 void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
-  tensorDim_t tmp = dims[dim1];
+  auto tmp = dims[dim1];
   dims[dim1] = dims[dim2];
   dims[dim2] = tmp;
 }

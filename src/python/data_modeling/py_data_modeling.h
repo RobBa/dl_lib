@@ -68,8 +68,13 @@ namespace Py_DataModeling {
     std::shared_ptr<Tensor>    (*Gaussian2)(std::vector<tensorDim_t>, const bool)         = &(TensorFunctions::Gaussian);
     std::shared_ptr<Tensor>    (*Gaussian3)(std::vector<tensorDim_t>, Device, const bool) = &(TensorFunctions::Gaussian);
 
-    void    (Tensor::*reset1)(const ftype)                         = &Tensor::reset;
-    void    (Tensor::*reset2)(const utility::InitClass)            = &Tensor::reset;
+    void    (Tensor::*reset1)(const ftype)                                = &Tensor::reset;
+    void    (Tensor::*reset2)(const utility::InitClass)                   = &Tensor::reset;
+
+    void    (Tensor::*transposeThis1)()                                   = &Tensor::transposeThis;
+    void    (Tensor::*transposeThis2)(int, int)                           = &Tensor::transposeThis;
+    Tensor  (Tensor::*transpose1)(int, int) const                         = &Tensor::transpose;
+    Tensor  (Tensor::*transpose2)(int, int, bool) const                   = &Tensor::transpose;
 }
 
 BOOST_PYTHON_MODULE(py_data_modeling)
@@ -90,6 +95,17 @@ BOOST_PYTHON_MODULE(py_data_modeling)
     #define WRAP_SCALAR_REVERSE(op, T) \
     +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
         return std::make_shared<Tensor>(val op self); \
+    }
+
+    // different, since those are not methods anymore
+    #define WRAP_FREE_FUNC_1(fPtr, T1, T2) \
+    +[](const Tensor& self, int v1, int v2) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((self.*fPtr)(v1, v2)); \
+    }
+
+    #define WRAP_FREE_FUNC_2(fPtr, T1, T2, T3) \
+    +[](const Tensor& self, T1 v1, T2 v2, T3 v3) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((self.*fPtr)(v1, v2, v3)); \
     }
 
     // register implicit dtype conversion
@@ -127,6 +143,11 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("__truediv__", WRAP_SCALAR(operator/, float))
         .def("reset", Py_DataModeling::reset1)
         .def("reset", Py_DataModeling::reset2)
+        .def("transpose", WRAP_FREE_FUNC_1(Py_DataModeling::transpose1, int, int))
+        .def("transpose", WRAP_FREE_FUNC_2(Py_DataModeling::transpose2, int, int, bool))
+        .def("transposeThis", Py_DataModeling::transposeThis1)
+        .def("transposeThis", Py_DataModeling::transposeThis2)
+        .def("backward", &Tensor::backward)
     ;
 
     // functions

@@ -26,33 +26,33 @@
  */
 namespace TensorFunctions { // class name acts as namespace for us
     // Tensor creation
-    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
       auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
       res->reset(0);
       return res;
     }
     
-    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
       return Zeros(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
     }
 
-    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
       auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
       res->reset(1);
       return res;
     }
     
-    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
       return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
     }
 
-    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
       auto res = std::make_shared<Tensor>(std::move(dims), d, requiresGrad);
       res->reset(utility::InitClass::Gaussian);
       return res;
     }
     
-    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=false) {
+    std::shared_ptr<Tensor> Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
       return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
     }
 

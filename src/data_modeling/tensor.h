@@ -91,10 +91,9 @@ class Tensor final {
             requires (std::is_integral_v< std::remove_const_t<T> >)
             void resize(const T size) {
                 this->size = static_cast<tensorSize_t>(size);
-
                 switch(this->device){
                     case Device::CPU:
-                        values = static_cast<ftype*>( std::malloc(size * sizeof(ftype)) );
+                        values = static_cast<ftype*>( std::malloc(this->size * sizeof(ftype)) );
                         break;
                     case Device::CUDA:
                         std::__throw_invalid_argument("Not implemented yet.");
@@ -123,7 +122,7 @@ class Tensor final {
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
 
         Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
-        void transposeImpl(Tensor& t, int dim1, int dim2) const noexcept;
+        void transposeImpl(Tensor& target, const Tensor& source, const int dim1, const int dim2) const noexcept;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
@@ -131,21 +130,22 @@ class Tensor final {
         tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
         tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
         tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
-        tensorDim_t mapDim(const int dim) const;
+        tensorSize_t getTotalDimSize(const int dim) const;
+        tensorDim_t mapDim(const int dim, std::optional<const Dimension> dimsOpt=std::nullopt) const;
 
     public:
         template<typename T> 
         requires (std::is_same_v<std::remove_cvref_t<T>, Dimension>)
-        explicit Tensor(T&& dims, Device d, bool requiresGrad=false)
+        explicit Tensor(T&& dims, Device d, bool requiresGrad=true)
             : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
         { }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=true) :
             dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=true) :
             dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
@@ -232,7 +232,10 @@ class Tensor final {
 
         bool getRequiresGrad() const noexcept { return requiresGrad; }
         void setRequiresGrad(const bool requiresGrad) noexcept { 
-            this->requiresGrad=requiresGrad; 
+            this->requiresGrad=requiresGrad;
+            if(!this->requiresGrad && cgNode){
+                cgNode = nullptr;
+            }
         }
 
         // these two should not be exposed to the python interface

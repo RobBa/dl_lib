@@ -21,9 +21,13 @@ using namespace graph;
 /**
  * @brief Sorts the computational graph from end to beginning.
  * 
- * @param root The last node from which backward is started.
+ * @param root The last node in graph, from which backward is started.
  */
 vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
+  if(!root->cgNode){
+    __throw_invalid_argument("Trying topo-sort on node that is not part of graph");
+  }
+
   unordered_map<Tensor*, size_t> edgeCounts;
 
   // pass 1: BFS to get number of parent nodes per node
@@ -31,15 +35,16 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
   nodeQueue.push(root);
 
   while(!nodeQueue.empty()){
-    const auto& tensorPtr = nodeQueue.front();
-    const auto& parents = tensorPtr->cgNode->getParents();
+    const auto tensorPtr = nodeQueue.front();
+    nodeQueue.pop();
 
+    const auto& parents = tensorPtr->cgNode->getParents();
     edgeCounts[tensorPtr] = parents.size();
     for(const auto& parent: parents){
-      nodeQueue.push(parent);
+      if(parent->cgNode){
+        nodeQueue.push(parent);
+      }
     }
-
-    nodeQueue.pop();
   }
 
   // pass 2: topological sort based on Kahn's algorithm
@@ -51,6 +56,9 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
 
     const auto& parents = tensorPtr->cgNode->getParents();
     for(const auto& parent: parents){ // TODO: check for requiresGrad to save runtime?
+      if(!parent->cgNode)
+        continue;
+      
       edgeCounts[parent]--;
       if(edgeCounts[parent]==0){
         nodeQueue.push(parent);
