@@ -377,13 +377,12 @@ Tensor Tensor::operator+(const Tensor& other) const {
 
   assert(values->getSize()==other.values->getSize());
 
-  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
+  auto createGraphNode = [this, &other](Tensor& t) -> void {
     if (this->requiresGrad || other.requiresGrad) {
         t.requiresGrad = true;
         // Note: const_cast intentional. Node needs mutable pointers for backprop later
         t.cgNode = std::make_shared<graph::AddNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
     }
-    return t;
   };
 
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
@@ -391,6 +390,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
     (*res.values)[i] = (*values)[i] + (*other.values)[i];
   }
 
+  createGraphNode(res);
   return res;
 }
 
@@ -440,7 +440,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
     (*res.values)[i] = (*values)[i] * (*other.values)[i];
   }
 
-  return res;
+  return createGraphNode(std::move(res));
 }
 
 /**
