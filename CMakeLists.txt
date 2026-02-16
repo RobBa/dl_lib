@@ -105,3 +105,9 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
 
 add_subdirectory(src)
 add_subdirectory(examples)
+
+option(BUILD_TESTING "Build tests" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
