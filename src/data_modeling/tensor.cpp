@@ -300,8 +300,8 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) const {
 
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
-  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
-  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-1));
+  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
+  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
 
   for(tensorSize_t row=0; row<nRowsLeft; row++){
@@ -491,8 +491,11 @@ Tensor operator+(ftype scalar, const Tensor& tensor) {
 }
 
 void Tensor::backward() {
-  if(!requiresGrad || !cgNode){
+  if(!requiresGrad){
     __throw_runtime_error("Invoking backward on Tensor with no grad");
+  }
+  else if(!cgNode){
+    __throw_runtime_error("Invoking backward on Tensor not created by a differentiable operation");
   }
 
   // check this one out for sure
@@ -696,7 +699,7 @@ Device Tensor::getDevice() const noexcept {
  */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
   auto printVals = [&os](const Tensor& t){
-    constexpr auto MAX_IDX = static_cast<tensorDim_t>(5);
+    constexpr auto MAX_IDX = static_cast<tensorDim_t>(10);
 
     if(t.dims.nDims()==2){
       for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
