@@ -141,7 +141,6 @@ TEST(TensorOpsTest, MatMulBroadcastsOn1DTensor) {
   
   // left to right
   auto res1 = t1.matmul(t2);
-  std::cout << res1 << std::endl;
   ASSERT_EQ(res1.getDims(), t1.getDims());
   for(auto i=0; i<t1.getDims().get(0); i++) {
     for(auto j=0; j<t1.getDims().get(1); j++) {

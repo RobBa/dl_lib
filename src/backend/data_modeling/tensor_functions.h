@@ -25,47 +25,18 @@
  * templates.
  */
 namespace TensorFunctions { // class name acts as namespace for us
-    // Tensor creation
-    Tensor Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
-      auto res = Tensor(std::move(dims), d, requiresGrad);
-      res.reset(0);
-      return res;
-    }
-    
-    Tensor Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
-      return Zeros(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
-    }
+  // Tensor creation
+  Tensor Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
+  Tensor Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
 
-    Tensor Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
-      auto res = Tensor(std::move(dims), d, requiresGrad);
-      res.reset(1);
-      return res;
-    }
-    
-    Tensor Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
-      return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
-    }
+  Tensor Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
+  Tensor Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
 
-    Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true) {
-      auto res = Tensor(std::move(dims), d, requiresGrad);
-      res.reset(utility::InitClass::Gaussian);
-      return res;
-    }
-    
-    Tensor Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=true) {
-      return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
-    }
+  Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
 
-    // Tensor manipulation
-    void ToZeros(Tensor& t) {
-      t.reset(0);
-    }
-
-    void ToOnes(Tensor& t) {
-      t.reset(1);
-    }
-
-    void ToGaussian(Tensor& t) {
-      t.reset(utility::InitClass::Gaussian);
-    }
-};
+  // Tensor manipulation
+  void ToZeros(Tensor& t);
+  void ToOnes(Tensor& t);
+  void ToGaussian(Tensor& t);
+}

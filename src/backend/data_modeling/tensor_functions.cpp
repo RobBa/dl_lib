@@ -9,6 +9,47 @@
  * 
  */
 
- #include "tensor_functions.h"
+#include "tensor_functions.h"
 
- using namespace TensorFunctions;
+Tensor TensorFunctions::Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+  auto res = Tensor(std::move(dims), d, requiresGrad);
+  res.reset(0);
+  return res;
+}
+    
+Tensor TensorFunctions::Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+  return Zeros(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
+}
+
+Tensor TensorFunctions::Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+  auto res = Tensor(std::move(dims), d, requiresGrad);
+  res.reset(1);
+  return res;
+}
+    
+Tensor TensorFunctions::Ones(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+  return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
+}
+
+Tensor TensorFunctions::Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+  auto res = Tensor(std::move(dims), d, requiresGrad);
+  res.reset(utility::InitClass::Gaussian);
+  return res;
+}
+    
+Tensor TensorFunctions::Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+  return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
+}
+
+// Tensor manipulation
+void TensorFunctions::ToZeros(Tensor& t) {
+  t.reset(0);
+}
+
+void TensorFunctions::ToOnes(Tensor& t) {
+  t.reset(1);
+}
+
+void TensorFunctions::ToGaussian(Tensor& t) {
+  t.reset(utility::InitClass::Gaussian);
+}

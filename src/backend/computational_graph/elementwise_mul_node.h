@@ -16,9 +16,7 @@
 namespace graph {
   class ElementwiseMulNode final : public GraphNode {
     public:
-      ElementwiseMulNode(Tensor* t1, Tensor* t2) {
-        parents = {t1, t2};
-      }
+      explicit ElementwiseMulNode(Tensor* t1, Tensor* t2) : GraphNode({t1, t2}) {}
 
       ElementwiseMulNode(const ElementwiseMulNode& other) = delete;
       ElementwiseMulNode& operator=(const ElementwiseMulNode& other) = delete;

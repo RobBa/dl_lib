@@ -16,9 +16,7 @@
 namespace graph {
   class AddNode final : public GraphNode {  
     public:
-      AddNode(Tensor* t1, Tensor* t2) {
-        parents = {t1, t2};
-      }
+      explicit AddNode(Tensor* t1, Tensor* t2) : GraphNode({t1, t2}) {}
 
       AddNode(const AddNode& other) = delete;
       AddNode& operator=(const AddNode& other) = delete;

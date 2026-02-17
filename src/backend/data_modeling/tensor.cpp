@@ -15,6 +15,7 @@
 #include "computational_graph/add_node.h"
 #include "computational_graph/matmul_node.h"
 #include "computational_graph/elementwise_mul_node.h"
+#include "computational_graph/scalar_op_nodes.h"
 #include "computational_graph/topological_sort.h"
 
 #include <utility>
@@ -146,6 +147,36 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
     __throw_invalid_argument("Operator [] only implemented for CPU");
   }
   return values[idx];
+}
+
+void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
+  if(idx >= size)
+    throw std::out_of_range("Out of range for tensor");
+
+  switch(device){
+    case Device::CPU:
+      values[idx] = v;
+      return;
+    case Device::CUDA:
+      __throw_runtime_error("Not implemented for CUDA yet");
+  }
+
+  __throw_runtime_error("Should never reach here.");
+}
+
+ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
+  if(idx >= size)
+    throw std::out_of_range("Out of range for tensor");
+  
+  switch(device){
+    case Device::CPU:
+      return values[idx];
+    case Device::CUDA:
+      __throw_runtime_error("Not implemented for CUDA yet");
+  }
+
+  __throw_runtime_error("Should never reach here.");
+  return 0; // suppress warnings
 }
 
 /******************************************************************** 
@@ -445,14 +476,28 @@ Tensor Tensor::operator*(ftype scalar) const {
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] * scalar;
   }
+
+  if(requiresGrad){
+    res.cgNode = std::make_shared<graph::ScalarMulNode>(const_cast<Tensor*>(this), scalar);
+  }
+
   return res;
 }
 
 Tensor Tensor::operator/(ftype scalar) const {
+  if(scalar==0.0){
+    __throw_runtime_error("Cannot divide by zero.");
+  }
+
   Tensor res(dims, values->getDevice(), requiresGrad);
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] / scalar;
   }
+
+  if(requiresGrad){
+    res.cgNode = std::make_shared<graph::ScalarMulNode>(const_cast<Tensor*>(this), (ftype)(1.0)/scalar);
+  }
+
   return res;
 }
 
@@ -461,6 +506,11 @@ Tensor Tensor::operator+(ftype scalar) const {
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] + scalar;
   }
+  
+  if(requiresGrad){
+    res.cgNode = std::make_shared<graph::ScalarAddNode>(const_cast<Tensor*>(this));
+  }
+
   return res;
 }
 
@@ -469,6 +519,11 @@ Tensor Tensor::operator-(ftype scalar) const {
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] - scalar;
   }
+
+  if(requiresGrad){
+    res.cgNode = std::make_shared<graph::ScalarAddNode>(const_cast<Tensor*>(this));
+  }
+
   return res;
 }
 
@@ -519,6 +574,16 @@ void Tensor::backward() {
       }
     }
   }
+}
+
+/**
+ * @brief Get gradients
+ */
+const shared_ptr<Tensor>& Tensor::getGrads() const {
+  if(!grads){
+    __throw_runtime_error("Tensor has no gradients.");
+  }
+  return grads;
 }
 
 /**

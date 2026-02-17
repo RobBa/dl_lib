@@ -82,6 +82,9 @@ class Tensor final {
             ftype& operator[](const tensorSize_t idx);
             ftype operator[](const tensorSize_t idx) const;
 
+            void set(ftype v, tensorSize_t idx);
+            ftype get(tensorSize_t idx);
+
             tensorSize_t getSize() const noexcept;
 
             // needed for gradient descent
@@ -151,6 +154,16 @@ class Tensor final {
             values->resize(this->dims.getSize());
         }
 
+        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, bool requiresGrad=true) :
+            Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad} {}
+
+        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, Device d, bool requiresGrad=true) :
+            Tensor{dims, d, requiresGrad} {            
+            for(tensorSize_t i=0; i<initValues.size(); i++){
+                values->set(initValues[i], i);
+            }
+        }
+
         /** 
          * Tensors can become very large. Deleting those two
          * helps us to not accidentally copy something we do not 
@@ -198,10 +211,10 @@ class Tensor final {
         friend Tensor operator*(ftype scalar, const Tensor& tensor);
         friend Tensor operator+(ftype scalar, const Tensor& tensor);
 
-        ftype& operator[](const tensorSize_t idx);
-        ftype operator[](const tensorSize_t idx) const;
-
         void backward();
+
+        bool hasGrads() const noexcept { return grads!=nullptr; }
+        const std::shared_ptr<Tensor>& getGrads() const;
 
         void transposeThis() noexcept;
         void transposeThis(int dim1, int dim2) noexcept;

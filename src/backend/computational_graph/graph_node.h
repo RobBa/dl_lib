@@ -16,11 +16,14 @@
 #include <vector>
 #include <memory>
 
+#include <utility>
+
 namespace graph {
   class GraphNode {
     protected:
       std::vector<Tensor*> parents;
-
+      explicit GraphNode(std::vector<Tensor*> parents) : parents{std::move(parents)}{}
+      
     public:
       virtual std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) = 0;
       

@@ -18,9 +18,7 @@
 namespace graph {
   class ReLuNode final : public GraphNode {
     public:
-      ReLuNode(Tensor* t) {
-        parents = {t};
-      }
+      explicit ReLuNode(Tensor* t): GraphNode({t}) {}
 
       ReLuNode(const ReLuNode& other) = delete;
       ReLuNode& operator=(const ReLuNode& other) = delete;

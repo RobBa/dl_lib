@@ -18,9 +18,7 @@
 namespace graph {
   class MatMulNode final : public GraphNode {
     public:
-      MatMulNode(Tensor* t1, Tensor* t2) {
-        parents = {t1, t2};
-      }
+      explicit MatMulNode(Tensor* t1, Tensor* t2): GraphNode({t1, t2}) {}
 
       MatMulNode(const MatMulNode& other) = delete;
       MatMulNode& operator=(const MatMulNode& other) = delete;
