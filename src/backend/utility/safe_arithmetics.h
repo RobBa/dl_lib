@@ -24,7 +24,7 @@ namespace utility {
   struct SafeArithmetics_t {
     T value;
     
-    explicit SafeArithmetics_t(T v) : value(v) {}
+    SafeArithmetics_t(T v) : value(v) {}
     
     SafeArithmetics_t operator*(const SafeArithmetics_t& other) const {
       if (other.value != 0 && 

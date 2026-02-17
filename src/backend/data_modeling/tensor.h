@@ -255,7 +255,7 @@ class Tensor final {
             }
         }
 
-        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { cgNode = node; }
+        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { cgNode = std::move(node); }
 
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;

@@ -20,7 +20,7 @@ tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const no
   tensorDim_t res = 1;
 
 #ifndef NDEBUG
-  SafeArithmetics_t<tensorSize_t> mult(1);
+  utility::SafeArithmetics_t<tensorSize_t> mult(1);
   for(auto dim: dims){
     mult * dim;
   }

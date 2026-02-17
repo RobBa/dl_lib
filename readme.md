@@ -5,7 +5,7 @@
 - Python 3 (we test with 3.10, but it should work with any version)
 - Boost Python
 - Cmake > 3.24
-- Compiler capable of C++20 at least
+- Compiler capable of C++20 at least (we test with gcc 12.3.0)
 
 ## Troubleshooting
 
