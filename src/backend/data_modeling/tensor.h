@@ -122,7 +122,8 @@ class Tensor final {
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
 
         Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
-        void transposeImpl(Tensor& target, const Tensor& source, const int dim1, const int dim2) const noexcept;
+        void transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept;
+        void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 

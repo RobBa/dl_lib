@@ -205,7 +205,32 @@ TEST(TensorOpsTest, TransposeWorksAsIntended1) {
   }
 }
 
+/**
+ * @brief Swap first two dimensions.
+ */
 TEST(TensorOpsTest, TransposeWorksAsIntended2) {
+  auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
+  auto transposed = t.transpose(0, 1);
+
+  ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(1));
+  ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-1));
+  ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
+  
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
+        // we transposed dim1 and dim3
+        ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), transposed.get(dim2, dim1, dim3));
+      }
+    }
+  }
+}
+
+/**
+ * @brief Swap first and last dimension.
+ */
+TEST(TensorOpsTest, TransposeWorksAsIntended3) {
   auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
   auto transposed = t.transpose(0, -1);
 

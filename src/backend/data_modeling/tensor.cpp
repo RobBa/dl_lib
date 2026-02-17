@@ -132,30 +132,20 @@ ftype& Tensor::tensorValues_t::operator[](const tensorSize_t idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
-  switch(device){
-    case Device::CPU:
-      return values[idx];
-    case Device::CUDA:
-      __throw_invalid_argument("Cuda operator[] not implemented");
+  if(device!=Device::CPU){
+    __throw_invalid_argument("Operator [] only implemented for CPU");
   }
-
-  __throw_invalid_argument("Unexpected device encountered");
-  return values[0]; // never reached, suppress warning
+  return values[idx];
 }
 
 ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
-  switch(device){
-    case Device::CPU:
-      return values[idx];
-    case Device::CUDA:
-      __throw_invalid_argument("Cuda getter not implemented");
+  if(device!=Device::CPU){
+    __throw_invalid_argument("Operator [] only implemented for CPU");
   }
-
-  __throw_invalid_argument("Unexpected device encountered");
-  return 0; // never reached, suppress warning
+  return values[idx];
 }
 
 /******************************************************************** 
@@ -549,18 +539,85 @@ tensorDim_t Tensor::mapDim(const int dim, optional<const Dimension> dimOpt) cons
   return dims.nDims() + dim;
 }
 
-/**
- * @brief Transposes source and writes it into target.
- */
-void Tensor::transposeImpl(Tensor& target, const Tensor& source, const int dim1, const int dim2) const noexcept {
-  assert(source.values->getSize()==target.values->getSize());
+void Tensor::transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept {
+    assert(values->getSize() == target.values->getSize() && dims.nDims()==target.dims.nDims());
+    if(target.getDevice() == Device::CUDA) {
+        __throw_runtime_error("Transposition for CUDA not implemented yet");
+    }
+    if(dim1 == dim2) {
+        return;
+    }
 
+    const auto& source = *this; // easier to read
+    
+    auto dim1Mapped = mapDim(dim1, source.dims);
+    auto dim2Mapped = mapDim(dim2, source.dims);
+    
+    const int numDims = source.dims.nDims();
+    std::vector<tensorSize_t> indices(numDims, 0);
+    std::vector<tensorSize_t> dimSizes(numDims);
+    std::vector<tensorSize_t> sourceStrides(numDims);
+    
+    // strides for source
+    tensorSize_t stride = 1;
+    for(int d = numDims - 1; d >= 0; d--) {
+        dimSizes[d] = source.dims.get(d);
+        sourceStrides[d] = stride;
+        stride *= dimSizes[d];
+    }
+    
+    // strides for target
+    std::vector<tensorSize_t> targetDimSizes = dimSizes;
+    std::swap(targetDimSizes[dim1Mapped], targetDimSizes[dim2Mapped]);
+    
+    std::vector<tensorSize_t> targetStrides(numDims);
+    stride = 1;
+    for(int d = numDims - 1; d >= 0; d--) {
+        targetStrides[d] = stride;
+        stride *= targetDimSizes[d];
+    }
+
+    auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
+    transposedValues->resize(source.values->getSize());
+
+    tensorSize_t totalSize = source.values->getSize();
+    for(tensorSize_t targetIdx = 0; targetIdx < totalSize; targetIdx++) {
+        // linear target index to multi-dimensional idx
+        tensorSize_t tmp = targetIdx;
+        for(int d = 0; d < numDims; d++) {
+            indices[d] = tmp / targetStrides[d];
+            tmp %= targetStrides[d];
+        }
+        
+        // Swap the transposed dimensions to get source indices
+        std::swap(indices[dim1Mapped], indices[dim2Mapped]);
+        
+        // Convert multi-dimensional source indices to linear index
+        tensorSize_t sourceIdx = 0;
+        for(int d = 0; d < numDims; d++) {
+            sourceIdx += indices[d] * sourceStrides[d];
+        }
+        
+        (*transposedValues)[targetIdx] = (*source.values)[sourceIdx];
+    }
+    
+    target.values = std::move(transposedValues);
+    target.dims.swap(dim1Mapped, dim2Mapped);
+}
+
+/**
+ * @brief Transposes 2D tensor. A little sleeker than transposeImpl.
+ */
+void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept {
+  assert(values->getSize()==target.values->getSize() && target.dims.nDims()==2 && dims.nDims()==2);
   if(target.getDevice()==Device::CUDA){
     __throw_runtime_error("Transposition for CUDA not implemented yet");
   }
   else if(dim1==dim2){
     return;
   }
+
+  const auto& source = *this; // easier to read
 
   auto dim1Mapped = mapDim(dim1, source.dims);
   auto dim2Mapped = mapDim(dim2, source.dims);
@@ -592,9 +649,9 @@ void Tensor::transposeImpl(Tensor& target, const Tensor& source, const int dim1,
   target.values = std::move(transposedValues);
   target.dims.swap(dim1Mapped, dim2Mapped);
 
-  if(source.grads){
-    source.grads->transposeImpl(*target.grads, *source.grads, dim1, dim2); // TODO: do we need this?
-  }
+  /* if(source.grads){
+    source.grads->transposeImpl(*target.grads, dim1, dim2); // TODO: do we need this?
+  } */
 }
 
 
@@ -604,7 +661,12 @@ void Tensor::transposeImpl(Tensor& target, const Tensor& source, const int dim1,
  * Out of place operation.
  */
 void Tensor::transposeThis(int dim1, int dim2) noexcept {
-  transposeImpl(*this, *this, dim1, dim2);
+  if(dims.nDims()>2){
+    transposeImpl(*this, dim1, dim2);
+  }
+  else{
+    transposeImpl2D(*this, dim1, dim2);
+  }
 }
 
 /**
@@ -634,7 +696,14 @@ Tensor Tensor::transpose(int dim1, int dim2) const {
  */
 Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
   Tensor res(dims, values->getDevice(), requiresGrad);
-  transposeImpl(res, *this, dim1, dim2);
+  
+  if(dims.nDims()>2){
+    transposeImpl(res, dim1, dim2);
+  }
+  else{
+    transposeImpl2D(res, dim1, dim2);
+  }
+
   return res;
 }
 
