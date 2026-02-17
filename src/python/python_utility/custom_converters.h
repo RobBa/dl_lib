@@ -56,6 +56,7 @@ namespace converters {
 /******************************************************************************************/
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
   using namespace boost::python;
 
@@ -68,6 +69,7 @@ converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
 }
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
   
@@ -78,6 +80,7 @@ void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
 }
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
 
   using namespace boost::python;
@@ -102,6 +105,7 @@ void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalue
 }
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
   using namespace boost::python;
 
@@ -114,6 +118,7 @@ converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
 }
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
 
@@ -124,6 +129,7 @@ void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_pt
 }
 
 template<typename T>
+requires ( std::is_integral_v< std::remove_const_t<T> >)
 void converters::PyIntToIntegralValueConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
   using namespace boost::python;
 
