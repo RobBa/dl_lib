@@ -39,4 +39,16 @@ namespace TensorFunctions { // class name acts as namespace for us
   void ToZeros(Tensor& t);
   void ToOnes(Tensor& t);
   void ToGaussian(Tensor& t);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=true);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=true);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
+                                           std::vector<ftype>&& initValues, 
+                                           bool requiresGrad=true);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
+                                           std::vector<ftype>&& initValues, 
+                                           Device d, bool requiresGrad=true);
 }

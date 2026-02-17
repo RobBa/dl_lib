@@ -13,7 +13,6 @@
 
 #include <vector>
 #include <memory>
-#include <unordered_map>
 
 class Tensor; // to break circular dependency
 

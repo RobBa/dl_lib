@@ -16,7 +16,8 @@
 namespace graph {
   class AddNode final : public GraphNode {  
     public:
-      explicit AddNode(Tensor* t1, Tensor* t2) : GraphNode({t1, t2}) {}
+      explicit AddNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
+        : GraphNode({std::move(t1), std::move(t2)}) {}
 
       AddNode(const AddNode& other) = delete;
       AddNode& operator=(const AddNode& other) = delete;

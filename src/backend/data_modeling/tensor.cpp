@@ -12,10 +12,6 @@
 #include "tensor.h"
 
 #include "computational_graph/graph_node.h"
-#include "computational_graph/add_node.h"
-#include "computational_graph/matmul_node.h"
-#include "computational_graph/elementwise_mul_node.h"
-#include "computational_graph/scalar_op_nodes.h"
 #include "computational_graph/topological_sort.h"
 
 #include <utility>
@@ -219,12 +215,13 @@ Tensor Tensor::createDeepCopy() const {
 
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
   tensorValues_t::copyValues(*res.values, *this->values);
+
   /* if(grads){
     res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
   } */
 
-  assert(!res.grads); // TODO: check this
-  assert(!res.cgNode); // TODO: do we want to give it pointer ot same node?
+  assert(!res.grads); // TODO: check if this makes sense
+  assert(!res.cgNode); // TODO: do we want to give it pointer of same node?
   return res;
 }
 
@@ -233,8 +230,8 @@ Tensor Tensor::createDeepCopy() const {
  * @brief Scalar multiplication, capable of broadcasting. First argument assumed
  * to be the scalar tensor.
  */
-Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) const noexcept {
-  Tensor res(right.dims, values->getDevice());
+Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) noexcept {
+  Tensor res(right.dims, right.values->getDevice());
   for(int i=0; i<right.getSize(); ++i){
     (*res.values)[i] = (*scalar.values)[0] * (*right.values)[i];
   }
@@ -318,7 +315,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
  * @brief Name says it all. Inplace operation on res
  */
 void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) const {
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
 
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
   const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
@@ -361,24 +358,15 @@ Tensor Tensor::matmul(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
-    if (this->requiresGrad || other.requiresGrad) {
-        t.requiresGrad = true;
-        // Note: const_cast intentional. Node needs mutable pointers for backprop later
-        t.cgNode = std::make_shared<graph::MatMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
-    }
-    return t;
-  };
-
+  // TODO: check what to do about these two gradients and if you want broadcasting here at all
   if(other.dims.getSize()==1){
-    return createGraphNode(multiplyScalar(other, *this));
+    return multiplyScalar(other, *this);
   }
-
-  if(dims.getSize()==1){
-    return createGraphNode(multiplyScalar(*this, other)); // TODO: check what to do about this gradient
+  else if(dims.getSize()==1){
+    return multiplyScalar(*this, other); 
   }
   
-  return createGraphNode(matMulImpl(*this, other));
+  return matMulImpl(*this, other);
 }
 
 /**
@@ -397,21 +385,11 @@ Tensor Tensor::operator+(const Tensor& other) const {
   }
 
   assert(values->getSize()==other.values->getSize());
-
-  auto createGraphNode = [this, &other](Tensor& t) -> void {
-    if (this->requiresGrad || other.requiresGrad) {
-        t.requiresGrad = true;
-        // Note: const_cast intentional. Node needs mutable pointers for backprop later
-        t.cgNode = std::make_shared<graph::AddNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
-    }
-  };
-
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*res.values)[i] = (*values)[i] + (*other.values)[i];
   }
 
-  createGraphNode(res);
   return res;
 }
 
@@ -430,6 +408,14 @@ Tensor Tensor::operator*(const Tensor& other) const {
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
 
+  // TODO: check what to do about these two gradients and if you want broadcasting here at all
+  if(other.dims.getSize()==1){
+    return multiplyScalar(other, *this);
+  }
+  else if(dims.getSize()==1){
+    return multiplyScalar(*this, other);
+  }
+
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
@@ -438,30 +424,12 @@ Tensor Tensor::operator*(const Tensor& other) const {
   }
 
   assert(values->getSize()==other.values->getSize());
-
-  auto createGraphNode = [this, &other](Tensor&& t) -> Tensor {
-    if (this->requiresGrad || other.requiresGrad) {
-        t.requiresGrad = true;
-        // Note: const_cast intentional. Node needs mutable pointers for backprop later
-        t.cgNode = std::make_shared<graph::ElementwiseMulNode>(const_cast<Tensor*>(this), const_cast<Tensor*>(&other));
-    }
-    return t;
-  };
-
-  if(other.dims.getSize()==1){
-    return createGraphNode(multiplyScalar(other, *this));
-  }
-
-  if(dims.getSize()==1){
-    return createGraphNode(multiplyScalar(*this, other)); // TODO: check what to do about this gradient
-  }
-
   Tensor res(dims, values->getDevice(), requiresGrad || other.requiresGrad);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*res.values)[i] = (*values)[i] * (*other.values)[i];
   }
 
-  return createGraphNode(std::move(res));
+  return res;
 }
 
 /**
@@ -477,10 +445,6 @@ Tensor Tensor::operator*(ftype scalar) const {
     (*res.values)[i] = (*values)[i] * scalar;
   }
 
-  if(requiresGrad){
-    res.cgNode = std::make_shared<graph::ScalarMulNode>(const_cast<Tensor*>(this), scalar);
-  }
-
   return res;
 }
 
@@ -494,10 +458,6 @@ Tensor Tensor::operator/(ftype scalar) const {
     (*res.values)[i] = (*values)[i] / scalar;
   }
 
-  if(requiresGrad){
-    res.cgNode = std::make_shared<graph::ScalarMulNode>(const_cast<Tensor*>(this), (ftype)(1.0)/scalar);
-  }
-
   return res;
 }
 
@@ -505,10 +465,6 @@ Tensor Tensor::operator+(ftype scalar) const {
   Tensor res(dims, values->getDevice(), requiresGrad);
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] + scalar;
-  }
-  
-  if(requiresGrad){
-    res.cgNode = std::make_shared<graph::ScalarAddNode>(const_cast<Tensor*>(this));
   }
 
   return res;
@@ -518,10 +474,6 @@ Tensor Tensor::operator-(ftype scalar) const {
   Tensor res(dims, values->getDevice(), requiresGrad);
   for (tensorSize_t i = 0; i < values->getSize(); ++i) {
     (*res.values)[i] = (*values)[i] - scalar;
-  }
-
-  if(requiresGrad){
-    res.cgNode = std::make_shared<graph::ScalarAddNode>(const_cast<Tensor*>(this));
   }
 
   return res;

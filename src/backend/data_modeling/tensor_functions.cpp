@@ -11,33 +11,35 @@
 
 #include "tensor_functions.h"
 
-Tensor TensorFunctions::Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+using namespace std;
+
+Tensor TensorFunctions::Zeros(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
   res.reset(0);
   return res;
 }
     
-Tensor TensorFunctions::Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+Tensor TensorFunctions::Zeros(vector<tensorDim_t> dims, const bool requiresGrad) {
   return Zeros(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
-Tensor TensorFunctions::Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
   res.reset(1);
   return res;
 }
     
-Tensor TensorFunctions::Ones(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, const bool requiresGrad) {
   return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
-Tensor TensorFunctions::Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
   res.reset(utility::InitClass::Gaussian);
   return res;
 }
     
-Tensor TensorFunctions::Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad) {
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const bool requiresGrad) {
   return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
@@ -52,4 +54,25 @@ void TensorFunctions::ToOnes(Tensor& t) {
 
 void TensorFunctions::ToGaussian(Tensor& t) {
   t.reset(utility::InitClass::Gaussian);
+}
+
+shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, bool requiresGrad){
+  return make_shared<Tensor>(dims, requiresGrad);   
+}
+
+shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, Device d, bool requiresGrad){
+  return make_shared<Tensor>(dims, d, requiresGrad);   
+}
+
+shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, 
+                                         vector<ftype>&& initValues, 
+                                         bool requiresGrad) {
+  return make_shared<Tensor>(dims, std::move(initValues), requiresGrad);   
+}
+
+shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, 
+                                           vector<ftype>&& initValues, 
+                                           Device d, 
+                                           bool requiresGrad){
+  return make_shared<Tensor>(dims, std::move(initValues), d, requiresGrad);   
 }

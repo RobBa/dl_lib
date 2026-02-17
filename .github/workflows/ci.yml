@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        gcc-version: [12.3]
+        gcc-version: [13]
         cmake-version: ['3.31.3']
       fail-fast: true
 

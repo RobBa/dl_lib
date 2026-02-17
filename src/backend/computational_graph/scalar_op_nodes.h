@@ -16,7 +16,8 @@
 namespace graph {
   class ScalarAddNode final : public GraphNode {  
     public:
-      explicit ScalarAddNode(Tensor* t) : GraphNode({t}) {}
+      explicit ScalarAddNode(std::shared_ptr<Tensor> t) 
+        : GraphNode({std::move(t)}) {}
 
       ScalarAddNode(const ScalarAddNode& other) = delete;
       ScalarAddNode& operator=(const ScalarAddNode& other) = delete;
@@ -34,7 +35,8 @@ namespace graph {
       const ftype factor;
     
     public:
-      explicit ScalarMulNode(Tensor* t, const ftype factor) : GraphNode({t}), factor{factor} {}
+      explicit ScalarMulNode(std::shared_ptr<Tensor> t, ftype factor) 
+        : GraphNode({std::move(t)}), factor{factor} {}
 
       ScalarMulNode(const ScalarMulNode& other) = delete;
       ScalarMulNode& operator=(const ScalarMulNode& other) = delete;

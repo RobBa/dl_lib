@@ -44,6 +44,9 @@ constexpr const char* DeviceToString(Device d) {
         case Device::CUDA:
             return "CUDA";
     }
+
+    std::__throw_invalid_argument("Unknown device encountered");
+    return ""; // suppress
 }
 
 class Tensor final {
@@ -120,15 +123,13 @@ class Tensor final {
         std::shared_ptr<Tensor> grads = nullptr; // gradients
         std::shared_ptr<graph::GraphNode> cgNode = nullptr;
     
-        Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) const noexcept;
-        void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) const;
+        static Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) noexcept;
+        static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset);
 
         Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
         void transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept;
         void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
-
-        friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
         // convenience functions that appear in multiple places
         tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
@@ -136,6 +137,8 @@ class Tensor final {
         tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
         tensorSize_t getTotalDimSize(const int dim) const;
         tensorDim_t mapDim(const int dim, std::optional<const Dimension> dimsOpt=std::nullopt) const;
+
+        friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
     public:
         template<typename T> 
@@ -209,7 +212,7 @@ class Tensor final {
 
         // turn around the arguments as well: scalar *:+ tensor
         friend Tensor operator*(ftype scalar, const Tensor& tensor);
-        friend Tensor operator+(ftype scalar, const Tensor& tensor);
+        friend Tensor operator+(ftype scalar, const Tensor& tensor);                                    
 
         void backward();
 
@@ -251,6 +254,8 @@ class Tensor final {
                 cgNode = nullptr;
             }
         }
+
+        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { cgNode = node; }
 
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;

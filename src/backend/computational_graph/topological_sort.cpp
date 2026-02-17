@@ -13,6 +13,8 @@
 #include "data_modeling/tensor.h"
 
 #include <queue>
+#include <unordered_map>
+
 #include <utility>
 
 using namespace std;
@@ -42,7 +44,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
     edgeCounts[tensorPtr] = parents.size();
     for(const auto& parent: parents){
       if(parent->cgNode){
-        nodeQueue.push(parent);
+        nodeQueue.push(parent.get());
       }
     }
   }
@@ -59,9 +61,9 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
       if(!parent->cgNode)
         continue;
       
-      edgeCounts[parent]--;
-      if(edgeCounts[parent]==0){
-        nodeQueue.push(parent);
+      edgeCounts[parent.get()]--;
+      if(edgeCounts[parent.get()]==0){
+        nodeQueue.push(parent.get());
       }
     }
 

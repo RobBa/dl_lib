@@ -18,7 +18,8 @@
 namespace graph {
   class MatMulNode final : public GraphNode {
     public:
-      explicit MatMulNode(Tensor* t1, Tensor* t2): GraphNode({t1, t2}) {}
+      explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
+        : GraphNode({std::move(t1), std::move(t2)}) {}
 
       MatMulNode(const MatMulNode& other) = delete;
       MatMulNode& operator=(const MatMulNode& other) = delete;
