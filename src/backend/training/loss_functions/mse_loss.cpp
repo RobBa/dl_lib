@@ -24,7 +24,7 @@
 Tensor MseLoss::operator()(Tensor& y, const Tensor& y_target) const noexcept {
   auto res = Tensor(y);
   for(tensorSize_t i = 0; i<y.getSize(); i++){
-    res[i] = y.get(i) - y_target.get(i);
+    res[i] = y.getItem(i) - y_target.getItem(i);
   }
 
   for(tensorSize_t i = 0; i<y.getSize(); i++){

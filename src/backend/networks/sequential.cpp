@@ -26,7 +26,7 @@ bool SequentialNetwork::assertDims(const LayerBase& layer) const noexcept {
 }
 
 Tensor SequentialNetwork::forward(const Tensor& input) const {
-  if(input.getDims().get(1) != layers.at(0).getDims().get(0)){
+  if(input.getDims().getItem(1) != layers.at(0).getDims().getItem(0)){
     // TODO: show meaningful message rather than exception
     __throw_invalid_argument("Not implemented yet. Dimensions don't match");
   }

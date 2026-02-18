@@ -25,8 +25,8 @@ TEST(AutogradTest, SimpleAddition) {
     
     loss->backward();
     
-    EXPECT_NEAR(t1->getGrads()->get(0), 10.0f, 1e-5);
-    EXPECT_NEAR(t2->getGrads()->get(0), 10.0f, 1e-5);
+    EXPECT_NEAR(t1->getGrads()->getItem(0), 10.0f, 1e-5);
+    EXPECT_NEAR(t2->getGrads()->getItem(0), 10.0f, 1e-5);
 }
 
 TEST(AutogradTest, ScalarMultiplication) {
@@ -38,8 +38,8 @@ TEST(AutogradTest, ScalarMultiplication) {
     
     loss->backward();
     
-    EXPECT_NEAR(t1->getGrads()->get(0), 36.0f, 1e-5);
-    EXPECT_NEAR(t2->getGrads()->get(0), 24.0f, 1e-5);
+    EXPECT_NEAR(t1->getGrads()->getItem(0), 36.0f, 1e-5);
+    EXPECT_NEAR(t2->getGrads()->getItem(0), 24.0f, 1e-5);
 }
 
 TEST(AutogradTest, MatMul) {
@@ -50,7 +50,7 @@ TEST(AutogradTest, MatMul) {
     
     auto loss = TensorFunctions::makeSharedTensor({1}, {0.0f}, true);
     for (size_t i = 0; i < res->getSize(); ++i) {
-        loss = graph::add(loss, res->get(i));
+        loss = graph::add(loss, graph::getAsShared(res, i));
     }
     
     loss->backward();
@@ -70,7 +70,7 @@ TEST(AutogradTest, MatMul) {
     
     // dloss/dx = 2(x^2 + x) * (2x + 1)
     // At x=2: 2(4 + 2) * (4 + 1) = 2 * 6 * 5 = 60
-    EXPECT_NEAR(loss.getGrads()->get(0), 60.0f, 1e-4);
+    EXPECT_NEAR(loss.getGrads()->getItem(0), 60.0f, 1e-4);
 } */
 
 /* TEST(AutogradTest, ReLU) {
@@ -82,9 +82,9 @@ TEST(AutogradTest, MatMul) {
     loss.backward();
     
     // Gradient: [0, 0, 1] (only where input > 0)
-    EXPECT_NEAR(t.getGrads()->get(0), 0.0f, 1e-5);
-    EXPECT_NEAR(t.getGrads()->get(1), 0.0f, 1e-5);
-    EXPECT_NEAR(t.getGrads()->get(2), 1.0f, 1e-5);
+    EXPECT_NEAR(t.getGrads()->getItem(0), 0.0f, 1e-5);
+    EXPECT_NEAR(t.getGrads()->getItem(1), 0.0f, 1e-5);
+    EXPECT_NEAR(t.getGrads()->getItem(2), 1.0f, 1e-5);
 }
 
 TEST(AutogradTest, ScalarMultiplication) {
@@ -96,6 +96,6 @@ TEST(AutogradTest, ScalarMultiplication) {
     loss.backward();
     
     // dloss/dx = scalar = 3
-    EXPECT_NEAR(t.getGrads()->get(0), 3.0f, 1e-5);
-    EXPECT_NEAR(t.getGrads()->get(1), 3.0f, 1e-5);
+    EXPECT_NEAR(t.getGrads()->getItem(0), 3.0f, 1e-5);
+    EXPECT_NEAR(t.getGrads()->getItem(1), 3.0f, 1e-5);
 } */

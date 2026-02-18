@@ -54,7 +54,7 @@ class Dimension final {
       return size;
     }
 
-    tensorDim_t get(int idx) const {
+    tensorDim_t getItem(int idx) const {
       assert(size!=0);
       if(idx<0){
         idx = dims.size() + idx; // -1 is last idx, -2 second last and so forth

@@ -85,8 +85,8 @@ class Tensor final {
             ftype& operator[](const tensorSize_t idx);
             ftype operator[](const tensorSize_t idx) const;
 
-            void set(ftype v, tensorSize_t idx);
-            ftype get(tensorSize_t idx);
+            void setItem(ftype v, tensorSize_t idx);
+            ftype getItem(tensorSize_t idx);
 
             tensorSize_t getSize() const noexcept;
 
@@ -143,27 +143,28 @@ class Tensor final {
     public:
         template<typename T> 
         requires (std::is_same_v<std::remove_cvref_t<T>, Dimension>)
-        explicit Tensor(T&& dims, Device d, bool requiresGrad=true)
+        explicit Tensor(T&& dims, Device d, bool requiresGrad=false)
             : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
         { }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=true) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false) :
             dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=true) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false) :
             dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad} {            
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, bool requiresGrad=true) :
-            Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad} {}
+        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, bool requiresGrad=false) :
+            Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad} {
+            }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, Device d, bool requiresGrad=true) :
-            Tensor{dims, d, requiresGrad} {            
+        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, Device d, bool requiresGrad=false) :
+            Tensor{dims, d, requiresGrad} {   
             for(tensorSize_t i=0; i<initValues.size(); i++){
-                values->set(initValues[i], i);
+                values->setItem(initValues[i], i);
             }
         }
 
@@ -230,19 +231,21 @@ class Tensor final {
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         // for convenience we provide some simple getters
-        ftype get(tensorDim_t idx) const;
-        ftype get(tensorDim_t idx0, tensorDim_t idx1) const;
-        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
-        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
+        ftype getItem(tensorDim_t idx) const;
+        ftype getItem(tensorDim_t idx0, tensorDim_t idx1) const;
+        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
+        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
-        ftype get(const std::vector<tensorDim_t>&& idx) const;
+        ftype getItem(const std::vector<tensorDim_t>&& idx) const;
+
+        Tensor getAsTensor(const std::vector<tensorDim_t>&& idx) const;
 
         // for convenience we provide some simple setters
-        void set(ftype item, tensorDim_t idx);
-        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
-        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
-        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-        void set(ftype item, const std::vector<tensorDim_t>&& idx);
+        void setItem(ftype item, tensorDim_t idx);
+        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1);
+        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
+        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
+        void setItem(ftype item, const std::vector<tensorDim_t>&& idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
@@ -250,12 +253,18 @@ class Tensor final {
         bool getRequiresGrad() const noexcept { return requiresGrad; }
         void setRequiresGrad(const bool requiresGrad) noexcept { 
             this->requiresGrad=requiresGrad;
-            if(!this->requiresGrad && cgNode){
+            if(!requiresGrad && cgNode){
                 cgNode = nullptr;
+            }
+            if(!requiresGrad && grads){
+                grads = nullptr;
             }
         }
 
-        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { cgNode = std::move(node); }
+        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
+            cgNode = std::move(node);
+            requiresGrad = true; 
+        }
 
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;

@@ -26,29 +26,29 @@
  */
 namespace TensorFunctions { // class name acts as namespace for us
   // Tensor creation
-  Tensor Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
-  Tensor Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
+  Tensor Zeros(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false);
+  Tensor Zeros(std::vector<tensorDim_t> dims, const bool requiresGrad=false);
 
-  Tensor Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
-  Tensor Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
+  Tensor Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false);
+  Tensor Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=false);
 
-  Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=true);
-  Tensor Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=true);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=false);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
+                                           std::vector<ftype>&& initValues, 
+                                           bool requiresGrad=false);
+
+  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
+                                           std::vector<ftype>&& initValues, 
+                                           Device d, bool requiresGrad=false);
 
   // Tensor manipulation
   void ToZeros(Tensor& t);
   void ToOnes(Tensor& t);
   void ToGaussian(Tensor& t);
-
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=true);
-
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=true);
-
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           std::vector<ftype>&& initValues, 
-                                           bool requiresGrad=true);
-
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           std::vector<ftype>&& initValues, 
-                                           Device d, bool requiresGrad=true);
 }

@@ -16,14 +16,14 @@
 using namespace std;
 using namespace layers;
 
-ftype LayerBase::get(vector<tensorDim_t>&&idx) const {
+ftype LayerBase::getItem(vector<tensorDim_t>&&idx) const {
   assert(weights);
-  return weights.value().get(std::move(idx));
+  return weights.value().getItem(std::move(idx));
 }
 
-void LayerBase::set(ftype item, vector<tensorDim_t>&& idx) {
+void LayerBase::setItem(ftype item, vector<tensorDim_t>&& idx) {
   assert(weights);
-  weights.value().set(item, std::move(idx));
+  weights.value().setItem(item, std::move(idx));
 }
 
 void LayerBase::print(ostream& os) const noexcept {

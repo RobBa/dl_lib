@@ -17,12 +17,14 @@ using namespace std;
 using namespace graph;
 
 vector<shared_ptr<Tensor>> ReLuNode::backward(const Tensor& upstreamGrad) {
+  assert(!upstreamGrad.getRequiresGrad());
+
   constexpr ftype zero = 0.0;
   
   auto res = make_shared<Tensor>(upstreamGrad.getDims().toVector(), upstreamGrad.getDevice(), false);
   for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
-    auto v = upstreamGrad.get(i);
-    res->set(v > zero ? v : zero, i);
+    auto v = upstreamGrad.getItem(i);
+    res->setItem(v > zero ? v : zero, i);
   }
   return {std::move(res)};
 }

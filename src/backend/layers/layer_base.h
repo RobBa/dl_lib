@@ -39,8 +39,8 @@ namespace layers {
                 return weights.value().getDims(); 
             }
 
-            ftype get(std::vector<tensorDim_t>&& idx) const;
-            void set(ftype item, std::vector<tensorDim_t>&& idx);
+            ftype getItem(std::vector<tensorDim_t>&& idx) const;
+            void setItem(ftype item, std::vector<tensorDim_t>&& idx);
 
 
             virtual void print(std::ostream& os) const noexcept;

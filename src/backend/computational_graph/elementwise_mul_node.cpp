@@ -15,6 +15,7 @@ using namespace std;
 using namespace graph;
 
 vector<shared_ptr<Tensor>> ElementwiseMulNode::backward(const Tensor& upstreamGrad) {
+    assert(!upstreamGrad.getRequiresGrad());
     return {
         make_shared<Tensor>(upstreamGrad * (*parents[1])), 
         make_shared<Tensor>(upstreamGrad * (*parents[0]))

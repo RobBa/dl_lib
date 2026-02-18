@@ -127,7 +127,7 @@ BOOST_PYTHON_MODULE(py_data_modeling)
 
     // classes
     class_<Dimension>("Dimension", no_init)
-        .add_property("list", &Dimension::get)
+        .add_property("list", &Dimension::getItem)
         .def("__str__", &Py_Util::toString<Dimension>)
     ;
 

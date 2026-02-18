@@ -21,7 +21,7 @@ ftype Py_Layers::layerGetItem(const layers::LayerBase& self, boost::python::obje
   // Single integer index (1D)
   if(int_extractor.check()) {
       int i0 = int_extractor();
-      return self.get(i0);
+      return self.getItem(i0);
   }
         
   // Tuple index (2D, 3D, or 4D)
@@ -33,20 +33,20 @@ ftype Py_Layers::layerGetItem(const layers::LayerBase& self, boost::python::obje
       if (ndim == 2) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
-        return self.get(i0, i1);
+        return self.getItem(i0, i1);
       }
       else if (ndim == 3) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
         int i2 = extract<int>(idx_tuple[2]);
-        return self.get(i0, i1, i2);
+        return self.getItem(i0, i1, i2);
       }
       else if (ndim == 4) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
         int i2 = extract<int>(idx_tuple[2]);
         int i3 = extract<int>(idx_tuple[3]);
-        return self.get(i0, i1, i2, i3);
+        return self.getItem(i0, i1, i2, i3);
       }
       else {
         PyErr_SetString(PyExc_IndexError, "Unsupported number of dimensions");
@@ -65,7 +65,7 @@ void Py_Layers::layerSetItem(layers::LayerBase& self, boost::python::object inde
   // Single integer index (1D)
   if(int_extractor.check()) {
       int i0 = int_extractor();
-      self.set(value, i0);\
+      self.setItem(value, i0);\
       return;
   }
         
@@ -78,20 +78,20 @@ void Py_Layers::layerSetItem(layers::LayerBase& self, boost::python::object inde
       if (ndim == 2) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
-        self.set(value, i0, i1);
+        self.setItem(value, i0, i1);
       }
       else if (ndim == 3) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
         int i2 = extract<int>(idx_tuple[2]);
-        self.set(value, i0, i1, i2);
+        self.setItem(value, i0, i1, i2);
       }
       else if (ndim == 4) {
         int i0 = extract<int>(idx_tuple[0]);
         int i1 = extract<int>(idx_tuple[1]);
         int i2 = extract<int>(idx_tuple[2]);
         int i3 = extract<int>(idx_tuple[3]);
-        self.set(value, i0, i1, i2, i3);
+        self.setItem(value, i0, i1, i2, i3);
       }
       else {
         PyErr_SetString(PyExc_IndexError, "Unsupported number of dimensions");

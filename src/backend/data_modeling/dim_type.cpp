@@ -22,7 +22,7 @@ tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const no
 #ifndef NDEBUG
   utility::SafeArithmetics_t<tensorSize_t> mult(1);
   for(auto dim: dims){
-    mult * dim;
+    mult = mult * dim;
   }
 
   res = mult.value;
@@ -85,7 +85,7 @@ Dimension& Dimension::operator=(Dimension&& other) noexcept {
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {
   os << "(";
   for(int i=0; i<d.nDims(); i++){
-    os << d.get(i);
+    os << d.getItem(i);
 
     if(i+1<d.nDims()){
       os << ",";

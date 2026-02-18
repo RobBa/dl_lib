@@ -29,6 +29,12 @@ namespace graph {
   std::shared_ptr<Tensor> add(ftype scalar, const std::shared_ptr<Tensor> left);
 
   std::shared_ptr<Tensor> sub(const std::shared_ptr<Tensor> left, ftype scalar);
-  std::shared_ptr<Tensor> div(const std::shared_ptr<Tensor> left, ftype scalar);  
+  std::shared_ptr<Tensor> div(const std::shared_ptr<Tensor> left, ftype scalar);
+
+  std::shared_ptr<Tensor> getAsShared(const std::shared_ptr<Tensor>& t, tensorSize_t idx);
+  std::shared_ptr<Tensor> getAsShared(const Tensor& t, tensorSize_t idx);
+
+  std::shared_ptr<Tensor> getAsShared(const std::shared_ptr<Tensor>& t, std::vector<tensorDim_t>&& idx);
+  std::shared_ptr<Tensor> getAsShared(const Tensor& t, std::vector<tensorDim_t>&& idx);
 }
  

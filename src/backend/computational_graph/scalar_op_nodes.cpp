@@ -17,13 +17,16 @@ using namespace std;
 using namespace graph;
 
 vector<shared_ptr<Tensor>> graph::ScalarAddNode::backward(const Tensor& upstreamGrad) {
+  assert(!upstreamGrad.getRequiresGrad());
   return {make_shared<Tensor>(upstreamGrad.createDeepCopy())};
 }
 
 vector<shared_ptr<Tensor>> graph::ScalarMulNode::backward(const Tensor& upstreamGrad) {
+  assert(!upstreamGrad.getRequiresGrad());
+
   auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
   for(tensorSize_t i=0; i<res->getSize(); i++){
-    res->set(res->get(i) * factor, i);
+    res->setItem(res->getItem(i) * factor, i);
   }
   return {std::move(res)};
 }
