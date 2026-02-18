@@ -1,4 +1,45 @@
+# Deep Learning Library
 
+A from-scratch deep learning framework in modern C++ with Python bindings.
+
+## Features
+
+- **Computational Graph**: Dynamic graph construction with automatic differentiation
+- **Core Components**: 
+  - Automatic differentiation (autograd)
+  - Backpropagation engine
+  - Neural network layers (in progress)
+- **Python Interface**: Seamless integration via Boost.Python
+- **Clean Architecture**: Modular design, ~4K LOC
+- **CI/CD**: Automated testing with GTest and GitHub Actions
+
+## Tech Stack
+
+- C++17/20
+- CMake build system
+- Boost.Python for Python bindings
+- Google Test (GTest) for unit testing
+- GitHub Actions for CI/CD
+
+## Current Status
+
+🚧 **Work in Progress** - Implementing additional layers and optimizations
+
+Roadmap:
+- [ ] Python Binding Unit Tests
+- [ ] Additional layer types (Conv2D, LSTM, etc.)
+- [ ] Optimizers and training framework
+- [ ] CUDA kernels for performance-critical operations
+- [ ] AlexNet reference implementation
+- [ ] Docker deployment example
+
+## Building
+```bash
+mkdir build && cd build
+cmake ..
+make
+./run_tests
+```
 
 ## Required
 
@@ -13,3 +54,11 @@
 ### Building on Windows
 
 The implementation of the Python wrapper does not work on MSVC6/7 in its current form. This is due to an issue that arises from Boost Python in combination with these compilers. Workarounds are proposed, but not implemented. More information here [here](https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/exposing.html).
+
+## Motivation
+
+Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
+
+## License
+
+MIT
