@@ -15,6 +15,7 @@
 #include "matmul_node.h"
 #include "elementwise_mul_node.h"
 #include "scalar_op_nodes.h"
+#include "getter_node.h"
 
 using namespace std;
 
@@ -96,23 +97,16 @@ shared_ptr<Tensor> graph::div(const shared_ptr<Tensor> t, ftype scalar) {
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
-shared_ptr<Tensor> graph::getAsShared(const shared_ptr<Tensor>& t, tensorSize_t idx) {
+shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
   ftype val = t->getItem(idx);
-  return make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
-                             t->getDevice(), t->getRequiresGrad()); 
-}
-
-/**
- * @brief Special linear indexing, see getItem() overloads in tensor. 
- * Used to keep the computational graph intact.
- * E.g. if we have something like 
- * 
- * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
- */
-std::shared_ptr<Tensor> graph::getAsShared(const Tensor& t, tensorSize_t idx) {
-  ftype val = t.getItem(idx);
-  return make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
-                             t.getDevice(), t.getRequiresGrad()); 
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
+                             t->getDevice());
+                             
+  if(t->getRequiresGrad()){
+    res->setCgNode(std::make_shared<graph::GetterNode>(t));
+    assert(res->getRequiresGrad());
+  }
+  return res;
 }
 
 /**
@@ -121,20 +115,13 @@ std::shared_ptr<Tensor> graph::getAsShared(const Tensor& t, tensorSize_t idx) {
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
-shared_ptr<Tensor> graph::getAsShared(const shared_ptr<Tensor>& t, vector<tensorDim_t>&& idx) {
+shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, vector<tensorDim_t>&& idx) {
   ftype val = t->getItem(std::move(idx));
-  return make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
-                             t->getDevice(), t->getRequiresGrad()); 
-}
-
-/**
- * @brief Used to keep the computational graph intact.
- * E.g. if we have something like 
- * 
- * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
- */
-std::shared_ptr<Tensor> graph::getAsShared(const Tensor& t, std::vector<tensorDim_t>&& idx) {
-  ftype val = t.getItem(std::move(idx));
-  return make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
-                             t.getDevice(), t.getRequiresGrad()); 
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
+                             t->getDevice());
+  if(t->getRequiresGrad()){
+    res->setCgNode(std::make_shared<graph::GetterNode>(t));
+    assert(res->getRequiresGrad());
+  }
+  return res;
 }

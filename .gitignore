@@ -1,3 +1,4 @@
 build
 .vscode
 unit_tests_backend
+*.txt

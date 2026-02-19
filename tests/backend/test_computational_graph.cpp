@@ -47,10 +47,10 @@ TEST(AutogradTest, MatMul) {
     auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
     
     auto res = graph::matmul(t1, t2);
-    
+
     auto loss = TensorFunctions::makeSharedTensor({1}, {0.0f}, true);
     for (size_t i = 0; i < res->getSize(); ++i) {
-        loss = graph::add(loss, graph::getAsShared(res, i));
+        loss = graph::add(loss, graph::get(res, i));
     }
     
     loss->backward();

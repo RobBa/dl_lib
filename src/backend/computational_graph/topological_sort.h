@@ -27,5 +27,13 @@ namespace graph {
     public:
       TopologicalSort() = delete;
       static std::vector< Tensor* > reverseSort(Tensor* root);
+
+#ifndef NDEBUG
+    /* graph is append only: Operations creating edges also always create a new graph node,
+    and edges are represented as parents. Therefore cycles should not exist by design, unless
+    code has been broken. We do not need to check. */
+    private:
+      static bool hasCycles(const Tensor* root);
+#endif // NDEBUG
   };
 }
