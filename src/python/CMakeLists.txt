@@ -11,15 +11,5 @@ add_library(py_data_modeling MODULE
             
 set_target_properties(py_data_modeling PROPERTIES 
                       PREFIX ""
-                      OUTPUT_NAME "lib_data_modeling"
-                      LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_DIR}) # don't add "lib" in front
-
-#target_link_libraries(py_data_modeling ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} BackendCore)
-#target_include_directories(py_data_modeling PRIVATE ${PYTHON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-
-#add_library(py_layers MODULE
-#            layers/py_layers.cpp
-#            )
-#set_target_properties(py_layers PROPERTIES PREFIX "") # don't add "lib" in front
-
-#target_link_libraries(layers INTERFACE data_modeling)
+                      OUTPUT_NAME "py_data_modeling"
+                      LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_DIR})
