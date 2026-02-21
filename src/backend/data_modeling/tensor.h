@@ -49,7 +49,7 @@ constexpr const char* DeviceToString(Device d) {
     return ""; // suppress
 }
 
-class Tensor final {
+class Tensor final : std::enable_shared_from_this<Tensor> {
     friend class graph::TopologicalSort;
 
     private:
@@ -158,11 +158,11 @@ class Tensor final {
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad=false) :
             Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad} {
             }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, Device d, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad=false) :
             Tensor{dims, d, requiresGrad} {   
             for(tensorSize_t i=0; i<initValues.size(); i++){
                 values->setItem(initValues[i], i);
@@ -263,6 +263,17 @@ class Tensor final {
         void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
             cgNode = std::move(node);
             requiresGrad = true; 
+        }
+
+        std::shared_ptr<Tensor> getSharedPtr() const {
+            try {
+                return std::const_pointer_cast<Tensor>(shared_from_this());
+            } 
+            catch (const std::bad_weak_ptr&) {
+                throw std::runtime_error(
+                    "Tensor must be managed by shared_ptr for autograd operations"
+                );
+            }        
         }
 
         // these two should not be exposed to the python interface

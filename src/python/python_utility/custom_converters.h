@@ -25,7 +25,8 @@ namespace converters {
    * internal types, such as tensorDim_t.
    */
   template<typename T>
-  requires ( std::is_integral_v< std::remove_const_t<T> >)
+  requires ( std::is_integral_v< std::remove_const_t<T> > || 
+             std::is_floating_point_v< std::remove_const_t<T> >)
   struct PyListToVectorConverter {
     using rvalueFromPythonData = boost::python::converter::rvalue_from_python_stage1_data;
 
@@ -56,7 +57,8 @@ namespace converters {
 /******************************************************************************************/
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< std::remove_const_t<T> > || 
+           std::is_floating_point_v< std::remove_const_t<T> >)
 converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
   using namespace boost::python;
 
@@ -69,7 +71,8 @@ converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< std::remove_const_t<T> > || 
+           std::is_floating_point_v< std::remove_const_t<T> >)
 void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
   
@@ -80,7 +83,8 @@ void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< std::remove_const_t<T> > || 
+           std::is_floating_point_v< std::remove_const_t<T> >)
 void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
 
   using namespace boost::python;
@@ -96,8 +100,15 @@ void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalue
         
   // Fill it with converted values
   for (int i = 0; i < len(py_list); ++i) {
-    int val = extract<int>(py_list[i]);
-    vec->push_back(static_cast<T>(val));
+
+    if constexpr(std::is_integral_v< std::remove_const_t<T> >){
+      auto val = extract<int>(py_list[i]);
+      vec->push_back(static_cast<T>(val));
+    }
+    else if constexpr(std::is_floating_point_v< std::remove_const_t<T> >) {
+      auto val = extract<ftype>(py_list[i]);
+      vec->push_back(static_cast<T>(val));
+    }
   }
         
   // Tell Boost.Python where the constructed object is

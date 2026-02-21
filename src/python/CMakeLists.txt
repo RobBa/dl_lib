@@ -7,6 +7,7 @@ set(CMAKE_SHARED_MODULE_PREFIX "")
 
 add_library(py_data_modeling MODULE
             data_modeling/py_data_modeling.cpp
+            data_modeling/py_data_modeling_util.cpp
             )
             
 set_target_properties(py_data_modeling PROPERTIES 
