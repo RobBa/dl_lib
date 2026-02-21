@@ -13,6 +13,9 @@
 
 #include "graph_node.h"
 
+#include <vector>
+#include <variant>
+
 namespace graph{
   /**
    * @brief When calling a get function, say as in 
@@ -21,9 +24,17 @@ namespace graph{
    * 
    */
   class GetterNode final : public GraphNode {
+    using multiDimIdx_t = std::vector<tensorDim_t>;
+
+    private:
+      const std::variant<tensorSize_t, multiDimIdx_t> idx;
+
     public:
-      explicit GetterNode(std::shared_ptr<Tensor> t) 
-        : GraphNode({std::move(t)}) {}
+      explicit GetterNode(std::shared_ptr<Tensor> t, const tensorSize_t idx) 
+        : GraphNode({std::move(t)}), idx{idx} {}
+
+      explicit GetterNode(std::shared_ptr<Tensor> t, const multiDimIdx_t& idx) 
+        : GraphNode({std::move(t)}), idx{idx} {}
 
       GetterNode(const GetterNode& other) = delete;
       GetterNode& operator=(const GetterNode& other) = delete;

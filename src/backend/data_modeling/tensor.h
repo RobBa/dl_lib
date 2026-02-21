@@ -132,11 +132,12 @@ class Tensor final {
         void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
 
         // convenience functions that appear in multiple places
-        tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
-        tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
-        tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
-        tensorSize_t getTotalDimSize(const int dim) const;
-        tensorDim_t mapDim(const int dim, std::optional<const Dimension> dimsOpt=std::nullopt) const;
+        static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
+        static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
+
+        static tensorSize_t getDimOffset(const tensorDim_t dim, const Dimension& dims);
+        static tensorSize_t getDimOffset(const int dim, const Dimension& dims);
+        static tensorDim_t mapDim(const int dim, const Dimension& dims);
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
@@ -236,16 +237,14 @@ class Tensor final {
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
-        ftype getItem(const std::vector<tensorDim_t>&& idx) const;
-
-        Tensor getAsTensor(const std::vector<tensorDim_t>&& idx) const;
+        ftype getItem(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters
         void setItem(ftype item, tensorDim_t idx);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-        void setItem(ftype item, const std::vector<tensorDim_t>&& idx);
+        void setItem(ftype item, const std::vector<tensorDim_t>& idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
