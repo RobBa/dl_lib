@@ -74,6 +74,11 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         return (*fPtr)(self.getSharedPtr(), val); \
     }
 
+    #define WRAP_FREE_FUNC_5(fPtr) \
+    +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr(), other.getSharedPtr()); \
+    }
+
     // classes
     class_<Dimension>("Dimension", no_init)
         .add_property("list", &Dimension::getItem)
@@ -106,7 +111,7 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("getvalue", &Py_DataModeling::tensorGetItem)
         .def("__matmul__", WRAP_TENSOR_METHOD_1(matmul))
         .def("__add__", WRAP_TENSOR_METHOD_1(operator+)) // elementwise add
-        .def("__mul__", WRAP_TENSOR_METHOD_1(operator*)) // elementwise mult
+        .def("__mul__", WRAP_FREE_FUNC_5(&Py_DataModeling::elementwisemul)) // elementwise mult
         .def("__mul__", WRAP_SCALAR(operator*, float))
         .def("__rmul__", WRAP_SCALAR_REVERSE(*, float))
         .def("__add__", WRAP_SCALAR(operator+, float))

@@ -40,11 +40,11 @@ namespace TensorFunctions { // class name acts as namespace for us
   std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false);
 
   std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           std::vector<ftype>&& initValues, 
+                                           const std::vector<ftype>& initValues, 
                                            bool requiresGrad=false);
 
   std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           std::vector<ftype>&& initValues, 
+                                           const std::vector<ftype>& initValues, 
                                            Device d, bool requiresGrad=false);
 
   // Tensor manipulation

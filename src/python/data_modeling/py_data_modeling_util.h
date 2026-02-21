@@ -73,9 +73,41 @@ namespace Py_DataModeling {
     inline Tensor  (Tensor::*transpose1)(int, int) const                                = &Tensor::transpose;
     inline Tensor  (Tensor::*transpose2)(int, int, bool) const                          = &Tensor::transpose;
 
-    inline std::shared_ptr<Tensor> (*getItemAsTensor1) 
-    (const std::shared_ptr<Tensor>& t, tensorSize_t idx)                         = &(graph::get);
+    // multiplications
+    inline std::shared_ptr<Tensor> (*elementwisemul) 
+    (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::mul);
+
+    inline std::shared_ptr<Tensor> (*scalarmul) 
+    (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::mul);
+
+    inline std::shared_ptr<Tensor> (*rscalarmul) 
+    (ftype, const std::shared_ptr<Tensor>)                                              = &(graph::mul);
+
+    // additions
+    inline std::shared_ptr<Tensor> (*elementwiseadd) 
+    (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::add);
+
+    inline std::shared_ptr<Tensor> (*scalaradd) 
+    (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::add);
+
+    inline std::shared_ptr<Tensor> (*rscalaradd) 
+    (ftype, const std::shared_ptr<Tensor>)                                              = &(graph::add);
+
+    // matmul
+    inline std::shared_ptr<Tensor> (*matmul) 
+    (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::matmul);
     
+    // sub, div
+    inline std::shared_ptr<Tensor> (*scalarsub) 
+    (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::sub);
+
+    inline std::shared_ptr<Tensor> (*scalardiv) 
+    (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::div);
+
+    // get
+    inline std::shared_ptr<Tensor> (*getItemAsTensor1) 
+    (const std::shared_ptr<Tensor>& t, tensorSize_t idx)                                = &(graph::get);
+
     inline std::shared_ptr<Tensor> (*getItemAsTensor2) 
-    (const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx)      = &(graph::get);
+    (const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx)             = &(graph::get);
 }
