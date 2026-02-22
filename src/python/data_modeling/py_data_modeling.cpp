@@ -1,119 +1,221 @@
 /**
- * @file tensor.cpp
+ * @file py_data_modeling.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-01-11
+ * @date 2026-02-21
  * 
  * @copyright Copyright (c) 2026
  * 
  */
 
-#include "py_data_modeling.h"
+#include "data_modeling/tensor.h"
 
-#include <stdexcept>
-#include <utility>
+#include "py_data_modeling_util.h"
+#include "python_templates.h"
+#include "custom_converters.h"
 
-using namespace boost::python;
+#include "data_modeling/tensor.h"
+#include "data_modeling/tensor_functions.h"
+#include "computational_graph/graph_creation.h"
 
-ftype Py_DataModeling::tensorGetItem(const Tensor& self, boost::python::object index) {
-  extract<int> int_extractor(index);
-        
-  // Single integer index (1D)
-  if(int_extractor.check()) {
-    auto i0 = static_cast<tensorDim_t>(int_extractor());
-    return self.getItem(i0);
-  }
-        
-  // Tuple index (2D, 3D, or 4D, or list)
-  if (PySequence_Check(index.ptr())) {
-    int len = PySequence_Length(index.ptr());
-        
-    // Dispatch to convenience functions for 1-4 args
-    if (len == 1) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      return self.getItem(i0);
-    }
-    else if (len == 2) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      return self.getItem(i0, i1);
-    }
-    else if (len == 3) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      return self.getItem(i0, i1, i2);
-    }
-    else if (len == 4) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      auto i3 = static_cast<tensorDim_t>(extract<int>(index[3]));
-      return self.getItem(i0, i1, i2, i3);
-    }
-    else {
-      // Arbitrary length - use vector version
-      std::vector<tensorDim_t> indices;
-      for (int i = 0; i < len; ++i) {
-        indices.push_back(static_cast<tensorDim_t>(extract<int>(index[i])));
-      }
-      return self.getItem(std::move(indices));
-    }
-  }
-        
-  PyErr_SetString(PyExc_TypeError, "Index must be a number of up to 4integers or a list");
-  throw_error_already_set();
-  return 0.0; // Never reached
-}
+#include <boost/python.hpp>
+#include <boost/python/enum.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
-void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, ftype value) {
-  extract<int> int_extractor(index);
-  if(int_extractor.check()) {
-      auto i0 = static_cast<tensorDim_t>(int_extractor());
-      self.setItem(value, i0);
-      return;
-  }
+BOOST_PYTHON_MODULE(_core)
+{
+    using namespace boost::python;
+
+    // some macros to make code below easier to read
+    #define WRAP_TENSOR_METHOD_1(method) \
+    +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(self.method(other)); \
+    }
+
+    #define WRAP_SCALAR(method, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(self.method(val)); \
+    }
+
+    #define WRAP_SCALAR_REVERSE(op, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>(val op self); \
+    }
+
+    // different, since those are not methods anymore
+    #define WRAP_FREE_MEMBER_FUNC_1(fPtr, T1, T2) \
+    +[](const Tensor& self, int v1, int v2) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((self.*fPtr)(v1, v2)); \
+    }
+
+    #define WRAP_FREE_MEMBER_FUNC_2(fPtr, T1, T2, T3) \
+    +[](const Tensor& self, T1 v1, T2 v2, T3 v3) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((self.*fPtr)(v1, v2, v3)); \
+    }
+
+    #define WRAP_FREE_FUNC_1(fPtr, T1) \
+    +[](T1 v1) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((*fPtr)(v1)); \
+    }
+
+    #define WRAP_FREE_FUNC_2(fPtr, T1, T2) \
+    +[](T1 v1, T2 v2) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((*fPtr)(v1, v2)); \
+    }
+
+    #define WRAP_FREE_FUNC_3(fPtr, T1, T2, T3) \
+    +[](T1 v1, T2 v2, T3 v3) -> std::shared_ptr<Tensor> { \
+        return std::make_shared<Tensor>((*fPtr)(v1, v2, v3)); \
+    }
+
+    #define WRAP_FREE_FUNC_4(fPtr, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr(), val); \
+    }
+
+    #define WRAP_FREE_FUNC_5(fPtr) \
+    +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr(), other.getSharedPtr()); \
+    }
+
+    #define WRAP_FREE_FUNC_6(fPtr, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(val, self.getSharedPtr()); \
+    }
+
+    #define WRAP_FREE_FUNC_7(fPtr) \
+    +[](const Tensor& self) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr()); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_1(method) \
+    +[](const Tensor& self, int v1) -> ftype { \
+        return self.method(static_cast<tensorSize_t>(v1)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_2(method) \
+    +[](const Tensor& self, int v1, int v2) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_3(method) \
+    +[](const Tensor& self, int v1, int v2, int v3) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2), \
+                           static_cast<tensorDim_t>(v3)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_4(method) \
+    +[](const Tensor& self, int v1, int v2, int v3, int v4) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2), \
+                           static_cast<tensorDim_t>(v3), static_cast<tensorDim_t>(v4)); \
+    }
+
+    // classes
+    class_<Dimension>("Dimension", no_init)
+        .add_property("list", &Dimension::getItem)
+        .def("__str__", &Py_Util::toString<Dimension>)
+        .def("__eq__", Py_DataModeling::dimEquals1)
+        .def("__eq__", Py_DataModeling::dimEquals2)
+        .def("__ne__", Py_DataModeling::nDimEquals1)
+        .def("__ne__", Py_DataModeling::nDimEquals2)
+    ;
+
+    enum_<Device>("Device")
+        .value("CPU", Device::CPU)
+        .value("CUDA", Device::CUDA)
+    ;
+
+    // register implicit dtype conversion
+    custom_converters::PyListToVectorConverter<tensorDim_t>();
+    custom_converters::PyListToVectorConverter<ftype>();
+
+    // to convert std::shared_ptr<const Tensor> to std::shared_ptr<Tensor>> in Python
+    boost::python::register_ptr_to_python< std::shared_ptr<const Tensor> >();
+
+    // we manage via shared_ptr, since we deleted copy-ctor
+    class_<Tensor, std::shared_ptr<Tensor>, boost::noncopyable>("Tensor", no_init)
+        .def(init<const std::vector<tensorDim_t>&, optional<bool> >())
+        .def(init<const std::vector<tensorDim_t>&, Device, optional<bool> >())
+        .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, optional<bool> >())
+        .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, Device, optional<bool> >())
         
-  // Tuple index (2D, 3D, or 4D, or list)
-  extract<tuple> tuple_extractor(index);
-  if (PySequence_Check(index.ptr())) {
-    int len = PySequence_Length(index.ptr());
+        // static creation methods
+        .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>))
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device))
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool))
+        .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("ones")
+
+        .def("zeros", WRAP_FREE_FUNC_1(Py_DataModeling::Zeros0, std::vector<tensorDim_t>))
+        .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device))
+        .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool))
+        .def("zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("zeros")
+
+        .def("gauss", WRAP_FREE_FUNC_1(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>))
+        .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device))
+        .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, const bool))
+        .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("gauss")
+
+        // properties
+        .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
+        .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
+        .add_property("grads", make_function(&Tensor::getGrads))
+        .add_property("requiresGrad", &Tensor::getRequiresGrad, &Tensor::setRequiresGrad)
+
+        // operators
+        .def("__str__", &Py_Util::toString<Tensor>)
+        .def("__repr__", &Py_Util::toString<Tensor>)
+        .def("__len__", &Tensor::getSize)
+        .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor1, tensorSize_t))
+        .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor2, std::vector<tensorDim_t>))
+        .def("__setitem__", &Py_DataModeling::tensorSetItem)
+
+        // arithmetics
+        .def("__matmul__", WRAP_FREE_FUNC_5(Py_DataModeling::matmul))
+        .def("__add__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwiseadd)) // elementwise add
+        .def("__add__", WRAP_FREE_FUNC_4(Py_DataModeling::scalaradd, ftype))
+        .def("__radd__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalaradd, ftype))
+
+        .def("__mul__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwisemul)) // elementwise mult
+        .def("__mul__", WRAP_FREE_FUNC_4(Py_DataModeling::scalarmul, ftype))
+        .def("__rmul__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalarmul, ftype))
         
-    // Dispatch to convenience functions for 1-4 args
-    if (len == 1) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      self.setItem(value, i0);
-    }
-    else if (len == 2) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      self.setItem(value, i0, i1);
-    }
-    else if (len == 3) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      self.setItem(value, i0, i1, i2);
-    }
-    else if (len == 4) {
-      auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      auto i3 = static_cast<tensorDim_t>(extract<int>(index[3]));
-      self.setItem(value, i0, i1, i2, i3);
-    }
-    else {
-      // Arbitrary length - use vector version
-      std::vector<tensorDim_t> indices;
-      for (int i = 0; i < len; ++i) {
-        indices.push_back(static_cast<tensorDim_t>(extract<int>(index[i])));
-      }
-      self.setItem(value, std::move(indices));
-    }
-    return;
-  }
+        .def("__sub__", WRAP_FREE_FUNC_4(Py_DataModeling::scalarsub, ftype))
+        .def("__truediv__", WRAP_FREE_FUNC_4(Py_DataModeling::scalardiv, ftype))
+
+        // member functions
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_1(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_2(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_3(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_4(Tensor::getItem))
+        .def("getitem", Py_DataModeling::getItemVector) // the vector arg
+
+        .def("sum", WRAP_FREE_FUNC_7(&(graph::sumTensor)))
         
-  PyErr_SetString(PyExc_TypeError, "Index must be a number of up to 4integers or a list");
-  throw_error_already_set();
+        .def("reset", Py_DataModeling::reset1)
+        .def("reset", Py_DataModeling::reset2)
+
+        .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1, int, int))
+        .def("transpose", WRAP_FREE_MEMBER_FUNC_2(Py_DataModeling::transpose2, int, int, bool))
+        .def("transposeThis", Py_DataModeling::transposeThis1)
+        .def("transposeThis", Py_DataModeling::transposeThis2)
+        
+        .def("backward", &Tensor::backward)
+    ;
+
+    // functions
+    def("Ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>));
+    def("Ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device));
+    def("Ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool));
+    def("Ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool));
+
+    def("Zeros", WRAP_FREE_FUNC_1(Py_DataModeling::Zeros0, std::vector<tensorDim_t>));
+    def("Zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device));
+    def("Zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool));
+    def("Zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool));
+
+    def("Gaussian", WRAP_FREE_FUNC_1(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>));
+    def("Gaussian", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device));
+    def("Gaussian", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, const bool));
+    def("Gaussian", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, const bool));
 }

@@ -49,7 +49,7 @@ constexpr const char* DeviceToString(Device d) {
     return ""; // suppress
 }
 
-class Tensor final {
+class Tensor final : public std::enable_shared_from_this<Tensor> {
     friend class graph::TopologicalSort;
 
     private:
@@ -132,11 +132,12 @@ class Tensor final {
         void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
 
         // convenience functions that appear in multiple places
-        tensorSize_t computeIdx(const std::vector<tensorDim_t>&& idx) const;
-        tensorSize_t computeIdx(const std::vector<tensorDim_t>& idx) const;
-        tensorSize_t getTotalDimSize(const tensorDim_t dim) const;
-        tensorSize_t getTotalDimSize(const int dim) const;
-        tensorDim_t mapDim(const int dim, std::optional<const Dimension> dimsOpt=std::nullopt) const;
+        static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
+        static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
+
+        static tensorSize_t getDimOffset(const tensorDim_t dim, const Dimension& dims);
+        static tensorSize_t getDimOffset(const int dim, const Dimension& dims);
+        static tensorDim_t mapDim(const int dim, const Dimension& dims);
 
         friend void printValuesCpu(std::ostream& os, const Tensor& t);
 
@@ -157,11 +158,11 @@ class Tensor final {
             values->resize(this->dims.getSize());
         }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad=false) :
             Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad} {
             }
 
-        explicit Tensor(const std::vector<tensorDim_t>& dims, std::vector<ftype>&& initValues, Device d, bool requiresGrad=false) :
+        explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad=false) :
             Tensor{dims, d, requiresGrad} {   
             for(tensorSize_t i=0; i<initValues.size(); i++){
                 values->setItem(initValues[i], i);
@@ -218,7 +219,7 @@ class Tensor final {
         void backward();
 
         bool hasGrads() const noexcept { return grads!=nullptr; }
-        const std::shared_ptr<Tensor>& getGrads() const;
+        std::shared_ptr<const Tensor> getGrads() const;
 
         void transposeThis() noexcept;
         void transposeThis(int dim1, int dim2) noexcept;
@@ -231,21 +232,19 @@ class Tensor final {
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         // for convenience we provide some simple getters
-        ftype getItem(tensorDim_t idx) const;
+        ftype getItem(tensorSize_t idx) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
-        ftype getItem(const std::vector<tensorDim_t>&& idx) const;
-
-        Tensor getAsTensor(const std::vector<tensorDim_t>&& idx) const;
+        ftype getItem(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters
         void setItem(ftype item, tensorDim_t idx);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
         void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-        void setItem(ftype item, const std::vector<tensorDim_t>&& idx);
+        void setItem(ftype item, const std::vector<tensorDim_t>& idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
@@ -264,6 +263,17 @@ class Tensor final {
         void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
             cgNode = std::move(node);
             requiresGrad = true; 
+        }
+
+        std::shared_ptr<Tensor> getSharedPtr() const {
+            try {
+                return std::const_pointer_cast<Tensor>(shared_from_this());
+            } 
+            catch (const std::bad_weak_ptr&) {
+                throw std::runtime_error(
+                    "Tensor must be managed by shared_ptr for autograd operations"
+                );
+            }        
         }
 
         // these two should not be exposed to the python interface

@@ -103,7 +103,7 @@ shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
                              t->getDevice());
                              
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::GetterNode>(t));
+    res->setCgNode(std::make_shared<graph::GetterNode>(t, idx));
     assert(res->getRequiresGrad());
   }
   return res;
@@ -115,13 +115,25 @@ shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
-shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, vector<tensorDim_t>&& idx) {
+shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, const vector<tensorDim_t>& idx) {
   ftype val = t->getItem(std::move(idx));
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
                              t->getDevice());
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::GetterNode>(t));
+    res->setCgNode(std::make_shared<graph::GetterNode>(t, idx));
     assert(res->getRequiresGrad());
+  }
+  return res;
+}
+
+/**
+ * @brief Takes the sum of the whole tensor, then returns result as vector.
+ */
+shared_ptr<Tensor> graph::sumTensor(const shared_ptr<Tensor> t) {
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{0.0}, 
+                                 t->getDevice(), t->getRequiresGrad());
+  for(tensorSize_t i=0; i<t->getSize(); i++){
+    res = graph::add(res, graph::get(t, i));
   }
   return res;
 }

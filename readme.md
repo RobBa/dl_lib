@@ -2,6 +2,10 @@
 
 A from-scratch deep learning framework in modern C++ with Python bindings.
 
+## Motivation
+
+Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
+
 ## Features
 
 - **Computational Graph**: Dynamic graph construction with automatic differentiation
@@ -38,15 +42,16 @@ Roadmap:
 mkdir build && cd build
 cmake ..
 make
-./run_tests
+ctest
 ```
 
 ## Required
 
-- Python 3 (we test with 3.10, but it should work with any version)
+- Compiler capable of C++20 at least (we test with gcc 12.3.0)
 - Boost Python
 - Cmake > 3.24
-- Compiler capable of C++20 at least (we test with gcc 12.3.0)
+- Python 3 (we test with 3.10, but it should work with any version)
+- pytest for unit tests (we use 9.0.2)
 
 ## Troubleshooting
 
@@ -54,10 +59,6 @@ make
 ### Building on Windows
 
 The implementation of the Python wrapper does not work on MSVC6/7 in its current form. This is due to an issue that arises from Boost Python in combination with these compilers. Workarounds are proposed, but not implemented. More information here [here](https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/exposing.html).
-
-## Motivation
-
-Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
 
 ## License
 

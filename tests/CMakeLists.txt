@@ -19,10 +19,17 @@ target_link_libraries(unit_tests_backend PRIVATE
 include(GoogleTest)
 gtest_discover_tests(unit_tests_backend)
 
-#find_package(Python3 COMPONENTS Interpreter)
-#if(Python3_FOUND)
-#    add_test(NAME python_tests
-#        COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/python
-#        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-#    )
-#endif()
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_FOUND)
+    # replace the placeholder variables and copy resulting file in .py file
+    add_test(
+        NAME python_tests
+        COMMAND ${Python3_EXECUTABLE} -m pytest 
+                ${CMAKE_CURRENT_SOURCE_DIR}/python
+    )
+
+    # Set environment for Python to find the module
+    set_tests_properties(python_tests PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${PYTHON_MODULE_DIR}:$ENV{PYTHONPATH}"
+    )
+endif()

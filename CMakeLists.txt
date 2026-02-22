@@ -5,11 +5,10 @@ project(dllib VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
-set(LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # to link shared libs. TODO: can we get rid of this, as it may cost runtime?
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(PYTHON_MODULE_DIR "${CMAKE_SOURCE_DIR}/python_lib/dl_lib/_compiled")
 
 # to enable find boost, see https://stackoverflow.com/a/79147222
 if(POLICY CMP0167)
@@ -104,10 +103,9 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_SOURCE_DIR}/examples")
 
 add_subdirectory(src)
-add_subdirectory(examples)
 
-option(BUILD_TESTING "Build tests" ON)
-if(BUILD_TESTING)
+option(BUILD_TESTS "Build tests" OFF)
+if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()

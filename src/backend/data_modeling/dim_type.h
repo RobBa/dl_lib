@@ -79,7 +79,16 @@ class Dimension final {
       return this->dims == other.dims;
     }
 
+    bool operator==(const std::vector<tensorDim_t>& other) const {
+      assert(size!=0);
+      return this->dims == other;
+    }
+
     bool operator!=(const Dimension& other) const {
+      return !(*this == other);
+    }
+
+    bool operator!=(const std::vector<tensorDim_t>& other) const {
       return !(*this == other);
     }
 

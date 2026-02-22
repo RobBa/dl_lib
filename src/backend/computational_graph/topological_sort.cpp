@@ -36,10 +36,11 @@ bool TopologicalSort::hasCycles(const Tensor* root) {
     assert(start->cgNode);
 
     stack<const Tensor*> tStack;
+    unordered_set<const Tensor*> visited;
 
-    auto pushParentsOnStack = [&tStack](const Tensor* t){
+    auto pushParentsOnStack = [&tStack, &visited](const Tensor* t){
       for(auto parent: t->cgNode->getParents()){
-        if(parent->cgNode){
+        if(parent->cgNode && !visited.contains(parent.get())){
           tStack.push(parent.get());
         }
       }
@@ -57,6 +58,7 @@ bool TopologicalSort::hasCycles(const Tensor* root) {
       tStack.pop();
       
       pushParentsOnStack(t);
+      visited.insert(t);
     }
 
     return false;

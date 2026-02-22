@@ -529,7 +529,7 @@ void Tensor::backward() {
 /**
  * @brief Get gradients
  */
-const shared_ptr<Tensor>& Tensor::getGrads() const {
+shared_ptr<const Tensor> Tensor::getGrads() const {
   if(!grads){
     __throw_runtime_error("Tensor has no gradients.");
   }
@@ -540,9 +540,7 @@ const shared_ptr<Tensor>& Tensor::getGrads() const {
  * @brief Sometimes we do accept negative dim-values. In accordance with e.g. 
  * NumPy we map from the end to the beginning in that case. 
  */
-tensorDim_t Tensor::mapDim(const int dim, optional<const Dimension> dimOpt) const {
-  const auto& dims = dimOpt ? dimOpt.value() : this->dims;
-
+tensorDim_t Tensor::mapDim(const int dim, const Dimension& dims) {
   if(dim>=0){
     return dim;
   }
@@ -642,8 +640,8 @@ void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) con
   const auto smallDim = dim1Mapped < dim2Mapped ? dim2Mapped : dim1Mapped;
 
   // largeDimSize >= smallDimSize
-  const auto largeDimSize = getTotalDimSize(largeDim);
-  const auto smallDimSize = getTotalDimSize(smallDim);
+  const auto largeDimOffset = getDimOffset(largeDim, dims);
+  const auto smallDimOffset = getDimOffset(smallDim, dims);
 
   auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
   transposedValues->resize(source.values->getSize());
@@ -651,9 +649,9 @@ void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) con
   tensorSize_t resIdx = 0;
   for(tensorSize_t smallDimCount=0; smallDimCount<source.dims.getItem(smallDim); smallDimCount++){
     for(tensorSize_t largeDimCount=0; largeDimCount<source.dims.getItem(largeDim); largeDimCount++){
-      tensorSize_t offset = largeDimCount * largeDimSize + smallDimCount * smallDimSize;
+      tensorSize_t offset = largeDimCount * largeDimOffset + smallDimCount * smallDimOffset;
 
-      for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimSize; smallDimIdx++){
+      for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimOffset; smallDimIdx++){
         (*transposedValues)[resIdx] = (*source.values)[offset];
         resIdx++;
         offset++;
@@ -829,8 +827,8 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
  * 
  * WARNING: Does not check for overflow.
  */
-tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>&& idx) const {
-  return computeIdx(idx);
+tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims) {
+  return computeLinearIdx(idx, dims);
 }
 
 /**
@@ -838,7 +836,7 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>&& idx) const {
  * 
  * WARNING: Does not check for overflow.
  */
-tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
+tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims) {
   if(idx.size()!=dims.nDims()) {
     __throw_invalid_argument("Number of idxs must match number of dimensions.");
   }
@@ -862,7 +860,7 @@ tensorSize_t Tensor::computeIdx(const std::vector<tensorDim_t>& idx) const {
  * @brief Gets the total size of a dimension. E.g. if dims=(2, 3, 4),
  * the offset of dim1 is 3*4==12, and that of dim0 is 2*3*4==24.
  */
-tensorSize_t Tensor::getTotalDimSize(const tensorDim_t dim) const {
+tensorSize_t Tensor::getDimOffset(const tensorDim_t dim, const Dimension& dims) {
   tensorSize_t res = 1; // minimum possible dimsize
 
   for(size_t idx = dims.nDims()-1; idx>dim; idx--){
@@ -876,26 +874,22 @@ tensorSize_t Tensor::getTotalDimSize(const tensorDim_t dim) const {
 /**
  * @brief Like overload, but accepts negative dims.
  */
-tensorSize_t Tensor::getTotalDimSize(const int dim) const {
-  return getTotalDimSize(mapDim(dim));
+tensorSize_t Tensor::getDimOffset(const int dim, const Dimension& dims) {
+  return getDimOffset(mapDim(dim, dims), dims);
 }
 
 /**
  * @brief No explanation needed.
  */
-ftype Tensor::getItem(const std::vector<tensorDim_t>&& idx) const {
-  return (*values)[computeIdx(idx)]; 
-}
-
-Tensor Tensor::getAsTensor(const std::vector<tensorDim_t>&& idx) const {
-  return Tensor({1}, {(*values)[computeIdx(idx)]}, values->getDevice(), requiresGrad); 
+ftype Tensor::getItem(const std::vector<tensorDim_t>& idx) const {
+  return (*values)[computeLinearIdx(idx, dims)]; 
 }
 
 /**
  * @brief Special getter, indexes the contained underlying array linearly.
  * Can lead to unexpected results in multidimensional tensors.
  */
-ftype Tensor::getItem(tensorDim_t idx) const {
+ftype Tensor::getItem(tensorSize_t idx) const {
   return (*values)[idx];
 }
 
@@ -914,8 +908,8 @@ ftype Tensor::getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tens
 /**
  * @brief No explanation needed.
  */
-void Tensor::setItem(ftype item, const std::vector<tensorDim_t>&& idx) {
-  (*values)[computeIdx(idx)] = item;
+void Tensor::setItem(ftype item, const std::vector<tensorDim_t>& idx) {
+  (*values)[computeLinearIdx(idx, dims)] = item;
 }
 
 /**
