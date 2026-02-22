@@ -49,7 +49,7 @@ constexpr const char* DeviceToString(Device d) {
     return ""; // suppress
 }
 
-class Tensor final : std::enable_shared_from_this<Tensor> {
+class Tensor final : public std::enable_shared_from_this<Tensor> {
     friend class graph::TopologicalSort;
 
     private:

@@ -103,7 +103,6 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_SOURCE_DIR}/examples")
 
 add_subdirectory(src)
-add_subdirectory(examples)
 
 option(BUILD_TESTS "Build tests" OFF)
 if(BUILD_TESTS)

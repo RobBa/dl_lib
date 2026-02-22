@@ -23,7 +23,7 @@ class SequentialNetwork {
         bool assertDims(const layers::LayerBase& layer) const noexcept;
 
         template <typename T>
-        requires (std::derived_from< std::remove_const_t<T>, layers::LayerBase >)
+        requires (std::derived_from< std::remove_cvref_t<T>, layers::LayerBase >)
         void addLayer(T&& layer) {
             if(!assertDims(layer)){
                 // TODO: show warning that the dims don't match

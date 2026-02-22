@@ -67,12 +67,12 @@ shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& 
 shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, 
                                          const vector<ftype>& initValues, 
                                          bool requiresGrad) {
-  return make_shared<Tensor>(dims, std::move(initValues), requiresGrad);   
+  return make_shared<Tensor>(dims, initValues, requiresGrad);
 }
 
 shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, 
                                            const vector<ftype>& initValues, 
                                            Device d, 
                                            bool requiresGrad){
-  return make_shared<Tensor>(dims, std::move(initValues), d, requiresGrad);   
+  return make_shared<Tensor>(dims, initValues, d, requiresGrad);   
 }

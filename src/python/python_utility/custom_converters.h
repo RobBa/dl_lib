@@ -25,8 +25,8 @@ namespace converters {
    * internal types, such as tensorDim_t.
    */
   template<typename T>
-  requires ( std::is_integral_v< std::remove_const_t<T> > || 
-             std::is_floating_point_v< std::remove_const_t<T> >)
+  requires ( std::is_integral_v< T > || 
+             std::is_floating_point_v< T >)
   struct PyListToVectorConverter {
     using rvalueFromPythonData = boost::python::converter::rvalue_from_python_stage1_data;
 
@@ -41,7 +41,7 @@ namespace converters {
    * internal types, such as tensorDim_t.
    */
   template<typename T>
-  requires ( std::is_integral_v< std::remove_const_t<T> >)
+  requires ( std::is_integral_v< T >)
   struct PyIntToIntegralValueConverter {
     using rvalueFromPythonData = boost::python::converter::rvalue_from_python_stage1_data;
 
@@ -57,8 +57,8 @@ namespace converters {
 /******************************************************************************************/
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> > || 
-           std::is_floating_point_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T > || 
+           std::is_floating_point_v< T >)
 converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
   using namespace boost::python;
 
@@ -71,8 +71,8 @@ converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> > || 
-           std::is_floating_point_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T > || 
+           std::is_floating_point_v< T >)
 void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
   
@@ -83,8 +83,8 @@ void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> > || 
-           std::is_floating_point_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T > || 
+           std::is_floating_point_v< T >)
 void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
 
   using namespace boost::python;
@@ -101,11 +101,11 @@ void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalue
   // Fill it with converted values
   for (int i = 0; i < len(py_list); ++i) {
 
-    if constexpr(std::is_integral_v< std::remove_const_t<T> >){
+    if constexpr(std::is_integral_v< T >){
       auto val = extract<int>(py_list[i]);
       vec->push_back(static_cast<T>(val));
     }
-    else if constexpr(std::is_floating_point_v< std::remove_const_t<T> >) {
+    else if constexpr(std::is_floating_point_v< T >) {
       auto val = extract<ftype>(py_list[i]);
       vec->push_back(static_cast<T>(val));
     }
@@ -116,7 +116,7 @@ void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalue
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T >)
 converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
   using namespace boost::python;
 
@@ -129,7 +129,7 @@ converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T >)
 void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
 
@@ -140,7 +140,7 @@ void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_pt
 }
 
 template<typename T>
-requires ( std::is_integral_v< std::remove_const_t<T> >)
+requires ( std::is_integral_v< T >)
 void converters::PyIntToIntegralValueConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
   using namespace boost::python;
 

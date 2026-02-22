@@ -79,6 +79,16 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         return (*fPtr)(self.getSharedPtr(), other.getSharedPtr()); \
     }
 
+    #define WRAP_FREE_FUNC_6(fPtr, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr(), val); \
+    }
+
+    #define WRAP_FREE_FUNC_7(fPtr, T) \
+    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(val, self.getSharedPtr()); \
+    }
+
     // classes
     class_<Dimension>("Dimension", no_init)
         .add_property("list", &Dimension::getItem)
@@ -100,24 +110,78 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def(init<const std::vector<tensorDim_t>&, Device, optional<bool> >())
         .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, optional<bool> >())
         .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, Device, optional<bool> >())
+/*         .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>)).staticmethod("ones")
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device)).staticmethod("ones")
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool)).staticmethod("ones")
+        .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("ones") */
+/*         .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor00,
+                default_call_policies(),
+                (arg("dims"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor01,
+                default_call_policies(),
+                (arg("dims"), arg("requiresGrad"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor10,
+                default_call_policies(),
+                (arg("dims"), arg("device"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor11,
+                default_call_policies(),
+                (arg("dims"), arg("device"), arg("requiresGrad"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor20,
+                default_call_policies(),
+                (arg("dims"), arg("initValues"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor21,
+                default_call_policies(),
+                (arg("dims"), arg("initValues"), arg("requiresGrad"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor30,
+                default_call_policies(),
+                (arg("dims"), arg("initValues"), arg("device"))
+            ))
+        .def("__init__", make_constructor(
+                Py_DataModeling::createSharedTensor31,
+                default_call_policies(),
+                (arg("dims"), arg("initValues"), args("device"), arg("requiresGrad"))
+            )) */
+
+        // properties
         .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
         .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
         .add_property("grads", make_function(&Tensor::getGrads, return_internal_reference<>()))
+
+        // operators
         .def("__str__", &Py_Util::toString<Tensor>)
         .def("__repr__", &Py_Util::toString<Tensor>)
         .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor1, tensorSize_t))
         .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor2, std::vector<tensorDim_t>))
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
-        .def("getvalue", &Py_DataModeling::tensorGetItem)
-        .def("__matmul__", WRAP_TENSOR_METHOD_1(matmul))
-        .def("__add__", WRAP_TENSOR_METHOD_1(operator+)) // elementwise add
-        .def("__mul__", WRAP_FREE_FUNC_5(&Py_DataModeling::elementwisemul)) // elementwise mult
-        .def("__mul__", WRAP_SCALAR(operator*, float))
-        .def("__rmul__", WRAP_SCALAR_REVERSE(*, float))
-        .def("__add__", WRAP_SCALAR(operator+, float))
-        .def("__radd__", WRAP_SCALAR_REVERSE(+, float))
-        .def("__sub__", WRAP_SCALAR(operator-, float))
-        .def("__truediv__", WRAP_SCALAR(operator/, float))
+
+        // arithmetics
+        .def("__matmul__", WRAP_FREE_FUNC_5(Py_DataModeling::matmul))
+        .def("__add__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwiseadd)) // elementwise add
+        .def("__add__", WRAP_FREE_FUNC_6(Py_DataModeling::scalaradd, ftype))
+        .def("__radd__", WRAP_FREE_FUNC_7(Py_DataModeling::rscalaradd, ftype))
+
+        .def("__mul__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwisemul)) // elementwise mult
+        .def("__mul__", WRAP_FREE_FUNC_6(Py_DataModeling::scalarmul, ftype))
+        .def("__rmul__", WRAP_FREE_FUNC_7(Py_DataModeling::rscalarmul, ftype))
+        
+        .def("__sub__", WRAP_FREE_FUNC_6(Py_DataModeling::scalarsub, ftype))
+        .def("__truediv__", WRAP_FREE_FUNC_6(Py_DataModeling::scalardiv, ftype))
+
+        // member functions
+        .def("getitem", &Py_DataModeling::tensorGetItem)
         .def("reset", Py_DataModeling::reset1)
         .def("reset", Py_DataModeling::reset2)
         .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1, int, int))
