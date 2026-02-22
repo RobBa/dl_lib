@@ -529,7 +529,7 @@ void Tensor::backward() {
 /**
  * @brief Get gradients
  */
-const shared_ptr<Tensor>& Tensor::getGrads() const {
+shared_ptr<const Tensor> Tensor::getGrads() const {
   if(!grads){
     __throw_runtime_error("Tensor has no gradients.");
   }
@@ -889,7 +889,7 @@ ftype Tensor::getItem(const std::vector<tensorDim_t>& idx) const {
  * @brief Special getter, indexes the contained underlying array linearly.
  * Can lead to unexpected results in multidimensional tensors.
  */
-ftype Tensor::getItem(tensorDim_t idx) const {
+ftype Tensor::getItem(tensorSize_t idx) const {
   return (*values)[idx];
 }
 

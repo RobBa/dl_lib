@@ -23,7 +23,7 @@
 #include <boost/python/enum.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
-BOOST_PYTHON_MODULE(py_data_modeling)
+BOOST_PYTHON_MODULE(_core)
 {
     using namespace boost::python;
 
@@ -84,10 +84,41 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         return (*fPtr)(val, self.getSharedPtr()); \
     }
 
+    #define WRAP_FREE_FUNC_7(fPtr) \
+    +[](const Tensor& self) -> std::shared_ptr<Tensor> { \
+        return (*fPtr)(self.getSharedPtr()); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_1(method) \
+    +[](const Tensor& self, int v1) -> ftype { \
+        return self.method(static_cast<tensorSize_t>(v1)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_2(method) \
+    +[](const Tensor& self, int v1, int v2) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_3(method) \
+    +[](const Tensor& self, int v1, int v2, int v3) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2), \
+                           static_cast<tensorDim_t>(v3)); \
+    }
+
+    #define WRAP_FUNC_AND_CONVERT_DTYPE_4(method) \
+    +[](const Tensor& self, int v1, int v2, int v3, int v4) -> ftype { \
+        return self.method(static_cast<tensorDim_t>(v1), static_cast<tensorDim_t>(v2), \
+                           static_cast<tensorDim_t>(v3), static_cast<tensorDim_t>(v4)); \
+    }
+
     // classes
     class_<Dimension>("Dimension", no_init)
         .add_property("list", &Dimension::getItem)
         .def("__str__", &Py_Util::toString<Dimension>)
+        .def("__eq__", Py_DataModeling::dimEquals1)
+        .def("__eq__", Py_DataModeling::dimEquals2)
+        .def("__ne__", Py_DataModeling::nDimEquals1)
+        .def("__ne__", Py_DataModeling::nDimEquals2)
     ;
 
     enum_<Device>("Device")
@@ -96,8 +127,11 @@ BOOST_PYTHON_MODULE(py_data_modeling)
     ;
 
     // register implicit dtype conversion
-    converters::PyListToVectorConverter<tensorDim_t>();
-    converters::PyListToVectorConverter<ftype>();
+    custom_converters::PyListToVectorConverter<tensorDim_t>();
+    custom_converters::PyListToVectorConverter<ftype>();
+
+    // to convert std::shared_ptr<const Tensor> to std::shared_ptr<Tensor>> in Python
+    boost::python::register_ptr_to_python< std::shared_ptr<const Tensor> >();
 
     // we manage via shared_ptr, since we deleted copy-ctor
     class_<Tensor, std::shared_ptr<Tensor>, boost::noncopyable>("Tensor", no_init)
@@ -125,11 +159,13 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         // properties
         .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
         .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
-        .add_property("grads", make_function(&Tensor::getGrads, return_internal_reference<>()))
+        .add_property("grads", make_function(&Tensor::getGrads))
+        .add_property("requiresGrad", &Tensor::getRequiresGrad, &Tensor::setRequiresGrad)
 
         // operators
         .def("__str__", &Py_Util::toString<Tensor>)
         .def("__repr__", &Py_Util::toString<Tensor>)
+        .def("__len__", &Tensor::getSize)
         .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor1, tensorSize_t))
         .def("__getitem__", WRAP_FREE_FUNC_4(&Py_DataModeling::getItemAsTensor2, std::vector<tensorDim_t>))
         .def("__setitem__", &Py_DataModeling::tensorSetItem)
@@ -148,13 +184,22 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def("__truediv__", WRAP_FREE_FUNC_4(Py_DataModeling::scalardiv, ftype))
 
         // member functions
-        .def("getitem", &Py_DataModeling::tensorGetItem)
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_1(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_2(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_3(Tensor::getItem))
+        .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_4(Tensor::getItem))
+        .def("getitem", Py_DataModeling::getItemVector) // the vector arg
+
+        .def("sum", WRAP_FREE_FUNC_7(&(graph::sumTensor)))
+        
         .def("reset", Py_DataModeling::reset1)
         .def("reset", Py_DataModeling::reset2)
+
         .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1, int, int))
         .def("transpose", WRAP_FREE_MEMBER_FUNC_2(Py_DataModeling::transpose2, int, int, bool))
         .def("transposeThis", Py_DataModeling::transposeThis1)
         .def("transposeThis", Py_DataModeling::transposeThis2)
+        
         .def("backward", &Tensor::backward)
     ;
 

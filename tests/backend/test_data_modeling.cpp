@@ -16,6 +16,19 @@
 
 #include <stdexcept>
 
+TEST(TensorOpsTest, TestCtor) {
+  auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CPU, false);
+
+  ASSERT_EQ(t.getDims(), Dimension({2, 2}));
+  ASSERT_EQ(t.getDevice(), Device::CPU);
+  ASSERT_TRUE(!t.getRequiresGrad());
+
+  ASSERT_DOUBLE_EQ(t.getItem(0, 0), 2.0);
+  ASSERT_DOUBLE_EQ(t.getItem(0, 1), 3.0);
+  ASSERT_DOUBLE_EQ(t.getItem(1, 0), 4.0);
+  ASSERT_DOUBLE_EQ(t.getItem(1, 1), 5.0);
+}
+
 TEST(TensorOpsTest, ScalarAddWorks) {
   auto t1 = TensorFunctions::Ones({2, 2}, false);
 
@@ -27,6 +40,27 @@ TEST(TensorOpsTest, ScalarAddWorks) {
       ASSERT_DOUBLE_EQ(res.getItem(i, j), sum);
     }
   }
+}
+
+TEST(TensorOpsTest, TensorAddWorks) {
+  auto t1 = TensorFunctions::Ones({2, 2}, false);
+  auto t2 = TensorFunctions::Ones({2, 2}, false) * 4;
+
+  auto res = t1 + t2;
+
+  constexpr ftype sum = 5.0;
+  for(auto i=0; i<t1.getDims().getItem(0); i++) {
+    for(auto j=0; j<t1.getDims().getItem(1); j++) {
+      ASSERT_DOUBLE_EQ(res.getItem(i, j), sum);
+    }
+  }
+}
+
+TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
+  auto t1 = TensorFunctions::Ones({2, 2}, false);
+  auto t2 = TensorFunctions::Ones({2, 3}, false) * 4;
+
+  EXPECT_THROW(t1 + t2, std::invalid_argument);
 }
 
 TEST(TensorOpsTest, ScalarMulWorks) {
@@ -55,14 +89,6 @@ TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
       ASSERT_DOUBLE_EQ(res.getItem(i, j), resSum);
     }
   }
-}
-
-TEST(TensorOpsTest, MatrixAddThrowsOnDimensionMismatch) {
-  constexpr ftype factor = 0.5;
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 3}, false) * 0.5;
-    
-  EXPECT_THROW(t1 + t2, std::invalid_argument);
 }
 
 TEST(TensorOpsTest, ElementwiseMulGivesCorrectResults) {
@@ -159,33 +185,10 @@ TEST(TensorOpsTest, MatMulBroadcastsOn1DTensor) {
 }
 
 TEST(TensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
-  auto t1 = Tensor({2, 2}, false);
-  auto t2 = Tensor({2, 2}, false);
+  auto t1 = TensorFunctions::Ones({2, 2}, false);
+  auto t2 = TensorFunctions::Ones({3, 2}, false);
 
-  auto cmpRes = Tensor({2, 2}, false);
-
-  auto populateTensor = [](Tensor& t, ftype v1, ftype v2, ftype v3, ftype v4) {
-    t.setItem(v1, {0, 0});
-    t.setItem(v2, {0, 1});
-    t.setItem(v3, {1, 0});
-    t.setItem(v4, {1, 1});
-  };
-
-  populateTensor(t1, 1, 2, 3, 4);
-  populateTensor(t2, 5, 6, 7, 8);
-  populateTensor(cmpRes, 19, 22, 43, 50);
-
-  auto res = t1.matmul(t2);
-  
-  auto expectedDims = std::vector<tensorDim_t>{2, 2};
-  ASSERT_EQ(res.getDims().toVector(), expectedDims);
-
-  constexpr ftype resSum = 3.0;
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), cmpRes.getItem(i, j));
-    }
-  }
+  EXPECT_THROW(t1.matmul(t2), std::runtime_error);
 }
 
 TEST(TensorOpsTest, TransposeWorksAsIntended1) {

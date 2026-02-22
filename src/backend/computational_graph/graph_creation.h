@@ -16,6 +16,7 @@
 #include <memory>
 
 namespace graph {
+  // Artithmetic operations
   std::shared_ptr<Tensor> mul(const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right);
   std::shared_ptr<Tensor> mul(const std::shared_ptr<Tensor> left, ftype scalar); 
   std::shared_ptr<Tensor> mul(ftype scalar, const std::shared_ptr<Tensor> left); 
@@ -29,7 +30,11 @@ namespace graph {
   std::shared_ptr<Tensor> sub(const std::shared_ptr<Tensor> left, ftype scalar);
   std::shared_ptr<Tensor> div(const std::shared_ptr<Tensor> left, ftype scalar);
 
+  // Getter methods
   std::shared_ptr<Tensor> get(const std::shared_ptr<Tensor>& t, tensorSize_t idx);
   std::shared_ptr<Tensor> get(const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx);
+
+  // Composite operations
+  std::shared_ptr<Tensor> sumTensor(const std::shared_ptr<Tensor> t);
 }
  

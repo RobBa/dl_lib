@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "data_modeling/dim_type.h"
+
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"
 #include "computational_graph/graph_creation.h"
@@ -21,6 +23,20 @@
 #include <memory>
 
 namespace Py_DataModeling {
+
+    /*********************************************************************************************************
+    ********************************************** Dimension *************************************************
+    *********************************************************************************************************/
+
+    inline bool (Dimension::*dimEquals1)(const Dimension&) const                   = &Dimension::operator==;
+    inline bool (Dimension::*dimEquals2)(const std::vector<tensorDim_t>&) const    = &Dimension::operator==;
+
+    inline bool (Dimension::*nDimEquals1)(const Dimension&) const                  = &Dimension::operator!=;
+    inline bool (Dimension::*nDimEquals2)(const std::vector<tensorDim_t>&) const   = &Dimension::operator!=;
+    /*********************************************************************************************************
+    *********************************************** Tensor ***************************************************
+    *********************************************************************************************************/
+
     ftype tensorGetItem(const Tensor& self, boost::python::object index);
     void tensorSetItem(Tensor& self, boost::python::object index, ftype value);
 
@@ -50,28 +66,30 @@ namespace Py_DataModeling {
         return TensorFunctions::Gaussian(std::move(dims), d); 
     }
 
-    inline Tensor    (*Ones0)(std::vector<tensorDim_t>)                                 = &OnesWrapper0;
-    inline Tensor    (*Ones1)(std::vector<tensorDim_t>, Device)                         = &OnesWrapper1;
-    inline Tensor    (*Ones2)(std::vector<tensorDim_t>, const bool)                     = &(TensorFunctions::Ones);
-    inline Tensor    (*Ones3)(std::vector<tensorDim_t>, Device, const bool)             = &(TensorFunctions::Ones);
+    inline Tensor    (*Ones0)(std::vector<tensorDim_t>)                                             = &OnesWrapper0;
+    inline Tensor    (*Ones1)(std::vector<tensorDim_t>, Device)                                     = &OnesWrapper1;
+    inline Tensor    (*Ones2)(std::vector<tensorDim_t>, const bool)                                 = &(TensorFunctions::Ones);
+    inline Tensor    (*Ones3)(std::vector<tensorDim_t>, Device, const bool)                         = &(TensorFunctions::Ones);
 
-    inline Tensor    (*Zeros0)(std::vector<tensorDim_t>)                                = &ZerosWrapper0;
-    inline Tensor    (*Zeros1)(std::vector<tensorDim_t>, Device)                        = &ZerosWrapper1;
-    inline Tensor    (*Zeros2)(std::vector<tensorDim_t>, const bool)                    = &(TensorFunctions::Zeros);
-    inline Tensor    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)            = &(TensorFunctions::Zeros);
+    inline Tensor    (*Zeros0)(std::vector<tensorDim_t>)                                            = &ZerosWrapper0;
+    inline Tensor    (*Zeros1)(std::vector<tensorDim_t>, Device)                                    = &ZerosWrapper1;
+    inline Tensor    (*Zeros2)(std::vector<tensorDim_t>, const bool)                                = &(TensorFunctions::Zeros);
+    inline Tensor    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)                        = &(TensorFunctions::Zeros);
 
-    inline Tensor    (*Gaussian0)(std::vector<tensorDim_t>)                             = &GaussianWrapper0;
-    inline Tensor    (*Gaussian1)(std::vector<tensorDim_t>, Device)                     = &GaussianWrapper1;
-    inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, const bool)                 = &(TensorFunctions::Gaussian);
-    inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, Device, const bool)         = &(TensorFunctions::Gaussian);
+    inline Tensor    (*Gaussian0)(std::vector<tensorDim_t>)                                         = &GaussianWrapper0;
+    inline Tensor    (*Gaussian1)(std::vector<tensorDim_t>, Device)                                 = &GaussianWrapper1;
+    inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, const bool)                             = &(TensorFunctions::Gaussian);
+    inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, Device, const bool)                     = &(TensorFunctions::Gaussian);
 
-    inline void    (Tensor::*reset1)(const ftype)                                       = &Tensor::reset;
-    inline void    (Tensor::*reset2)(const utility::InitClass)                          = &Tensor::reset;
+    inline void    (Tensor::*reset1)(const ftype)                                                   = &Tensor::reset;
+    inline void    (Tensor::*reset2)(const utility::InitClass)                                      = &Tensor::reset;
 
-    inline void    (Tensor::*transposeThis1)()                                          = &Tensor::transposeThis;
-    inline void    (Tensor::*transposeThis2)(int, int)                                  = &Tensor::transposeThis;
-    inline Tensor  (Tensor::*transpose1)(int, int) const                                = &Tensor::transpose;
-    inline Tensor  (Tensor::*transpose2)(int, int, bool) const                          = &Tensor::transpose;
+    inline void    (Tensor::*transposeThis1)()                                                      = &Tensor::transposeThis;
+    inline void    (Tensor::*transposeThis2)(int, int)                                              = &Tensor::transposeThis;
+    inline Tensor  (Tensor::*transpose1)(int, int) const                                            = &Tensor::transpose;
+    inline Tensor  (Tensor::*transpose2)(int, int, bool) const                                      = &Tensor::transpose;
+
+    inline ftype   (Tensor::*getItemVector)(const std::vector<tensorDim_t>&) const                       = &Tensor::getItem;
 
     /*********************************************************************************************************
     ***************************************** Graph creation *************************************************

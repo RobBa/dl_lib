@@ -219,7 +219,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         void backward();
 
         bool hasGrads() const noexcept { return grads!=nullptr; }
-        const std::shared_ptr<Tensor>& getGrads() const;
+        std::shared_ptr<const Tensor> getGrads() const;
 
         void transposeThis() noexcept;
         void transposeThis(int dim1, int dim2) noexcept;
@@ -232,7 +232,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         // for convenience we provide some simple getters
-        ftype getItem(tensorDim_t idx) const;
+        ftype getItem(tensorSize_t idx) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;

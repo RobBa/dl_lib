@@ -22,18 +22,6 @@ gtest_discover_tests(unit_tests_backend)
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
     # replace the placeholder variables and copy resulting file in .py file
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/python/test_tensorops.py.in
-        ${CMAKE_CURRENT_BINARY_DIR}/python/test_tensorops.py
-        @ONLY
-    )
-
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/python/test_autograd.py.in
-        ${CMAKE_CURRENT_BINARY_DIR}/python/test_autograd.py
-        @ONLY
-    )
-
     add_test(
         NAME python_tests
         COMMAND ${Python3_EXECUTABLE} -m pytest 

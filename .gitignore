@@ -2,4 +2,5 @@ build
 .vscode
 unit_tests_backend
 *.txt
-python_modules
+python_lib/dl_lib/_compiled
+*__pycache__*

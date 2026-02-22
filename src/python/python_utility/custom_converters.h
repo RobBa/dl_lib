@@ -19,7 +19,7 @@
 #include <vector>
 #include <limits>
 
-namespace converters {
+namespace custom_converters {
   /**
    * @brief We use this class to convert Python lists of int into vectors of
    * internal types, such as tensorDim_t.
@@ -59,7 +59,7 @@ namespace converters {
 template<typename T>
 requires ( std::is_integral_v< T > || 
            std::is_floating_point_v< T >)
-converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
+custom_converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
   using namespace boost::python;
 
   // register converter with Boost.Python's conversion system
@@ -73,7 +73,7 @@ converters::PyListToVectorConverter<T>::PyListToVectorConverter() {
 template<typename T>
 requires ( std::is_integral_v< T > || 
            std::is_floating_point_v< T >)
-void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
+void* custom_converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
   
   if (!PySequence_Check(obj_ptr)) 
@@ -85,7 +85,7 @@ void* converters::PyListToVectorConverter<T>::convertible(PyObject* obj_ptr) {
 template<typename T>
 requires ( std::is_integral_v< T > || 
            std::is_floating_point_v< T >)
-void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
+void custom_converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
 
   using namespace boost::python;
 
@@ -117,7 +117,7 @@ void converters::PyListToVectorConverter<T>::construct(PyObject* obj_ptr, rvalue
 
 template<typename T>
 requires ( std::is_integral_v< T >)
-converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
+custom_converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
   using namespace boost::python;
 
   // register converter with Boost.Python's conversion system
@@ -130,7 +130,7 @@ converters::PyIntToIntegralValueConverter<T>::PyIntToIntegralValueConverter() {
 
 template<typename T>
 requires ( std::is_integral_v< T >)
-void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_ptr) {
+void* custom_converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_ptr) {
   using namespace boost::python;
 
   if (!PyLong_Check(obj_ptr)) 
@@ -141,7 +141,7 @@ void* converters::PyIntToIntegralValueConverter<T>::convertible(PyObject* obj_pt
 
 template<typename T>
 requires ( std::is_integral_v< T >)
-void converters::PyIntToIntegralValueConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
+void custom_converters::PyIntToIntegralValueConverter<T>::construct(PyObject* obj_ptr, rvalueFromPythonData* data) {
   using namespace boost::python;
 
   // Extract Python int

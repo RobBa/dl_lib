@@ -125,3 +125,15 @@ shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, const vector<tensorDi
   }
   return res;
 }
+
+/**
+ * @brief Takes the sum of the whole tensor, then returns result as vector.
+ */
+shared_ptr<Tensor> graph::sumTensor(const shared_ptr<Tensor> t) {
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{0.0}, 
+                                 t->getDevice(), t->getRequiresGrad());
+  for(tensorSize_t i=0; i<t->getSize(); i++){
+    res = graph::add(res, graph::get(t, i));
+  }
+  return res;
+}

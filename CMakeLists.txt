@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # to link shared libs. TODO: can we get rid of this, as it may cost runtime?
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(PYTHON_MODULE_DIR "${CMAKE_SOURCE_DIR}/python_modules")
+set(PYTHON_MODULE_DIR "${CMAKE_SOURCE_DIR}/python_lib/dl_lib/_compiled")
 
 # to enable find boost, see https://stackoverflow.com/a/79147222
 if(POLICY CMP0167)
