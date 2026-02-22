@@ -81,11 +81,6 @@ BOOST_PYTHON_MODULE(py_data_modeling)
 
     #define WRAP_FREE_FUNC_6(fPtr, T) \
     +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
-        return (*fPtr)(self.getSharedPtr(), val); \
-    }
-
-    #define WRAP_FREE_FUNC_7(fPtr, T) \
-    +[](const Tensor& self, T val) -> std::shared_ptr<Tensor> { \
         return (*fPtr)(val, self.getSharedPtr()); \
     }
 
@@ -110,50 +105,22 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         .def(init<const std::vector<tensorDim_t>&, Device, optional<bool> >())
         .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, optional<bool> >())
         .def(init<const std::vector<tensorDim_t>&, const std::vector<ftype>&, Device, optional<bool> >())
-/*         .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>)).staticmethod("ones")
-        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device)).staticmethod("ones")
-        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool)).staticmethod("ones")
-        .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("ones") */
-/*         .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor00,
-                default_call_policies(),
-                (arg("dims"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor01,
-                default_call_policies(),
-                (arg("dims"), arg("requiresGrad"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor10,
-                default_call_policies(),
-                (arg("dims"), arg("device"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor11,
-                default_call_policies(),
-                (arg("dims"), arg("device"), arg("requiresGrad"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor20,
-                default_call_policies(),
-                (arg("dims"), arg("initValues"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor21,
-                default_call_policies(),
-                (arg("dims"), arg("initValues"), arg("requiresGrad"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor30,
-                default_call_policies(),
-                (arg("dims"), arg("initValues"), arg("device"))
-            ))
-        .def("__init__", make_constructor(
-                Py_DataModeling::createSharedTensor31,
-                default_call_policies(),
-                (arg("dims"), arg("initValues"), args("device"), arg("requiresGrad"))
-            )) */
+        
+        // static creation methods
+        .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>))
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device))
+        .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool))
+        .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("ones")
+
+        .def("zeros", WRAP_FREE_FUNC_1(Py_DataModeling::Zeros0, std::vector<tensorDim_t>))
+        .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device))
+        .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool))
+        .def("zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("zeros")
+
+        .def("gauss", WRAP_FREE_FUNC_1(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>))
+        .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device))
+        .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, const bool))
+        .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("gauss")
 
         // properties
         .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
@@ -170,15 +137,15 @@ BOOST_PYTHON_MODULE(py_data_modeling)
         // arithmetics
         .def("__matmul__", WRAP_FREE_FUNC_5(Py_DataModeling::matmul))
         .def("__add__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwiseadd)) // elementwise add
-        .def("__add__", WRAP_FREE_FUNC_6(Py_DataModeling::scalaradd, ftype))
-        .def("__radd__", WRAP_FREE_FUNC_7(Py_DataModeling::rscalaradd, ftype))
+        .def("__add__", WRAP_FREE_FUNC_4(Py_DataModeling::scalaradd, ftype))
+        .def("__radd__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalaradd, ftype))
 
         .def("__mul__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwisemul)) // elementwise mult
-        .def("__mul__", WRAP_FREE_FUNC_6(Py_DataModeling::scalarmul, ftype))
-        .def("__rmul__", WRAP_FREE_FUNC_7(Py_DataModeling::rscalarmul, ftype))
+        .def("__mul__", WRAP_FREE_FUNC_4(Py_DataModeling::scalarmul, ftype))
+        .def("__rmul__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalarmul, ftype))
         
-        .def("__sub__", WRAP_FREE_FUNC_6(Py_DataModeling::scalarsub, ftype))
-        .def("__truediv__", WRAP_FREE_FUNC_6(Py_DataModeling::scalardiv, ftype))
+        .def("__sub__", WRAP_FREE_FUNC_4(Py_DataModeling::scalarsub, ftype))
+        .def("__truediv__", WRAP_FREE_FUNC_4(Py_DataModeling::scalardiv, ftype))
 
         // member functions
         .def("getitem", &Py_DataModeling::tensorGetItem)

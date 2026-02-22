@@ -74,50 +74,6 @@ namespace Py_DataModeling {
     inline Tensor  (Tensor::*transpose2)(int, int, bool) const                          = &Tensor::transpose;
 
     /*********************************************************************************************************
-    ******************************************* Constructors *************************************************
-    *********************************************************************************************************/
-
-    inline auto createSharedTensor0Wrapper(const std::vector<tensorDim_t>& dims) {
-        return TensorFunctions::makeSharedTensor(dims);
-    }
-
-    inline auto createSharedTensor1Wrapper(const std::vector<tensorDim_t>& dims, Device d) {
-        return TensorFunctions::makeSharedTensor(dims, d);
-    }
-
-    inline auto createSharedTensor2Wrapper(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues) {
-        return TensorFunctions::makeSharedTensor(dims, initValues);
-    }
-
-    inline auto createSharedTensor3Wrapper(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d) {
-        return TensorFunctions::makeSharedTensor(dims, initValues, d);
-    }
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor00)
-    (const std::vector<tensorDim_t>& dims)                                              = &createSharedTensor0Wrapper;
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor01)
-    (const std::vector<tensorDim_t>& dims, bool)                                        = &(TensorFunctions::makeSharedTensor);
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor10)
-    (const std::vector<tensorDim_t>& dims, Device)                                      = &createSharedTensor1Wrapper;
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor11)
-    (const std::vector<tensorDim_t>& dims, Device, bool)                                = &(TensorFunctions::makeSharedTensor);
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor20)
-    (const std::vector<tensorDim_t>& dims, const std::vector<ftype>&)                   = &createSharedTensor2Wrapper;
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor21)
-    (const std::vector<tensorDim_t>& dims, const std::vector<ftype>&, bool)             = &(TensorFunctions::makeSharedTensor);
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor30)
-    (const std::vector<tensorDim_t>& dims, const std::vector<ftype>&, Device)           = &createSharedTensor3Wrapper;
-
-    inline std::shared_ptr<Tensor> (*createSharedTensor31)
-    (const std::vector<tensorDim_t>& dims, const std::vector<ftype>&, Device, bool)     = &(TensorFunctions::makeSharedTensor);
-
-    /*********************************************************************************************************
     ***************************************** Graph creation *************************************************
     *********************************************************************************************************/
 
