@@ -6,6 +6,10 @@ A from-scratch deep learning framework in modern C++ with Python bindings.
 
 Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
 
+## Running examples
+
+For some examples on Python interface, see tests/python.
+
 ## Features
 
 - **Computational Graph**: Dynamic graph construction with automatic differentiation
