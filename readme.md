@@ -49,6 +49,17 @@ make
 ctest
 ```
 
+## Running Unit Tests
+
+Compile with building tests enabled: 
+
+```bash
+mkdir build && cd build
+cmake -DBUILD_TESTS=On ..
+make
+ctest 
+```
+
 ## Required
 
 - Compiler capable of C++20 at least (we test with gcc 12.3.0)
