@@ -348,6 +348,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
  * @brief Matrix multiplication.
  */
 Tensor Tensor::matmul(const Tensor& other) const {
+  assert(values->getDevice()==other.values->getDevice());
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
@@ -356,36 +357,45 @@ Tensor Tensor::matmul(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  // TODO: check what to do about these two gradients and if you want broadcasting here at all
-  if(other.dims.getSize()==1){
-    return multiplyScalar(other, *this);
-  }
-  else if(dims.getSize()==1){
-    return multiplyScalar(*this, other); 
-  }
-  
   return matMulImpl(*this, other);
 }
 
 /**
- * @brief Elementise addition.
+ * @brief Addition of two tensors. This works in two ways: 
+ * 1. Shapes of the two tensors are identical. In this case it is simple 
+ * elementwise addition.
+ * 2. The second tensor is a vector. In this case broadcast it. We assume 
+ * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
 Tensor Tensor::operator+(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Multiplication not implemented on CUDA");
+    __throw_invalid_argument("Addition not implemented on CUDA");
   }
 
-  if(this->dims != other.dims){
-    __throw_invalid_argument("Tensors need same dimensions");
+  if(this->dims != other.dims && 
+    !(other.dims.nDims() == 1 && other.dims.getItem(0) == dims.getItem(-1))){
+    __throw_invalid_argument("Tensors need matching dimensions");
   }
   else if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  assert(values->getSize()==other.values->getSize());
-  Tensor res(dims, values->getDevice(), false);
-  for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*res.values)[i] = (*values)[i] + (*other.values)[i];
+  Tensor res(dims, values->getDevice());
+
+  if(dims==other.dims){
+    // elementwise add
+    for(tensorSize_t i=0; i<values->getSize(); i++){
+      (*res.values)[i] = (*values)[i] + (*other.values)[i];
+    }
+  }
+  else { [[likely]]
+    // broadcasted add
+    const auto stride = static_cast<tensorSize_t>(other.dims.getItem(0));
+    for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
+      for(tensorSize_t i=0; i<stride; i++){
+        (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+      }
+    }
   }
 
   return res;
@@ -402,6 +412,7 @@ Tensor Tensor::add(const Tensor& other) const {
  * @brief Elementwise multiplication.
  */
 Tensor Tensor::operator*(const Tensor& other) const {
+  assert(values->getDevice()==other.values->getDevice());
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }

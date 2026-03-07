@@ -110,6 +110,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
   nodeQueue.push(root);
   edgeCounts[root] = 0;
 
+  // TODO: this about your cgNode design and requiresGrad. We want to freeze layers, too
   auto updateQueueAndEdgeCounts = [&nodeQueue, &edgeCounts](Tensor* t){
     if(!edgeCounts.contains(t)) {
       edgeCounts[t] = 1;

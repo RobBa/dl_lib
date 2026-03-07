@@ -13,6 +13,7 @@
 #include "utility/safe_arithmetics.h"
 
 #include <utility>
+#include <sstream>
 
 using namespace std;
 
@@ -80,6 +81,28 @@ Dimension& Dimension::operator=(Dimension&& other) noexcept {
   dims = move(other.dims);
   size = other.size;
   return *this;
+}
+
+/**
+ * @brief This method gets interesting when we want to get a copy of 
+ * this dimension instance, but we collapsed one of the dimensions.
+ * E.g. when we have a tensor, and we sum over one of its dimensions 
+ * to get a new tensor, then this will be the new dimensions of the result.
+ * 
+ * Example: t=Tensor with dims (b-size, d). We sum over all batches and 
+ * get a new tensor tSum=Tensor with dims (d).
+ * 
+ * @param idx The dimension to collapse.
+ */
+Dimension Dimension::collapseDimension(int idx) const {
+  auto mappedIdx = getItem(idx);
+
+  std::vector<tensorDim_t> newDims;
+  newDims.reserve(dims.size() - 1);
+  newDims.insert(newDims.end(), dims.begin(), dims.begin() + idx);
+  newDims.insert(newDims.end(), dims.begin() + idx + 1, dims.end());
+
+  return Dimension(newDims);
 }
 
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {

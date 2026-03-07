@@ -28,3 +28,7 @@ using ftype = float; // TODO: make compiler flag
  */ 
 using tensorDim_t = std::uint16_t;
 using tensorSize_t = std::uint32_t;
+
+// we assert this here so during conversions of tensorDim_t to 
+// tensorSize_t we do not need to cast explicitely
+static_assert(sizeof(tensorDim_t)<=sizeof(tensorSize_t));

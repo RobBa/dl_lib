@@ -11,11 +11,19 @@
 
 #include "add_node.h"
 
+#include "data_modeling/tensor_functions.h"
+
 using namespace std;
 using namespace graph;
 
 vector< shared_ptr<Tensor> > AddNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
-  auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
-  return {res, res};
+  auto weightGrad = make_shared<Tensor>(upstreamGrad.createDeepCopy());
+  
+  if(broadcasted){
+    auto biasGrad = make_shared<Tensor>(TensorFunctions::SumOverDims(*weightGrad));
+    return {weightGrad, biasGrad};
+  }
+  
+  return {weightGrad, weightGrad};
 }

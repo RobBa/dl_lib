@@ -47,6 +47,8 @@ class Dimension final {
 
     ~Dimension() noexcept = default;
 
+    Dimension collapseDimension(int idx) const;
+
     void resize(const std::vector<tensorDim_t>& dims);
     
     tensorSize_t getSize() const noexcept {
