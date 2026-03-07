@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 #include <vector>
 #include <variant>
@@ -35,14 +35,6 @@ namespace graph{
 
       explicit GetterNode(std::shared_ptr<Tensor> t, const multiDimIdx_t& idx) 
         : GraphNode({std::move(t)}), idx{idx} {}
-
-      GetterNode(const GetterNode& other) = delete;
-      GetterNode& operator=(const GetterNode& other) = delete;
-
-      GetterNode(GetterNode&& other) = default;
-      GetterNode& operator=(GetterNode&& other) = default;
-
-      ~GetterNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };}

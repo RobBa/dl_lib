@@ -11,21 +11,13 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 namespace graph {
   class ElementwiseMulNode final : public GraphNode {
     public:
       explicit ElementwiseMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {}
-
-      ElementwiseMulNode(const ElementwiseMulNode& other) = delete;
-      ElementwiseMulNode& operator=(const ElementwiseMulNode& other) = delete;
-
-      ElementwiseMulNode(ElementwiseMulNode&& other) = default;
-      ElementwiseMulNode& operator=(ElementwiseMulNode&& other) = default;
-
-      ~ElementwiseMulNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };

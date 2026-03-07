@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 #include <memory>
 
@@ -20,14 +20,6 @@ namespace graph {
     public:
       explicit ReLuNode(std::shared_ptr<Tensor> t) 
         : GraphNode({std::move(t)}) {}
-
-      ReLuNode(const ReLuNode& other) = delete;
-      ReLuNode& operator=(const ReLuNode& other) = delete;
-
-      ReLuNode(ReLuNode&& other) = default;
-      ReLuNode& operator=(ReLuNode&& other) = default;
-
-      ~ReLuNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };

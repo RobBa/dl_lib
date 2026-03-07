@@ -110,7 +110,6 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
   nodeQueue.push(root);
   edgeCounts[root] = 0;
 
-  // TODO: this about your cgNode design and requiresGrad. We want to freeze layers, too
   auto updateQueueAndEdgeCounts = [&nodeQueue, &edgeCounts](Tensor* t){
     if(!edgeCounts.contains(t)) {
       edgeCounts[t] = 1;
@@ -134,7 +133,7 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
 
   auto pushParentsWithGraphNode = [&nodeQueue, &edgeCounts](Tensor* t){
     const auto& parents = t->cgNode->getParents();
-    for(const auto& parent: parents){ // TODO: check for requiresGrad to save runtime?
+    for(const auto& parent: parents){
       if(!parent->cgNode)
         continue;
 
@@ -147,12 +146,15 @@ vector< Tensor* > TopologicalSort::reverseSort(Tensor* root) {
   };
 
   // pass 2: topological sort based on Kahn's algorithm
-  vector< Tensor* > res; // TODO: reserve capacity to save runtime?
+  vector< Tensor* > res;
+  res.reserve(nodeQueue.size());
+
   nodeQueue.push(root);
   while(!nodeQueue.empty()){
     auto tensorPtr = nodeQueue.front();
     nodeQueue.pop();
-
+    assert(tensorPtr->cgNode);
+    
     if(edgeCounts[tensorPtr]==0){
       pushParentsWithGraphNode(tensorPtr);
       res.push_back(tensorPtr);

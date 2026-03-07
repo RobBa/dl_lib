@@ -15,7 +15,7 @@
 
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"
-#include "computational_graph/graph_creation.h"
+#include "computational_graph/tensor_ops/graph_creation.h"
 
 #include <boost/python.hpp>
 #include <boost/python/object.hpp>

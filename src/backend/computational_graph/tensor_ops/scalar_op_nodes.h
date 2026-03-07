@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 namespace graph {
   class ScalarAddNode final : public GraphNode {  
@@ -37,14 +37,6 @@ namespace graph {
     public:
       explicit ScalarMulNode(std::shared_ptr<Tensor> t, ftype factor) 
         : GraphNode({std::move(t)}), factor{factor} {}
-
-      ScalarMulNode(const ScalarMulNode& other) = delete;
-      ScalarMulNode& operator=(const ScalarMulNode& other) = delete;
-
-      ScalarMulNode(ScalarMulNode&& other) = default;
-      ScalarMulNode& operator=(ScalarMulNode&& other) = default;
-
-      ~ScalarMulNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };

@@ -12,12 +12,17 @@
 #pragma once
 
 #include "activation_function_base.h"
-#include "tensor.h"
 
 namespace activation {
-  class LeakyReLU final : public ActivationFunctionBase {
+  class LeakyReLu final : public ActivationFunctionBase {
+    private:
+      const ftype eps;
+
     public:
-      Tensor operator()(Tensor& t) const noexcept override;
-      Tensor gradient(const Tensor& t) noexcept override;
+      LeakyReLu(ftype eps) : eps{eps}
+      { }
+
+      Tensor operator()(const Tensor& t) const noexcept override;
+      ftype getEps() const noexcept { return eps; }
   };
 }

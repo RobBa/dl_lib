@@ -1,19 +1,10 @@
-#include_directories(
-#        "${CMAKE_CURRENT_SOURCE_DIR}/computational_graph"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/data_modeling"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/utility"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/layers"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/system"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/training/loss_functions"
-#        "${CMAKE_CURRENT_SOURCE_DIR}/training/optimizers"
-#        )
-
 file(GLOB_RECURSE CORE_SOURCES
+    activation_functions/*.cpp
     computational_graph/*.cpp
     data_modeling/*.cpp
-    #layers/*.cpp
+    layers/*.cpp
     #networks/*.cpp
-    #training/*.cpp
+    training/*.cpp
     utility/*.cpp
     system/*.cpp
 )

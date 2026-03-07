@@ -237,6 +237,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
+        // non-const version of operator[] does not exist because of CUDA
+        ftype operator[](tensorSize_t idx) const;
+
         ftype getItem(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters

@@ -1,9 +1,9 @@
 /**
- * @file relu.h
+ * @file softmax.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-02-01
+ * @date 2026-03-07
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -12,12 +12,10 @@
 #pragma once
 
 #include "activation_function_base.h"
-#include "tensor.h"
 
 namespace activation {
-  class ReLU final : public ActivationFunctionBase {
+  class Softmax final : public ActivationFunctionBase {
     public:
-      Tensor operator()(Tensor& t) const noexcept override;
-      Tensor gradient(const Tensor& t) noexcept override;
+      Tensor operator()(const Tensor& t) const noexcept override;
   };
 }

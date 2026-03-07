@@ -418,12 +418,12 @@ Tensor Tensor::operator*(const Tensor& other) const {
   }
 
   // TODO: check what to do about these two gradients and if you want broadcasting here at all
-  if(other.dims.getSize()==1){
+/*   if(other.dims.getSize()==1){
     return multiplyScalar(other, *this);
   }
   else if(dims.getSize()==1){
     return multiplyScalar(*this, other);
-  }
+  } */
 
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
@@ -517,21 +517,19 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
-    if(tensor.cgNode){
-      auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
-      const auto& parents = tensor.cgNode->getParents();
+    auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
+    const auto& parents = tensor.cgNode->getParents();
 
-      for(size_t i=0; i<parents.size(); i++){
-        auto parent = parents[i];
-        if(!parent->requiresGrad){
-          continue;
-        }
-        else if(!parent->grads){
-          parent->grads = incomingGrads[i];
-        }
-        else{
-          *parent->grads->values += *incomingGrads[i]->values;
-        }
+    for(size_t i=0; i<parents.size(); i++){
+      auto parent = parents[i];
+      if(!parent->requiresGrad){
+        continue;
+      }
+      else if(!parent->grads){
+        parent->grads = incomingGrads[i];
+      }
+      else{
+        *parent->grads->values += *incomingGrads[i]->values;
       }
     }
   }
@@ -901,8 +899,16 @@ ftype Tensor::getItem(const std::vector<tensorDim_t>& idx) const {
  * Can lead to unexpected results in multidimensional tensors.
  */
 ftype Tensor::getItem(tensorSize_t idx) const {
+  return (*this)[idx];
+}
+
+/**
+ * @brief For convenience.
+ */
+ftype Tensor::operator[](tensorSize_t idx) const {
   return (*values)[idx];
 }
+
 
 ftype Tensor::getItem(tensorDim_t idx0, tensorDim_t idx1) const {
   return getItem({idx0, idx1});

@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 #include <memory>
 
@@ -20,14 +20,6 @@ namespace graph {
     public:
       explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {}
-
-      MatMulNode(const MatMulNode& other) = delete;
-      MatMulNode& operator=(const MatMulNode& other) = delete;
-
-      MatMulNode(MatMulNode&& other) = default;
-      MatMulNode& operator=(MatMulNode&& other) = default;
-
-      ~MatMulNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };

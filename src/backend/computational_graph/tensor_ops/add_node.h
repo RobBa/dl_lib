@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "graph_node.h"
+#include "computational_graph/graph_node.h"
 
 namespace graph {
   class AddNode final : public GraphNode {
@@ -27,14 +27,6 @@ namespace graph {
 
           broadcasted = parents[0]->getDims() != parents[1]->getDims();
         }
-
-      AddNode(const AddNode& other) = delete;
-      AddNode& operator=(const AddNode& other) = delete;
-
-      AddNode(AddNode&& other) = default;
-      AddNode& operator=(AddNode&& other) = default;
-
-      ~AddNode() noexcept = default; 
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
