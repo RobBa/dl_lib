@@ -24,15 +24,4 @@ namespace Py_Util {
         oss << obj;
         return oss.str();
     }
-
-    /**
-     * @brief Because we manage tensors via shared_ptr, we need this to wrap
-     * return values when a function/method demands it.
-     */
-    /* template<typename Func>
-    auto WrapReturnedTensor(Func f) {
-        return [f](const Tensor& self, auto&&... args) -> std::shared_ptr<Tensor> {
-            return std::make_shared<Tensor>(f(self, std::forward<decltype(args)>(args)...));
-        };
-    } */
 }

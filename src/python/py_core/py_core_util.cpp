@@ -1,5 +1,5 @@
 /**
- * @file py_data_modeling_util.cpp
+ * @file py_core_util.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -9,7 +9,7 @@
  * 
  */
 
-#include "py_data_modeling_util.h"
+#include "py_core_util.h"
 
 #include <stdexcept>
 #include <utility>

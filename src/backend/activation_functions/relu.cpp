@@ -10,10 +10,12 @@
  */
 
 #include "relu.h"
+#include "computational_graph/activation_functions/relu_node.h"
 
+using namespace std;
 using namespace activation;
 
-Tensor ReLu::operator()(const Tensor& t) const noexcept {
+Tensor ReLu::operator()(const Tensor& t) const {
   auto res = t.createDeepCopy();
 
   for(tensorSize_t i=0; i<t.getSize(); i++){
@@ -24,4 +26,15 @@ Tensor ReLu::operator()(const Tensor& t) const noexcept {
   }
 
   return res;
+}
+
+shared_ptr<Tensor> ReLu::operator()(const shared_ptr<Tensor>& t) const {
+  auto res = make_shared<Tensor>((*this)(*t));
+  
+  if(t->getRequiresGrad()){
+    res->setCgNode(make_shared<graph::ReLuNode>(t));
+    assert(res->getRequiresGrad());
+  }
+
+  return res;  
 }

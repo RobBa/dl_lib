@@ -13,7 +13,7 @@
 
 #include <cstdint>
 
-using ftype = float; // TODO: make compiler flag
+using ftype = float; // TODO: make compiler flag?
 
 /** 
  * IMPORTANT: For the following block we assume that

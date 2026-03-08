@@ -16,6 +16,7 @@
 namespace activation {
   class Softmax final : public ActivationFunctionBase {
     public:
-      Tensor operator()(const Tensor& t) const noexcept override;
+      Tensor operator()(const Tensor& t) const override;
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
   };
 }

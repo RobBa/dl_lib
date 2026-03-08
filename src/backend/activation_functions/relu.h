@@ -16,6 +16,9 @@
 namespace activation {
   class ReLu final : public ActivationFunctionBase {
     public:
-      Tensor operator()(const Tensor& t) const noexcept override;
+      ReLu() = default;
+      
+      Tensor operator()(const Tensor& t) const override;
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
   };
 }

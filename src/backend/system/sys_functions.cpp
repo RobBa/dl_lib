@@ -10,8 +10,9 @@
  */
 
 #include "sys_functions.h"
+#include "data_modeling/tensor.h"
 
-using namespace global;
+using namespace sys;
 
 void setDevice(Device d) noexcept {
   Tensor::setDefaultDevice(d);

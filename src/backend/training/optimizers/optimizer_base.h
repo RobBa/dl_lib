@@ -11,16 +11,18 @@
 
 #pragma once
 
-class OptimizerBase {
+namespace train {
+  class OptimizerBase {
+    public:
       OptimizerBase() = default;
+      ~OptimizerBase() noexcept = default;
 
       OptimizerBase(const OptimizerBase& other) = delete;
       OptimizerBase& operator=(const OptimizerBase& other) = delete;
 
       OptimizerBase(OptimizerBase&& other) noexcept = default;
       OptimizerBase& operator=(OptimizerBase&& other) noexcept = default;
-
-      ~OptimizerBase() noexcept = default;
-
+      
       virtual void step() = 0;
 };
+}

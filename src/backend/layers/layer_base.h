@@ -13,6 +13,7 @@
 
 #include "data_modeling/tensor.h"
 #include "utility/global_params.h"
+#include "activation_functions/activation_function_base.h"
 
 #include <optional>
 #include <memory>
@@ -31,9 +32,11 @@ namespace layers {
             std::shared_ptr<Tensor> weights = nullptr;
             std::shared_ptr<Tensor> bias = nullptr;
 
+            std::vector< std::shared_ptr<activation::ActivationFunctionBase> > activations;
+
         public:
             LayerBase(bool useBias, bool requiresGrad) 
-                : useBias{false}, requiresGrad{requiresGrad}
+                : useBias{useBias}, requiresGrad{requiresGrad}
             { }
 
             virtual ~LayerBase() noexcept = default;
@@ -49,6 +52,8 @@ namespace layers {
                 assert(weights);
                 return weights->getDims();
             }
+
+            void addActivation(std::shared_ptr<activation::ActivationFunctionBase> f);
 
             auto getWeights() const noexcept { return weights; }
             auto getBias() const noexcept { return bias; }

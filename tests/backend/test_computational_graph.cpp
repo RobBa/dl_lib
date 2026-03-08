@@ -15,7 +15,6 @@
 #include "data_modeling/tensor_functions.h"
 
 #include "computational_graph/tensor_ops/graph_creation.h"
-#include "computational_graph/activation_functions/graph_creation.h"
 
 #include <stdexcept>
 

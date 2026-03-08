@@ -22,7 +22,9 @@ namespace activation {
       LeakyReLu(ftype eps) : eps{eps}
       { }
 
-      Tensor operator()(const Tensor& t) const noexcept override;
-      ftype getEps() const noexcept { return eps; }
+      Tensor operator()(const Tensor& t) const override;
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
+
+      void print(std::ostream& os) const noexcept override { os << "\neps: " << eps; }
   };
 }

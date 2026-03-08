@@ -13,7 +13,8 @@
 
 #include "data_modeling/tensor.h"
 
-#include <optional>
+#include <memory>
+#include <iostream>
 
 namespace activation {
   class ActivationFunctionBase {
@@ -28,6 +29,13 @@ namespace activation {
 
       ~ActivationFunctionBase() noexcept = default;
 
-      virtual Tensor operator()(const Tensor& t) const noexcept = 0;
+      // creates no graph
+      virtual Tensor operator()(const Tensor& t) const = 0;
+      
+      // greates a graph
+      virtual std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const = 0;
+
+      virtual void print(std::ostream& os) const noexcept { };
+      friend std::ostream& operator<<(std::ostream& os, const ActivationFunctionBase& t) noexcept;
   };
 }

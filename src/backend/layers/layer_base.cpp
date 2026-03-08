@@ -16,6 +16,10 @@
 using namespace std;
 using namespace layers;
 
+void LayerBase::addActivation(shared_ptr<activation::ActivationFunctionBase> f) { 
+  activations.push_back(std::move(f)); 
+}
+
 void LayerBase::print(ostream& os) const noexcept {
   assert(weights);
   
@@ -29,6 +33,6 @@ void LayerBase::print(ostream& os) const noexcept {
 }
 
 ostream& operator<<(ostream& os, const LayerBase& l) noexcept {
-  l.print(os);
+  static_cast<const LayerBase*>(&l)->print(os); // calling vtable
   return os;
 }

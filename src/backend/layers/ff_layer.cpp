@@ -10,6 +10,8 @@
  */
 
 #include "ff_layer.h"
+#include "activation_functions/activation_function_base.h"
+
 #include "computational_graph/tensor_ops/graph_creation.h"
 
 #include <cstdlib>
@@ -49,6 +51,11 @@ Tensor FfLayer::forward(const Tensor& input) const {
     if(useBias){
         res = res + *bias;
     }
+
+    for(auto& af: activations){
+      res = (*af)(res);
+    }
+
     return res;
 }
 
@@ -60,6 +67,11 @@ std::shared_ptr<Tensor> FfLayer::forward(const std::shared_ptr<Tensor>& input) c
     if(useBias){
         res = graph::add(res, bias); // TODO: add needs to happen on each of those, how to broadcast?
     }
+
+    for(auto& af: activations){
+      res = (*af)(res);
+    }
+
     return res;  
 }
 

@@ -13,6 +13,7 @@
 
 #include <cmath>
 
+using namespace std;
 using namespace activation;
 
 /**
@@ -20,7 +21,7 @@ using namespace activation;
  * (dim1, dim2, ..., n_classes)
  * @return Tensor of shape (dim1, dim2, ..., n_classes) [== input.shape]
  */
-Tensor Softmax::operator()(const Tensor& t) const noexcept {
+Tensor Softmax::operator()(const Tensor& t) const {
   Tensor res(t.getDims(), t.getDevice());
 
   Tensor tmp(t.getDims(), t.getDevice());
@@ -47,4 +48,15 @@ Tensor Softmax::operator()(const Tensor& t) const noexcept {
   }
 
   return res;
+}
+
+shared_ptr<Tensor> Softmax::operator()(const shared_ptr<Tensor>& t) const {
+  auto res = make_shared<Tensor>((*this)(*t));
+  
+  if(t->getRequiresGrad()){
+    //res->setCgNode(make_shared<graph::LeakyReLuNode>(t, eps));
+    assert(res->getRequiresGrad());
+  }
+
+  return res;  
 }

@@ -4,13 +4,17 @@ file(GLOB_RECURSE CORE_SOURCES
     data_modeling/*.cpp
     layers/*.cpp
     #networks/*.cpp
+    system/*.cpp
     training/*.cpp
     utility/*.cpp
-    system/*.cpp
 )
 
-add_library(BackendCore STATIC ${CORE_SOURCES})
+add_library(BackendCore SHARED ${CORE_SOURCES})
 
 target_include_directories(BackendCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+set_target_properties(BackendCore PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${PYTHON_MODULE_DIR}" # make sure Python-modules see backend
 )
