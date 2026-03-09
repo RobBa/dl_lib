@@ -18,15 +18,13 @@
 
 namespace layers {
     class FfLayer : public LayerBase {
-        protected:            
-            // memoization 
-            // TODO: necessary?
-            //mutable std::optional<Tensor> v1;
-
         public:
-            FfLayer(tensorDim_t in_size, tensorDim_t out_size);
+            FfLayer(const std::vector<tensorDim_t>& dims, bool useBias=true, bool requiresGrad=false);
+            FfLayer(const std::vector<tensorDim_t>& dims, Device d, bool useBias=true, bool requiresGrad=false);
 
             Tensor forward(const Tensor& input) const override;
-            //ftype* backward(ftype* input) override;
+            std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input) const override;
+
+            void print(std::ostream& os) const noexcept override;
     };
 }

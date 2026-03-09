@@ -2,7 +2,7 @@
 add_subdirectory(backend)
 add_subdirectory(python)
 
-target_link_libraries(_core 
+target_link_libraries(_core PRIVATE
                       ${Boost_LIBRARIES} 
                       ${Python_LIBRARIES} 
                       BackendCore)
@@ -11,8 +11,20 @@ target_include_directories(_core PRIVATE
                            ${Python_INCLUDE_DIRS} 
                            ${Boost_INCLUDE_DIRS})
 
-#target_link_libraries(py_layers PRIVATE ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} BackendCore)
-#target_include_directories(py_layers PRIVATE ${PYTHON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+target_link_libraries(_network PRIVATE
+                      ${Boost_LIBRARIES} 
+                      ${PYTHON_LIBRARIES} 
+                      BackendCore)
 
-# for compiled boost lib
-#target_link_libraries(hello PRIVATE Boost::filesystem)
+target_include_directories(_network PRIVATE 
+                           ${PYTHON_INCLUDE_DIRS} 
+                           ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(_sys PRIVATE
+                      ${Boost_LIBRARIES} 
+                      ${PYTHON_LIBRARIES} 
+                      BackendCore)
+
+target_include_directories(_sys PRIVATE 
+                           ${PYTHON_INCLUDE_DIRS} 
+                           ${Boost_INCLUDE_DIRS})

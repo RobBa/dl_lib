@@ -51,4 +51,7 @@ namespace TensorFunctions { // class name acts as namespace for us
   void ToZeros(Tensor& t);
   void ToOnes(Tensor& t);
   void ToGaussian(Tensor& t);
+
+  // Arithmetics
+  Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size
 }

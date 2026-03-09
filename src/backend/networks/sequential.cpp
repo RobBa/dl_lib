@@ -22,24 +22,34 @@ bool SequentialNetwork::assertDims(const LayerBase& layer) const noexcept {
   if(layers.size() == 0)
     return true;
 
-  return layers.at(layers.size()-1).getDims() == layer.getDims(); 
+  return layers[layers.size()-1]->getDims() == layer.getDims(); 
 }
 
 Tensor SequentialNetwork::forward(const Tensor& input) const {
-  if(input.getDims().getItem(1) != layers.at(0).getDims().getItem(0)){
-    // TODO: show meaningful message rather than exception
-    __throw_invalid_argument("Not implemented yet. Dimensions don't match");
+  if(input.getDims().getItem(-1) != layers[0]->getDims().getItem(-2)){
+    __throw_invalid_argument("Input tensor has invalid dimension.");
   }
 
   if(layers.size()==0){
-    // TODO: show meaningful message rather than exception
     __throw_invalid_argument("Network empy, cannot be called.");
   }
 
-  Tensor x = layers.at(0).forward(input);
+  Tensor x = layers[0]->forward(input);
   for(int i=1; i<layers.size(); i++){
-    x = layers.at(i).forward(x);
+    x = layers[i]->forward(x);
   }
 
   return x;
+}
+
+void SequentialNetwork::append(shared_ptr<layers::LayerBase> l) {
+  if(!assertDims(*l)){
+    __throw_invalid_argument("Dimensions of tensors don't fit.");
+  }
+  layers.push_back(std::move(l));
+}
+
+void SequentialNetwork::append(shared_ptr<activation::ActivationFunctionBase> f) {
+  assert(layers.size()>0);
+  layers[layers.size()-1]->addActivation(std::move(f));
 }

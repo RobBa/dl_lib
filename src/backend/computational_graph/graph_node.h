@@ -25,6 +25,14 @@ namespace graph {
       explicit GraphNode(std::vector< std::shared_ptr<Tensor> > parents) : parents{std::move(parents)}{}
       
     public:
+      GraphNode(const GraphNode& other) = delete;
+      GraphNode& operator=(const GraphNode& other) = delete;
+
+      GraphNode(GraphNode&& other) = default;
+      GraphNode& operator=(GraphNode&& other) = default;
+
+      virtual ~GraphNode() noexcept = default; 
+
       virtual std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) = 0;
       
       const auto& getParents() const noexcept {

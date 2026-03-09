@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "data_modeling/tensor.h"
+#include "data_modeling/device.h"
 
-namespace global {
-  void setDevice(Device d) noexcept;
-  Device getDevice() noexcept;
+namespace sys {
+  void setGlobalDevice(Device d) noexcept;
+  Device getGlobalDevice() noexcept;
 }

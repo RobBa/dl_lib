@@ -34,10 +34,10 @@ For some examples on Python interface, see tests/python.
 🚧 **Work in Progress** - Implementing additional layers and optimizations
 
 Roadmap:
-- [ ] Python Binding Unit Tests
-- [ ] Additional layer types (Conv2D, LSTM, etc.)
+- [x] Python Binding Unit Tests
+- [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] Optimizers and training framework
-- [ ] CUDA kernels for performance-critical operations
+- [ ] CUDA mode for operations
 - [ ] AlexNet reference implementation
 - [ ] Docker deployment example
 
@@ -62,7 +62,7 @@ ctest
 
 ## Required
 
-- Compiler capable of C++20 at least (we test with gcc 12.3.0)
+- Compiler capable of C++23 at least (we test with gcc 13.3.0)
 - Boost Python
 - Cmake > 3.28
 - Python 3 (we test with 3.10, but it should work with any version)

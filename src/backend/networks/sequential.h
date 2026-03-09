@@ -12,33 +12,22 @@
 #pragma once
 
 #include "layers/layer_base.h"
+#include "activation_functions/activation_function_base.h"
 
 #include <vector>
-#include <utility>
-#include <type_traits>
+#include <memory>
 
 class SequentialNetwork {
-    protected:
-        std::vector<layers::LayerBase> layers;
-        bool assertDims(const layers::LayerBase& layer) const noexcept;
+  protected:
+    std::vector< std::shared_ptr<layers::LayerBase> > layers;
 
-        template <typename T>
-        requires (std::derived_from< std::remove_cvref_t<T>, layers::LayerBase >)
-        void addLayer(T&& layer) {
-            if(!assertDims(layer)){
-                // TODO: show warning that the dims don't match
-                return;
-            }
-            layers.push_back(std::forward<T>(layer));
-        }
+    bool assertDims(const layers::LayerBase& layer) const noexcept;
 
-    public:
-        SequentialNetwork() = default;
+    void append(std::shared_ptr<layers::LayerBase> l);
+    void append(std::shared_ptr<activation::ActivationFunctionBase> f);
 
-        Tensor forward(const Tensor& input) const;
+  public:
+    SequentialNetwork() = default;
+
+    Tensor forward(const Tensor& input) const;
 };
-
-/*template<typename T>
-void SequentialNetwork::addLayer(LayerBase&& layer) noexcept {
-    layers.push_back(std::forward<LayerBase>(layer));
-}*/

@@ -3,7 +3,7 @@
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-02-02
+ * @date 2026-03-07
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -11,14 +11,18 @@
 
 #pragma once
 
-#include "data_modeling/tensor.h"
-
-class OptimizerBase {
-    private:
-        float lr = 0.05;
-
+namespace train {
+  class OptimizerBase {
     public:
-        virtual Tensor operator()(Tensor& t) const noexcept;
-        float getLr() const noexcept;
-        void setLr(const float lr) noexcept;
+      OptimizerBase() = default;
+      ~OptimizerBase() noexcept = default;
+
+      OptimizerBase(const OptimizerBase& other) = delete;
+      OptimizerBase& operator=(const OptimizerBase& other) = delete;
+
+      OptimizerBase(OptimizerBase&& other) noexcept = default;
+      OptimizerBase& operator=(OptimizerBase&& other) noexcept = default;
+      
+      virtual void step() = 0;
 };
+}

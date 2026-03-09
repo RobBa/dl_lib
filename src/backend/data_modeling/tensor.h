@@ -12,6 +12,7 @@
 #pragma once
 
 #include "dim_type.h"
+#include "device.h"
 #include "computational_graph/topological_sort.h"
 #include "computational_graph/graph_node.h"
 
@@ -30,23 +31,6 @@
 namespace graph {
     class GraphNode;
     class TopologicalSort;
-}
-
-enum class Device {
-    CPU,
-    CUDA
-};
-
-constexpr const char* DeviceToString(Device d) {
-    switch(d){
-        case Device::CPU:
-            return "CPU";
-        case Device::CUDA:
-            return "CUDA";
-    }
-
-    std::__throw_invalid_argument("Unknown device encountered");
-    return ""; // suppress
 }
 
 class Tensor final : public std::enable_shared_from_this<Tensor> {
@@ -237,6 +221,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
         ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
+        // non-const version of operator[] does not exist because of CUDA
+        ftype operator[](tensorSize_t idx) const;
+
         ftype getItem(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters
@@ -250,15 +237,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         Device getDevice() const noexcept;
 
         bool getRequiresGrad() const noexcept { return requiresGrad; }
-        void setRequiresGrad(const bool requiresGrad) noexcept { 
-            this->requiresGrad=requiresGrad;
-            if(!requiresGrad && cgNode){
-                cgNode = nullptr;
-            }
-            if(!requiresGrad && grads){
-                grads = nullptr;
-            }
-        }
+        void setRequiresGrad(const bool requiresGrad) noexcept { this->requiresGrad=requiresGrad; }
 
         void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
             cgNode = std::move(node);

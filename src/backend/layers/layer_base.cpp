@@ -16,22 +16,23 @@
 using namespace std;
 using namespace layers;
 
-ftype LayerBase::getItem(vector<tensorDim_t>&&idx) const {
-  assert(weights);
-  return weights.value().getItem(std::move(idx));
-}
-
-void LayerBase::setItem(ftype item, vector<tensorDim_t>&& idx) {
-  assert(weights);
-  weights.value().setItem(item, std::move(idx));
+void LayerBase::addActivation(shared_ptr<activation::ActivationFunctionBase> f) { 
+  activations.push_back(std::move(f)); 
 }
 
 void LayerBase::print(ostream& os) const noexcept {
   assert(weights);
-  os << weights.value();
+  
+  os << "Weigths:\n";
+  os << *weights;
+
+  if(bias){
+    os << "Bias:\n";
+    os << *bias;
+  }
 }
 
 ostream& operator<<(ostream& os, const LayerBase& l) noexcept {
-  l.print(os);
+  static_cast<const LayerBase*>(&l)->print(os); // calling vtable
   return os;
 }

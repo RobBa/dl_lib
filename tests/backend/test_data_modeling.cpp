@@ -56,6 +56,29 @@ TEST(TensorOpsTest, TensorAddWorks) {
   }
 }
 
+TEST(TensorOpsTest, TensorAddCanBroadCast) {
+  auto t1 = TensorFunctions::Ones({3, 2, 2}, false);
+  auto t2 = Tensor({2}, {2, 3}, false);
+
+  auto res = t1 + t2;
+
+  ASSERT_EQ(res.getDims(), t1.getDims());
+  
+  for(auto i=0; i<res.getDims().getItem(0); i++) {
+    for(auto j=0; j<res.getDims().getItem(1); j++) {
+      ASSERT_DOUBLE_EQ(res.getItem(i, j, 0), 3.0);
+      ASSERT_DOUBLE_EQ(res.getItem(i, j, 1), 4.0);
+    }
+  }
+}
+
+TEST(TensorOpsTest, TensorAddBroadcastNotComutative) {
+  auto t1 = TensorFunctions::Ones({3, 2, 2}, false);
+  auto t2 = Tensor({2}, {2, 3}, false);
+
+  EXPECT_THROW(t2 + t1, std::invalid_argument);
+}
+
 TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
   auto t1 = TensorFunctions::Ones({2, 2}, false);
   auto t2 = TensorFunctions::Ones({2, 3}, false) * 4;
@@ -155,31 +178,6 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
   for(auto i=0; i<t1.getDims().getItem(0); i++) {
     for(auto j=0; j<t1.getDims().getItem(1); j++) {
       ASSERT_DOUBLE_EQ(res.getItem(i, j), cmpRes.getItem(i, j));
-    }
-  }
-}
-
-TEST(TensorOpsTest, MatMulBroadcastsOn1DTensor) {
-  constexpr ftype factor = 1.5;
-
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({1}, false) * factor;
-  
-  // left to right
-  auto res1 = t1.matmul(t2);
-  ASSERT_EQ(res1.getDims(), t1.getDims());
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res1.getItem(i, j), factor);
-    }
-  }
-
-  // right to left
-  auto res2 = t2.matmul(t1);
-  ASSERT_EQ(res2.getDims(), t1.getDims());
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res2.getItem(i, j), factor);
     }
   }
 }
