@@ -64,7 +64,7 @@ ctest
 
 - Compiler capable of C++20 at least (we test with gcc 12.3.0)
 - Boost Python
-- Cmake > 3.24
+- Cmake > 3.28
 - Python 3 (we test with 3.10, but it should work with any version)
 - pytest for unit tests (we use 9.0.2)
 
