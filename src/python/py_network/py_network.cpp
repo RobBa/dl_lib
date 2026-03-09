@@ -13,12 +13,6 @@
 #include "python_templates.h"
 #include "utility/global_params.h"
 
-#include "layers/ff_layer.h"
-
-#include "activation_functions/relu.h"
-#include "activation_functions/leaky_relu.h"
-#include "activation_functions/softmax.h"
-
 #include "training/loss_functions/bce_loss.h"
 #include "training/loss_functions/crossentropy_loss.h"
 
@@ -28,61 +22,66 @@
 
 BOOST_PYTHON_MODULE(py_layers)
 {
-  using namespace std;
-
   using namespace Py_Util;
-  using namespace Py_Network;
   
   using namespace boost::python;
 
+  #define WRAP_METHOD_ONE_TENSORARG(T, method) \
+  +[](const T& self, Tensor& t) -> std::shared_ptr<Tensor> { \
+    return (self.*method)(t.getSharedPtr()); \
+  }
+
+  #define WRAP_METHOD_TWO_TENSORARGS(T, method) \
+  +[](const T& self, Tensor& t1, Tensor& t2) -> std::shared_ptr<Tensor> { \
+    return (self.*method)(t1.getSharedPtr(), t2.getSharedPtr()); \
+  }
+
   // Layers
-  class_<LayerBaseWrap, boost::noncopyable>("LayerBase", no_init)
+  class_<layers::LayerBase, boost::noncopyable>("LayerBase", no_init)
     // attributes
     .add_property("dims", make_function(&layers::LayerBase::getDims, return_internal_reference<>()))
     .add_property("weights", make_function(&layers::LayerBase::getWeights))
     .add_property("bias", make_function(&layers::LayerBase::getBias))
     // methods
-    .def("forward", pure_virtual(Py_Network::layerforward))
-    .def("addActivation", make_function(&layers::LayerBase::addActivation))
+    .def("addActivation", make_function(&layers::LayerBase::addActivation))    
+  ;
+
+  class_<layers::FfLayer, std::shared_ptr<layers::FfLayer>, bases<layers::LayerBase>, boost::noncopyable>("FfLayer", no_init)
+    // init
+    .def(init<const std::vector<tensorDim_t>&>())
+    .def(init<const std::vector<tensorDim_t>&, bool>())
+    .def(init<const std::vector<tensorDim_t>&, bool, bool>())
+    .def(init<const std::vector<tensorDim_t>&, Device>())
+    .def(init<const std::vector<tensorDim_t>&, Device, bool>())
+    .def(init<const std::vector<tensorDim_t>&, Device, bool, bool>())
+    // methods
+    .def("forward", WRAP_METHOD_ONE_TENSORARG(layers::FfLayer, Py_Network::ffForward))
     // operators
-    .def("__str__", &toString<layers::LayerBase>)
+    .def("__str__", &toString<layers::FfLayer>)
   ;
 
-  class_<layers::FfLayer, bases<LayerBaseWrap>, boost::noncopyable>("FfLayer", no_init)
-    .def(init<const std::vector<tensorDim_t>&, optional<bool>, optional<bool> >())
-    .def(init<const std::vector<tensorDim_t>&, Device, optional<bool>, optional<bool> >())
-    .def("forward", &layers::FfLayer::forward)
+  class_<activation::ReLu, std::shared_ptr<activation::ReLu>, boost::noncopyable>("ReLU")
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::ReLu, Py_Network::reluF))
+    .def("__str__", &toString<activation::ReLu>)
   ;
 
-  // Activation functions
-  class_<ActivationFunctionWrap, boost::noncopyable>("ActivationFunctionBase", no_init)
-    .def("call", pure_virtual(&ActivationFunctionWrap::operator()))
-    .def("__str__", &toString<activation::ActivationFunctionBase>)
+  class_<activation::LeakyReLu, std::shared_ptr<activation::LeakyReLu>, boost::noncopyable>("LeakyReLU", init<ftype>())
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::LeakyReLu, Py_Network::leakyReluF))
+    .def("__str__", &toString<activation::LeakyReLu>)
   ;
 
-  class_<activation::ReLu, std::shared_ptr<ActivationFunctionWrap>, bases<ActivationFunctionWrap> >("ReLU", init)
-    .def("call", &activation::ReLu::operator())
-  ;
-
-  class_<activation::LeakyReLu, std::shared_ptr<ActivationFunctionWrap>, bases<ActivationFunctionWrap> >("LeakyReLU", init<ftype>)
-    .def("call", &activation::LeakyReLu::operator())
-  ;
-
-  class_<activation::Softmax, std::shared_ptr<ActivationFunctionWrap>, bases<ActivationFunctionWrap> >("Softmax", init)
-    .def("call", &activation::Softmax::operator())
+  class_<activation::Softmax, std::shared_ptr<activation::Softmax>, boost::noncopyable>("Softmax")
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::Softmax, Py_Network::softmaxF))
+    .def("__str__", &toString<activation::Softmax>)
   ;
 
   // Loss functions
-  class_<LossWrap, boost::noncopyable>("LossBase", no_init)
-    .def("call", pure_virtual(&LossWrap::operator()))
+  class_<train::BceLoss, boost::noncopyable>("BCE")
+    .def("__call__", &train::BceLoss::operator())
   ;
 
-  class_<train::BceLoss, boost::noncopyable>("BCE", no_init)
-    .def("call", pure_virtual(&train::BceLoss::operator()))
-  ;
-
-  class_<train::CrossEntropyLoss, boost::noncopyable>("CrossEntropy", no_init)
-    .def("call", pure_virtual(&train::CrossEntropyLoss::operator()))
+  class_<train::CrossEntropyLoss, boost::noncopyable>("CrossEntropy")
+    .def("__call__", &train::CrossEntropyLoss::operator())
   ;
 
   // Optimizers

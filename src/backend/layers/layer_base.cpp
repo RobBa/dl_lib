@@ -22,17 +22,13 @@ void LayerBase::addActivation(shared_ptr<activation::ActivationFunctionBase> f) 
 
 void LayerBase::print(ostream& os) const noexcept {
   assert(weights);
-  
-  os << "Weigths:\n";
-  os << *weights;
-
+  os << "Weigths:\n" << *weights;
   if(bias){
-    os << "Bias:\n";
-    os << *bias;
+    os << "\nBias:\n" << *bias;
   }
 }
 
-ostream& operator<<(ostream& os, const LayerBase& l) noexcept {
-  static_cast<const LayerBase*>(&l)->print(os); // calling vtable
+ostream& layers::operator<<(ostream& os, const LayerBase& l) noexcept {
+  l.print(os); // calling vtable
   return os;
 }

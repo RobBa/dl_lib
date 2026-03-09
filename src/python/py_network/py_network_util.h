@@ -16,6 +16,12 @@
 #include "training/loss_functions/loss_base.h"
 #include "training/optimizers/optimizer_base.h"
 
+#include "layers/ff_layer.h"
+
+#include "activation_functions/relu.h"
+#include "activation_functions/leaky_relu.h"
+#include "activation_functions/softmax.h"
+
 #include <boost/python.hpp>
 #include <boost/python/wrapper.hpp>
 #include <boost/python/object.hpp>
@@ -33,7 +39,7 @@ namespace Py_Network {
    * https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/exposing.html
    * 
    */
-  struct LayerBaseWrap : layers::LayerBase, wrapper<layers::LayerBase> {
+  /* struct LayerBaseWrap : layers::LayerBase, wrapper<layers::LayerBase> {
     std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input) const override {
       return this->get_override("forward")(input);   
     }
@@ -53,8 +59,12 @@ namespace Py_Network {
     Tensor operator()(const Tensor& y, const Tensor& ypred) const override {
       return this->get_override("call")(y, ypred);   
     }
-  };
+  }; */
 
-  inline std::shared_ptr<Tensor> (LayerBaseWrap::*layerforward)(const std::shared_ptr<Tensor>&) const     = &LayerBaseWrap::forward;
+  inline std::shared_ptr<Tensor> (layers::FfLayer::*ffForward)(const std::shared_ptr<Tensor>&) const            = &layers::FfLayer::forward;
+
+  inline std::shared_ptr<Tensor> (activation::ReLu::*reluF)(const std::shared_ptr<Tensor>&) const               = &activation::ReLu::operator();
+  inline std::shared_ptr<Tensor> (activation::LeakyReLu::*leakyReluF)(const std::shared_ptr<Tensor>&) const     = &activation::LeakyReLu::operator();
+  inline std::shared_ptr<Tensor> (activation::Softmax::*softmaxF)(const std::shared_ptr<Tensor>&) const         = &activation::Softmax::operator();
 }
 

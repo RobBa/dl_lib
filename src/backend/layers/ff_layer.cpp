@@ -11,6 +11,7 @@
 
 #include "ff_layer.h"
 #include "activation_functions/activation_function_base.h"
+#include "data_modeling/tensor_functions.h"
 
 #include "computational_graph/tensor_ops/graph_creation.h"
 
@@ -21,33 +22,37 @@ using namespace std;
 using namespace layers;
 
 FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGrad) 
-    : FfLayer(dims, Tensor::getDefaultDevice(), requiresGrad) {}
+    : FfLayer(dims, Tensor::getDefaultDevice(), useBias, requiresGrad) {}
 
 /**
  * @brief Construct a new Ff Layer:: Ff Layer object
- * Assumption for dims: (batch-size, ..., n_rows, n_cols).
+ * Assumption for dims: (in-size, out-size)
  * @param dims Dimensions, see above.
  * @param d The device.
  * @param useBias Use a bias if true. Bias will receiver shape (n_rows)
  * @param requiresGrad If true train this layer.
  */
 FfLayer::FfLayer(const vector<tensorDim_t>& dims, Device d, bool useBias, bool requiresGrad)
-    : LayerBase(useBias, requiresGrad) {
-    weights = make_shared<Tensor>(dims, d, requiresGrad);
+  : LayerBase(useBias, requiresGrad) {
+  assert(dims.size()==2);
+
+  weights = make_shared<Tensor>(Dimension({dims[0], dims[1]}), d, requiresGrad);
+  TensorFunctions::ToGaussian(*weights);
     
-    if(useBias && dims.size()<2){
-        bias = make_shared<Tensor>(vector<tensorDim_t>{static_cast<tensorDim_t>(1)}, d, requiresGrad);
-    }
-    else if(useBias){
-        bias = make_shared<Tensor>(vector<tensorDim_t>{dims[dims.size()-2]}, d, requiresGrad);
-    }
+  if(useBias){
+    bias = make_shared<Tensor>(vector<tensorDim_t>{dims[1]}, d, requiresGrad);
+    TensorFunctions::ToGaussian(*bias);
+  }
 }
 
 /**
  * @brief Normal forward function. Does not build computational graph.
+ * 
+ * Assumption for input: (b-size, ..., dim1, in-size)
  */
 Tensor FfLayer::forward(const Tensor& input) const {
-    auto res = *weights * input;
+    auto res = input.matmul(*weights);
+
     if(useBias){
         res = res + *bias;
     }

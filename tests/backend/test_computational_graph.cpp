@@ -16,6 +16,9 @@
 
 #include "computational_graph/tensor_ops/graph_creation.h"
 
+#include "activation_functions/relu.h"
+#include "activation_functions/leaky_relu.h"
+
 #include <stdexcept>
 
 TEST(AutogradTest, ThrowsIfNoGradientSet) {
@@ -119,16 +122,34 @@ TEST(AutogradTest, MultiVariateChainRule) {
     ASSERT_DOUBLE_EQ(y->getGrads()->getItem(1), 1.0);
 }
 
-/* TEST(AutogradTest, ReLU) {
-    Tensor x({3}, {-1.0, 0.0, 2.0}, true);
+TEST(AutogradTest, ReLU) {
+    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+    auto relu = activation::ReLu();
+
+    auto y = relu(x);    // [0, 0, 2]
+    auto loss = graph::sumTensor(y);  // loss = 2
     
-    Tensor y = relu(x);    // [0, 0, 2]
-    Tensor loss = sum(y);  // loss = 2
-    
-    loss.backward();
+    loss->backward();
     
     // Gradient: [0, 0, 1] (only where input > 0)
-    EXPECT_NEAR(t.getGrads()->getItem(0), 0.0, 1e-5);
-    EXPECT_NEAR(t.getGrads()->getItem(1), 0.0, 1e-5);
-    EXPECT_NEAR(t.getGrads()->getItem(2), 1.0, 1e-5);
-} */
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), 0.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(1), 0.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(2), 1.0);
+}
+
+TEST(AutogradTest, LeakyReLU) {
+    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+
+    constexpr ftype eps = 0.3;
+    auto relu = activation::LeakyReLu(eps);
+
+    auto y = relu(x);    // [0, 0, 2]
+    auto loss = graph::sumTensor(y);  // loss = 2
+    
+    loss->backward();
+    
+    // Gradient: [0, 0, 1] (only where input > 0)
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), eps);
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(1), eps); // by convention
+    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(2), 1.0);
+}
