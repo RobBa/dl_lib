@@ -60,18 +60,63 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
-void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target, 
-                                            const Tensor::tensorValues_t& origin) {
-  assert(origin.device==target.device && origin.size==target.size);
+void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
+  assert(device==target.device && size==target.size);
 
-  switch(origin.device){
+  switch(device){
     case Device::CPU:
-      for(tensorSize_t i=0; i<origin.size; i++){
-        target[i] = origin.values[i];
+      for(tensorSize_t i=0; i<size; i++){
+        target[i] = values[i];
       }
       break;
     case Device::CUDA:
       __throw_runtime_error("CUDA not implemented for deep copy");
+      break;
+  }
+}
+
+/**
+ * @brief Does what you think it does. For linear slicing.
+ */
+void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low, 
+                                        tensorSize_t high, tensorSize_t targetOffset) const {
+  assert(target.size >= high - low);
+
+  switch(device){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<high-low; i++){
+        target[i] = values[low+i];
+      }
+      break;
+    case Device::CUDA:
+      __throw_runtime_error("CUDA not implemented for deep copy");
+      break;
+  }
+}
+
+/**
+ * @brief Indexed slicing along first dimension.
+ * 
+ * @param indices The indices of the first dimension.
+ * @param sizeOfDim Complete size of the flattened first dimension.
+ */
+void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tensorDim_t> indices, 
+                                        const tensorSize_t sizeOfDim) const {
+  assert(target.size >= sizeOfDim * indices.size());
+
+  switch(device){
+    case Device::CPU: {
+      tensorSize_t targetOffset = 0;
+      for(tensorDim_t idx: indices){
+        tensorSize_t thisOffset = idx * sizeOfDim;
+        copyValues(target, thisOffset, thisOffset+sizeOfDim, targetOffset);
+        targetOffset += sizeOfDim;
+      }
+      break; 
+    }
+    case Device::CUDA:
+      __throw_runtime_error("CUDA not implemented for deep copy");
+      break;
   }
 }
 
@@ -116,6 +161,7 @@ Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
       break;
     case Device::CUDA:
       __throw_invalid_argument("CUDA not supported yet for += operation");
+      break;
   }
 
   return *this;
@@ -212,7 +258,7 @@ Tensor Tensor::createDeepCopy() const {
   assert(!grads || (grads && !grads->requiresGrad)); // gradient should not require gradient
 
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
-  tensorValues_t::copyValues(*res.values, *this->values);
+  values->copyValues(*res.values);
 
   /* if(grads){
     res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
@@ -783,6 +829,46 @@ void Tensor::setDevice(const Device d) noexcept {
 
 Device Tensor::getDevice() const noexcept {
   return values->getDevice();
+}
+
+/**
+ * @brief Gets a slice of this tensor.
+ * 
+ * Quick and dirty implementation for now: Copies and
+ * returns. 
+ * 
+ * @param low Lower idx, inclusive bound.
+ * @param high Upper idx, non-inclusive bound.
+ * @return Tensor The slices tensor.
+ */
+Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) const {
+  if(high<=low){
+    __throw_invalid_argument("Upper bound most be larger than lower bound.");
+  }
+
+  auto resDims = dims.toVector();
+  resDims[0] = high-low;
+  Tensor res(std::move(resDims), values->getDevice(), false);
+  values->copyValues(*res.values, low, high, 0);
+  return res;
+}
+
+/**
+ * @brief Like overload, but gets the slicing according to the 
+ * indices given by the argument. Used e.g. in batch-size.
+ * 
+ * @param indices A list of indices
+ * @return Tensor The result.
+ */
+Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
+  assert(indices.size()>0);
+  
+  auto resDims = dims.toVector();
+  resDims[0] = indices.size();
+
+  Tensor res(std::move(resDims), values->getDevice(), false);
+  values->copyValues(*res.values, indices, getDimOffset(0, resDims));
+  return res;
 }
 
 /**

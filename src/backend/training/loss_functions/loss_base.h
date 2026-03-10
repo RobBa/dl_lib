@@ -13,6 +13,8 @@
 
 #include "data_modeling/tensor.h"
 
+#include <memory>
+
 namespace train {
   class LossBase {
     public:
@@ -26,6 +28,6 @@ namespace train {
 
       ~LossBase() noexcept = default;
 
-      virtual Tensor operator()(const Tensor& y, const Tensor& ypred) const = 0;
+      virtual std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& y, const std::shared_ptr<Tensor>& ypred) const = 0;
   };
 }

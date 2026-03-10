@@ -20,11 +20,12 @@
 #include "utility/initializers.h"
 
 #include <memory>
-#include <optional>
+#include <span>
 
 #include <iostream>
 
 #include <concepts>
+#include <type_traits>
 #include <cassert>
 
 // break circular dependency
@@ -94,7 +95,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
             void setDevice(const Device d) noexcept;
             Device getDevice() const noexcept;
 
-            static void copyValues(tensorValues_t& target, const tensorValues_t& origin);
+            void copyValues(tensorValues_t& target) const;
+            void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
+            void copyValues(tensorValues_t& target, std::span<const tensorDim_t> indices, const tensorSize_t sizeOfDim) const;
 
             static void setDefaultDevice(const Device d) noexcept;
             static Device getDefaultDevice() noexcept;
@@ -254,6 +257,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
                 );
             }        
         }
+
+        Tensor getSlice(tensorSize_t low, tensorSize_t high) const;
+        Tensor getSlice(std::span<const tensorDim_t> indices) const;
 
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;
