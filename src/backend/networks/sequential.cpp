@@ -34,13 +34,31 @@ Tensor SequentialNetwork::forward(const Tensor& input) const {
     __throw_invalid_argument("Network empy, cannot be called.");
   }
 
-  Tensor x = layers[0]->forward(input);
+  auto x = layers[0]->forward(input);
   for(int i=1; i<layers.size(); i++){
     x = layers[i]->forward(x);
   }
 
   return x;
 }
+
+std::shared_ptr<Tensor> SequentialNetwork::forward(const std::shared_ptr<Tensor>& input) const {
+  if(input->getDims().getItem(-1) != layers[0]->getDims().getItem(-2)){
+    __throw_invalid_argument("Input tensor has invalid dimension.");
+  }
+
+  if(layers.size()==0){
+    __throw_invalid_argument("Network empy, cannot be called.");
+  }
+
+  auto x = layers[0]->forward(input);
+  for(int i=1; i<layers.size(); i++){
+    x = layers[i]->forward(x);
+  }
+
+  return x;
+}
+
 
 void SequentialNetwork::append(shared_ptr<layers::LayerBase> l) {
   if(!assertDims(*l)){

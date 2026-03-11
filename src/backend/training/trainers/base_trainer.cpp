@@ -1,15 +1,15 @@
 /**
- * @file optimizer_base.cpp
+ * @file base_trainer.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-03-10
+ * @date 2026-03-11
  * 
  * @copyright Copyright (c) 2026
  * 
  */
 
-#include "optimizer_base.h"
+#include "base_trainer.h"
 
 #include <span>
 
@@ -19,7 +19,7 @@
 using namespace std;
 using namespace train;
 
-void OptimizerBase::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle) {
+void BaseTrainer::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle) {
   for(size_t e=0; e<epochs; e++){
       std::vector<tensorDim_t> indices(bsize);
       std::iota(indices.begin(), indices.end(), 0);
@@ -32,7 +32,16 @@ void OptimizerBase::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
     tensorDim_t low = 0;
     while(low < nSamples){
       std::span<const tensorDim_t> batchSpan(indices.data() + low, low+bsize < nSamples ? bsize : nSamples-low);
-      step(make_shared<Tensor>(x->getSlice(batchSpan)), make_shared<Tensor>(y->getSlice(batchSpan)));
+
+      auto xBatch = make_shared<Tensor>(x->getSlice(batchSpan));
+      auto yBatch = y->getSlice(batchSpan);
+
+      auto yPred = network->forward(xBatch);
+      auto l = (*loss)(yBatch, yPred);
+      
+      l->backward();
+      optim->step();
+
       low += bsize;
     }
   }

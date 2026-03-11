@@ -14,6 +14,12 @@
 using namespace std;
 using namespace train;
 
-void SgdOptimizer::step(shared_ptr<Tensor> x, shared_ptr<Tensor> y) {
-  
+void SgdOptimizer::step() {
+  for(auto& t: params){
+    auto grads = t->getGrads();
+    for(auto idx=0; idx<t->getSize(); idx++){
+      auto updatedWeight = (*t)[idx] - lr*(*grads)[idx];
+      t->setItem(updatedWeight, idx);
+    }
+  }
 }

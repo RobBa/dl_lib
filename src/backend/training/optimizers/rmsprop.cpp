@@ -14,6 +14,6 @@
 using namespace std;
 using namespace train;
 
-void RmsPropOptimizer::step(shared_ptr<Tensor> x, shared_ptr<Tensor> y) {
- // TODO: implement
+void RmsPropOptimizer::step() {
+ __throw_runtime_error("Not implemented yet");
 }

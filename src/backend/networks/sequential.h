@@ -30,4 +30,5 @@ class SequentialNetwork {
     SequentialNetwork() = default;
 
     Tensor forward(const Tensor& input) const;
+    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input) const;
 };

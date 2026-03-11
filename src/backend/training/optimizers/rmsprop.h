@@ -15,14 +15,10 @@
 
 namespace train {
   class RmsPropOptimizer final : public OptimizerBase {
-    private:
-      void step(std::shared_ptr<Tensor> x, std::shared_ptr<Tensor> y) override;
-      
     public:
-        RmsPropOptimizer(std::vector< std::shared_ptr<Tensor> >& params, 
-            std::shared_ptr<LossBase> loss, ftype lr, size_t epochs, tensorDim_t bsize) 
-          : OptimizerBase(params, loss, lr, epochs, bsize) { }
+        RmsPropOptimizer(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 
+          : OptimizerBase(std::move(params), lr) { }
 
-        // TODO: print
+        void step() override;
   };
 }

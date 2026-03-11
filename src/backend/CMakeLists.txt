@@ -3,7 +3,7 @@ file(GLOB_RECURSE CORE_SOURCES
     computational_graph/*.cpp
     data_modeling/*.cpp
     layers/*.cpp
-    #networks/*.cpp
+    networks/*.cpp
     system/*.cpp
     training/*.cpp
     utility/*.cpp

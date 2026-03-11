@@ -27,7 +27,11 @@ namespace train {
       LossBase& operator=(LossBase&& other) noexcept = default;
 
       ~LossBase() noexcept = default;
-
-      virtual std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& y, const std::shared_ptr<Tensor>& ypred) const = 0;
+      
+      virtual std::shared_ptr<Tensor> operator()(const Tensor& y, const std::shared_ptr<Tensor>& ypred) const = 0;
+      
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& y, const std::shared_ptr<Tensor>& ypred) {
+        return operator()(*y, ypred);
+      }
   };
 }

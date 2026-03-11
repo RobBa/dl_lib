@@ -36,6 +36,9 @@ BOOST_PYTHON_MODULE(py_layers)
     return (self.*method)(t1.getSharedPtr(), t2.getSharedPtr()); \
   }
 
+  // Networks
+  // TODO
+
   // Layers
   class_<layers::LayerBase, boost::noncopyable>("LayerBase", no_init)
     // attributes
@@ -76,15 +79,22 @@ BOOST_PYTHON_MODULE(py_layers)
   ;
 
   // Loss functions
-  class_<train::BceLoss, boost::noncopyable>("BCE")
+  class_<train::BceLoss, std::shared_ptr<train::BceLoss>, boost::noncopyable>("BCE")
     .def("__call__", &train::BceLoss::operator())
   ;
 
-  class_<train::CrossEntropyLoss, boost::noncopyable>("CrossEntropy")
+  class_<train::CrossEntropyLoss, std::shared_ptr<train::CrossEntropyLoss>, boost::noncopyable>("CrossEntropy")
     .def("__call__", &train::CrossEntropyLoss::operator())
   ;
 
   // Optimizers
+  class_<train::SgdOptimizer, std::shared_ptr<train::SgdOptimizer>, boost::noncopyable>("SGD", no_init)
+    .def(init<std::vector< std::shared_ptr<Tensor> >, ftype>())
+    .def("step", &train::SgdOptimizer::step)
+  ;
+
+  // Trainers
+  // TODO
 }
 
 /*
