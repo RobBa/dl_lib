@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace graph {
+namespace cgraph {
   // Artithmetic operations
   std::shared_ptr<Tensor> mul(const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right);
   std::shared_ptr<Tensor> mul(const std::shared_ptr<Tensor> left, ftype scalar); 

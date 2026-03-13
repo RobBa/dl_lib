@@ -14,7 +14,7 @@
 #include <cmath>
 
 using namespace std;
-using namespace activation;
+using namespace module;
 
 /**
  * @brief Softmax over last dimension. Expects shape
@@ -54,7 +54,7 @@ shared_ptr<Tensor> Softmax::operator()(const shared_ptr<Tensor>& t) const {
   auto res = make_shared<Tensor>((*this)(*t));
   
   if(t->getRequiresGrad()){
-    //res->setCgNode(make_shared<graph::LeakyReLuNode>(t, eps));
+    //res->setCgNode(make_shared<cgraph::LeakyReLuNode>(t, eps));
     assert(res->getRequiresGrad());
   }
 

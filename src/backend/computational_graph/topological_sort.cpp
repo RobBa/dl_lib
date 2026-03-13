@@ -20,7 +20,7 @@
 #include <utility>
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 #ifndef NDEBUG
 /**

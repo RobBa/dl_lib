@@ -11,16 +11,16 @@
 
 #include <gtest/gtest.h>
 
-#include "layers/ff_layer.h"
+#include "module/layers/ff_layer.h"
 
-#include "activation_functions/relu.h"
-#include "activation_functions/leaky_relu.h"
-#include "activation_functions/softmax.h"
+#include "module/activation_functions/relu.h"
+#include "module/activation_functions/leaky_relu.h"
+#include "module/activation_functions/softmax.h"
 
 #include "data_modeling/tensor_functions.h"
 
-using namespace layers;
-using namespace activation;
+using namespace module;
+using namespace module;
 
 TEST(ActivationTest, TestRelu1) {
   auto t1 = TensorFunctions::Ones({3, 2}, false);
@@ -73,7 +73,7 @@ TEST(LayerTest, TestFfLayer) {
   auto t1 = TensorFunctions::Ones({3, 2}, false);
   auto layer = FfLayer({2, 1}, true, false);
 
-  auto res = layer.forward(t1);
+  auto res = layer(t1);
 
   ASSERT_EQ(res.getDims(), Dimension({3, 1}));
 }

@@ -15,6 +15,7 @@
 
 #include <numeric>
 #include <algorithm>
+#include <random>
 
 using namespace std;
 using namespace train;
@@ -25,7 +26,9 @@ void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
       std::iota(indices.begin(), indices.end(), 0);
 
     if(shuffle){
-      std::random_shuffle(indices.begin(), indices.end());
+      std::random_device rd;
+      std::mt19937 rng(rd());
+      std::shuffle(indices.begin(), indices.end(), rng);
     }
 
     const auto nSamples = x->getDims().getItem(0);
@@ -36,7 +39,7 @@ void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
       auto xBatch = make_shared<Tensor>(x->getSlice(batchSpan));
       auto yBatch = y->getSlice(batchSpan);
 
-      auto yPred = network->forward(xBatch);
+      auto yPred = graph->operator()(xBatch);
       auto l = (*loss)(yBatch, yPred);
       
       l->backward();

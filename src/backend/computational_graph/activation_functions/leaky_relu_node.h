@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace graph {
+namespace cgraph {
   class LeakyReLuNode final : public GraphNode {
     private:
       const ftype eps;

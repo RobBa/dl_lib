@@ -1,5 +1,5 @@
 /**
- * @file leaky_relu.h
+ * @file relu.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -11,20 +11,14 @@
 
 #pragma once
 
-#include "activation_function_base.h"
+#include "module/module_base.h"
 
-namespace activation {
-  class LeakyReLu final : public ActivationFunctionBase {
-    private:
-      const ftype eps;
-
+namespace module {
+  class ReLu final : public ModuleBase {
     public:
-      LeakyReLu(ftype eps) : eps{eps}
-      { }
-
+      ReLu() = default;
+      
       Tensor operator()(const Tensor& t) const override;
       std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
-
-      void print(std::ostream& os) const noexcept override { os << "\neps: " << eps; }
   };
 }

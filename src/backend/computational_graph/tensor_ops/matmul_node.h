@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace graph {
+namespace cgraph {
   class MatMulNode final : public GraphNode {
     public:
       explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 

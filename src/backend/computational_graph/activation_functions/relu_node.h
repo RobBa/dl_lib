@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace graph {
+namespace cgraph {
   class ReLuNode final : public GraphNode {
     public:
       explicit ReLuNode(std::shared_ptr<Tensor> t) 

@@ -14,7 +14,7 @@
 #include <utility>
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 vector<shared_ptr<Tensor>> ReLuNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());

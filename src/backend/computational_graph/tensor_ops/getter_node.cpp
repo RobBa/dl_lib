@@ -12,7 +12,7 @@
 #include "getter_node.h"
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 vector< shared_ptr<Tensor> > GetterNode::backward(const Tensor& upstreamGrad) {
   // upstreamGrad is scalar by definition

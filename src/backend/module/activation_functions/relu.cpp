@@ -13,7 +13,7 @@
 #include "computational_graph/activation_functions/relu_node.h"
 
 using namespace std;
-using namespace activation;
+using namespace module;
 
 Tensor ReLu::operator()(const Tensor& t) const {
   auto res = t.createDeepCopy();
@@ -32,7 +32,7 @@ shared_ptr<Tensor> ReLu::operator()(const shared_ptr<Tensor>& t) const {
   auto res = make_shared<Tensor>((*this)(*t));
   
   if(t->getRequiresGrad()){
-    res->setCgNode(make_shared<graph::ReLuNode>(t));
+    res->setCgNode(make_shared<cgraph::ReLuNode>(t));
     assert(res->getRequiresGrad());
   }
 

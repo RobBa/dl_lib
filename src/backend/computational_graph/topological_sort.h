@@ -16,7 +16,7 @@
 
 class Tensor; // to break circular dependency
 
-namespace graph {
+namespace cgraph {
   /**
    * @brief Topological sort class. 
    * 

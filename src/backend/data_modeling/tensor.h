@@ -29,13 +29,13 @@
 #include <cassert>
 
 // break circular dependency
-namespace graph {
+namespace cgraph {
     class GraphNode;
     class TopologicalSort;
 }
 
 class Tensor final : public std::enable_shared_from_this<Tensor> {
-    friend class graph::TopologicalSort;
+    friend class cgraph::TopologicalSort;
 
     private:
         /**
@@ -108,7 +108,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         
         bool requiresGrad = false;
         std::shared_ptr<Tensor> grads = nullptr; // gradients
-        std::shared_ptr<graph::GraphNode> cgNode = nullptr;
+        std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
     
         static Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) noexcept;
         static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
@@ -242,7 +242,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         bool getRequiresGrad() const noexcept { return requiresGrad; }
         void setRequiresGrad(const bool requiresGrad) noexcept { this->requiresGrad=requiresGrad; }
 
-        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
+        void setCgNode(std::shared_ptr<cgraph::GraphNode> node) noexcept { 
             cgNode = std::move(node);
             requiresGrad = true; 
         }

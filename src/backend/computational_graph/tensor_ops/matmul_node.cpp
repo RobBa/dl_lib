@@ -12,7 +12,7 @@
 #include "matmul_node.h"
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 vector<shared_ptr<Tensor>> MatMulNode::backward(const Tensor& upstreamGrad) {
     assert(!upstreamGrad.getRequiresGrad());

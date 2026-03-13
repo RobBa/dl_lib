@@ -18,6 +18,9 @@
 using namespace std;
 
 tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const noexcept {
+  if(dims.size()==0)
+    return 0;
+
   tensorDim_t res = 1;
 
 #ifndef NDEBUG
@@ -39,10 +42,6 @@ tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const no
 void Dimension::resize(const std::vector<tensorDim_t>& dims) {
   this->dims = dims;
   size = multVector(dims);
-
-  if(size==0){
-    __throw_invalid_argument("Tensor-Dims must all be greater than 0.");
-  }
 }
 
 /**
@@ -56,10 +55,6 @@ void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
   size = multVector(dims);
-
-  if(size==0){
-    __throw_invalid_argument("Tensor-Dims must all be greater than 0.");
-  }
 }
 
 Dimension::Dimension(const Dimension& other) : dims{other.dims}, size{other.size} { }
@@ -106,14 +101,19 @@ Dimension Dimension::collapseDimension(int idx) const {
 }
 
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {
-  os << "(";
-  for(int i=0; i<d.nDims(); i++){
-    os << d.getItem(i);
+  if(d.size>0){
+    os << "\n(";
+    for(int i=0; i<d.nDims(); i++){
+      os << d.getItem(i);
 
-    if(i+1<d.nDims()){
-      os << ",";
+      if(i+1<d.nDims()){
+        os << ",";
+      }
     }
+    os << ")";
+    return os;
   }
-  os << ")";
+
+  os << "\nempty";
   return os;
 }

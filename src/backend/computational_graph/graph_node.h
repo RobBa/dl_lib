@@ -18,7 +18,7 @@
 
 #include <utility>
 
-namespace graph {
+namespace cgraph {
   class GraphNode {
     protected:
       std::vector< std::shared_ptr<Tensor> > parents;

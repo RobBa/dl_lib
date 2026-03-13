@@ -11,10 +11,10 @@
 
 #pragma once
 
-#include "activation_function_base.h"
+#include "module/module_base.h"
 
-namespace activation {
-  class Softmax final : public ActivationFunctionBase {
+namespace module {
+  class Softmax final : public ModuleBase {
     public:
       Tensor operator()(const Tensor& t) const override;
       std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;

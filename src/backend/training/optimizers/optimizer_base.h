@@ -25,7 +25,14 @@ namespace train {
 
     public:
       OptimizerBase(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 
-        : params{std::move(params)}, lr{lr} {};
+        : params{std::move(params)}, lr{lr} 
+        {
+#ifndef NDEBUG
+          for(const auto& param: params){
+            assert(param); // we don't want nullptrs here
+          }
+#endif // NDEBUG
+        };
       
       ~OptimizerBase() noexcept = default;
 

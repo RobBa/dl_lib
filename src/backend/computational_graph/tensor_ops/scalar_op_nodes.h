@@ -13,7 +13,7 @@
 
 #include "computational_graph/graph_node.h"
 
-namespace graph {
+namespace cgraph {
   class ScalarAddNode final : public GraphNode {  
     public:
       explicit ScalarAddNode(std::shared_ptr<Tensor> t) 

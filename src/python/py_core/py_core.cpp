@@ -190,7 +190,7 @@ BOOST_PYTHON_MODULE(_core)
     .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_4(Tensor::getItem))
     .def("getitem", Py_DataModeling::getItemVector) // the vector arg
 
-    .def("sum", WRAP_FREE_FUNC_7(&(graph::sumTensor)))
+    .def("sum", WRAP_FREE_FUNC_7(&(cgraph::sumTensor)))
         
     .def("reset", Py_DataModeling::reset1)
     .def("reset", Py_DataModeling::reset2)

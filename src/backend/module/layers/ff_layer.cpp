@@ -10,7 +10,6 @@
  */
 
 #include "ff_layer.h"
-#include "activation_functions/activation_function_base.h"
 #include "data_modeling/tensor_functions.h"
 
 #include "computational_graph/tensor_ops/graph_creation.h"
@@ -19,7 +18,7 @@
 #include <utility>
 
 using namespace std;
-using namespace layers;
+using namespace module;
 
 FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGrad) 
     : FfLayer(dims, Tensor::getDefaultDevice(), useBias, requiresGrad) {}
@@ -33,7 +32,7 @@ FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGra
  * @param requiresGrad If true train this layer.
  */
 FfLayer::FfLayer(const vector<tensorDim_t>& dims, Device d, bool useBias, bool requiresGrad)
-  : LayerBase(useBias, requiresGrad) {
+  : useBias{useBias}, requiresGrad{requiresGrad} {
   assert(dims.size()==2);
 
   weights = make_shared<Tensor>(Dimension({dims[0], dims[1]}), d, requiresGrad);
@@ -50,37 +49,29 @@ FfLayer::FfLayer(const vector<tensorDim_t>& dims, Device d, bool useBias, bool r
  * 
  * Assumption for input: (b-size, ..., dim1, in-size)
  */
-Tensor FfLayer::forward(const Tensor& input) const {
-    auto res = input.matmul(*weights);
+Tensor FfLayer::operator()(const Tensor& input) const {
+  auto res = input.matmul(*weights);
 
-    if(useBias){
-        res = res + *bias;
-    }
+  if(useBias){
+    res = res + *bias;
+  }
 
-    for(auto& af: activations){
-      res = (*af)(res);
-    }
-
-    return res;
+  return res;
 }
 
 /**
  * @brief Like overload, but creates computational graph.
  */
-std::shared_ptr<Tensor> FfLayer::forward(const std::shared_ptr<Tensor>& input) const {
-    auto res = graph::matmul(input, weights);
-    if(useBias){
-        res = graph::add(res, bias); // TODO: add needs to happen on each of those, how to broadcast?
-    }
+std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input) const {
+  auto res = cgraph::matmul(input, weights);
+  if(useBias){
+    res = cgraph::add(res, bias); // TODO: add needs to happen on each of those, how to broadcast?
+  }
 
-    for(auto& af: activations){
-      res = (*af)(res);
-    }
-
-    return res;  
+  return res;  
 }
 
 void FfLayer::print(ostream& os) const noexcept {
-    LayerBase::print(os);
-    os << "\nuseBias: " << useBias ? "true" : "false";
+  ModuleBase::print(os);
+  os << "\nuseBias: " << useBias ? "true" : "false";
 }

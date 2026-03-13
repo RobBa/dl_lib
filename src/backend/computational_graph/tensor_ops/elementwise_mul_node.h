@@ -13,7 +13,7 @@
 
 #include "computational_graph/graph_node.h"
 
-namespace graph {
+namespace cgraph {
   class ElementwiseMulNode final : public GraphNode {
     public:
       explicit ElementwiseMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 

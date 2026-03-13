@@ -19,72 +19,72 @@
 
 using namespace std;
 
-shared_ptr<Tensor> graph::mul(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
+shared_ptr<Tensor> cgraph::mul(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
   auto res = make_shared<Tensor>((*left) * (*right));
   if(left->getRequiresGrad() || right->getRequiresGrad()){
-    res->setCgNode(make_shared<graph::ElementwiseMulNode>(left, right));
+    res->setCgNode(make_shared<cgraph::ElementwiseMulNode>(left, right));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::add(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
+shared_ptr<Tensor> cgraph::add(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
   auto res = make_shared<Tensor>(*left + *right);
   if(left->getRequiresGrad() || right->getRequiresGrad()){
-    res->setCgNode(make_shared<graph::AddNode>(left, right));
+    res->setCgNode(make_shared<cgraph::AddNode>(left, right));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::matmul(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
+shared_ptr<Tensor> cgraph::matmul(const shared_ptr<Tensor> left, const shared_ptr<Tensor> right) {
   auto res = make_shared<Tensor>(left->matmul(*right));
   if(left->getRequiresGrad() || right->getRequiresGrad()){
-    res->setCgNode(make_shared<graph::MatMulNode>(left, right));
+    res->setCgNode(make_shared<cgraph::MatMulNode>(left, right));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::mul(const shared_ptr<Tensor> t, ftype scalar) {
+shared_ptr<Tensor> cgraph::mul(const shared_ptr<Tensor> t, ftype scalar) {
   auto res = make_shared<Tensor>((*t) * scalar);
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::ScalarMulNode>(t, scalar));
+    res->setCgNode(std::make_shared<cgraph::ScalarMulNode>(t, scalar));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::mul(ftype scalar, const shared_ptr<Tensor> t) {
-  return graph::mul(t, scalar);
+shared_ptr<Tensor> cgraph::mul(ftype scalar, const shared_ptr<Tensor> t) {
+  return cgraph::mul(t, scalar);
 }
 
-shared_ptr<Tensor> graph::add(const shared_ptr<Tensor> t, ftype scalar) {
+shared_ptr<Tensor> cgraph::add(const shared_ptr<Tensor> t, ftype scalar) {
   auto res = make_shared<Tensor>((*t) + scalar);
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::ScalarAddNode>(t));
+    res->setCgNode(std::make_shared<cgraph::ScalarAddNode>(t));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::add(ftype scalar, const shared_ptr<Tensor> t) {
-  return graph::add(t, scalar);
+shared_ptr<Tensor> cgraph::add(ftype scalar, const shared_ptr<Tensor> t) {
+  return cgraph::add(t, scalar);
 }
 
-shared_ptr<Tensor> graph::sub(const shared_ptr<Tensor> t, ftype scalar) {
+shared_ptr<Tensor> cgraph::sub(const shared_ptr<Tensor> t, ftype scalar) {
   auto res = make_shared<Tensor>((*t) - scalar);
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::ScalarAddNode>(t));
+    res->setCgNode(std::make_shared<cgraph::ScalarAddNode>(t));
     assert(res->getRequiresGrad());
   }
   return res;
 }
 
-shared_ptr<Tensor> graph::div(const shared_ptr<Tensor> t, ftype scalar) {
+shared_ptr<Tensor> cgraph::div(const shared_ptr<Tensor> t, ftype scalar) {
   auto res = make_shared<Tensor>((*t) / scalar);
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::ScalarMulNode>(t, 1 / scalar));
+    res->setCgNode(std::make_shared<cgraph::ScalarMulNode>(t, 1 / scalar));
     assert(res->getRequiresGrad());
   }
   return res;
@@ -97,13 +97,13 @@ shared_ptr<Tensor> graph::div(const shared_ptr<Tensor> t, ftype scalar) {
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
-shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
+shared_ptr<Tensor> cgraph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
   ftype val = t->getItem(idx);
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
                              t->getDevice());
                              
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::GetterNode>(t, idx));
+    res->setCgNode(std::make_shared<cgraph::GetterNode>(t, idx));
     assert(res->getRequiresGrad());
   }
   return res;
@@ -115,12 +115,12 @@ shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
-shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, const vector<tensorDim_t>& idx) {
+shared_ptr<Tensor> cgraph::get(const shared_ptr<Tensor>& t, const vector<tensorDim_t>& idx) {
   ftype val = t->getItem(std::move(idx));
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
                              t->getDevice());
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<graph::GetterNode>(t, idx));
+    res->setCgNode(std::make_shared<cgraph::GetterNode>(t, idx));
     assert(res->getRequiresGrad());
   }
   return res;
@@ -129,11 +129,11 @@ shared_ptr<Tensor> graph::get(const shared_ptr<Tensor>& t, const vector<tensorDi
 /**
  * @brief Takes the sum of the whole tensor, then returns result as vector.
  */
-shared_ptr<Tensor> graph::sumTensor(const shared_ptr<Tensor> t) {
+shared_ptr<Tensor> cgraph::sumTensor(const shared_ptr<Tensor> t) {
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{0.0}, 
                                  t->getDevice(), t->getRequiresGrad());
   for(tensorSize_t i=0; i<t->getSize(); i++){
-    res = graph::add(res, graph::get(t, i));
+    res = cgraph::add(res, cgraph::get(t, i));
   }
   return res;
 }

@@ -558,7 +558,7 @@ void Tensor::backward() {
     }
   }
 
-  vector<Tensor*> sortedTensors = graph::TopologicalSort::reverseSort(this);
+  vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
   for(auto tPtr: sortedTensors){
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad

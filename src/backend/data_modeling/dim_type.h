@@ -18,13 +18,6 @@
 #include <iostream>
 #include <cassert>
 
-template <typename T>
-concept is_valid_dim = requires(T x) {
-    requires std::is_integral_v<std::remove_const_t<T>>;
-    requires std::convertible_to<std::remove_const_t<T>, tensorDim_t>;
-    x >= 0;
-};
-
 class Dimension final {
   private:
     std::vector<tensorDim_t> dims;
@@ -50,14 +43,12 @@ class Dimension final {
     Dimension collapseDimension(int idx) const;
 
     void resize(const std::vector<tensorDim_t>& dims);
-    
+      
     tensorSize_t getSize() const noexcept {
-      assert(size!=0);
       return size;
     }
 
     tensorDim_t getItem(int idx) const {
-      assert(size!=0);
       if(idx<0){
         idx = dims.size() + idx; // -1 is last idx, -2 second last and so forth
       }
@@ -72,8 +63,20 @@ class Dimension final {
     void swap(const tensorDim_t dim1, const tensorDim_t dim2);
 
     size_t nDims() const noexcept {
-      assert(size!=0);
       return dims.size();
+    }
+
+    /**
+     * @brief Returns empty dims. Used e.g. to identify dimensions
+     * of activation functions.
+     */
+    static const Dimension& getEmpty() {
+      static const auto emptyDims = Dimension(std::vector<tensorDim_t>());
+      return emptyDims;
+    }
+
+    bool empty() const noexcept {
+      return size > 0;
     }
 
     bool operator==(const Dimension& other) const {
@@ -82,7 +85,6 @@ class Dimension final {
     }
 
     bool operator==(const std::vector<tensorDim_t>& other) const {
-      assert(size!=0);
       return this->dims == other;
     }
 
@@ -94,5 +96,5 @@ class Dimension final {
       return !(*this == other);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
+    friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;    
 };

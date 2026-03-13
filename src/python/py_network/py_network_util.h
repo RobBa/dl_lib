@@ -11,16 +11,13 @@
 
 #pragma once
 
-#include "layers/layer_base.h"
-#include "activation_functions/activation_function_base.h"
-#include "training/loss_functions/loss_base.h"
-#include "training/optimizers/optimizer_base.h"
+#include "module/module_base.h"
 
-#include "layers/ff_layer.h"
+#include "module/layers/ff_layer.h"
 
-#include "activation_functions/relu.h"
-#include "activation_functions/leaky_relu.h"
-#include "activation_functions/softmax.h"
+#include "module/activation_functions/relu.h"
+#include "module/activation_functions/leaky_relu.h"
+#include "module/activation_functions/softmax.h"
 
 #include <boost/python.hpp>
 #include <boost/python/wrapper.hpp>
@@ -30,8 +27,8 @@
 namespace Py_Network {
   using namespace boost::python;
 
-  ftype layerGetItem(const layers::LayerBase& self, boost::python::object index);
-  void layerSetItem(layers::LayerBase& self, boost::python::object index, ftype value);
+  ftype layerGetItem(const module::ModuleBase& self, boost::python::object index);
+  void layerSetItem(module::ModuleBase& self, boost::python::object index, ftype value);
 
   /**
    * @brief Wrapper class needed for Boost Python to get the virtual function working 
@@ -39,32 +36,22 @@ namespace Py_Network {
    * https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/exposing.html
    * 
    */
-  /* struct LayerBaseWrap : layers::LayerBase, wrapper<layers::LayerBase> {
-    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input) const override {
+  struct ModuleBaseWrapper : module::ModuleBase, wrapper<module::ModuleBase> {
+    std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const override {
       return this->get_override("forward")(input);   
     }
 
-    Tensor forward(const Tensor& input) const override {
+    Tensor operator()(const Tensor& input) const override {
       std::__throw_runtime_error("This function should never be called from within Python");   
     }
   };
 
-  struct ActivationFunctionWrap : activation::ActivationFunctionBase, wrapper<activation::ActivationFunctionBase> {
-    std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const override {
-      return this->get_override("call")(input);   
-    }
-  };
+  inline std::shared_ptr<Tensor> (ModuleBaseWrapper::*moduleForward)(const std::shared_ptr<Tensor>&) const  = &ModuleBaseWrapper::operator();
 
-  struct LossWrap : train::LossBase, wrapper<train::LossBase> {
-    Tensor operator()(const Tensor& y, const Tensor& ypred) const override {
-      return this->get_override("call")(y, ypred);   
-    }
-  }; */
+  inline std::shared_ptr<Tensor> (module::FfLayer::*ffForward)(const std::shared_ptr<Tensor>&) const        = &module::FfLayer::operator();
 
-  inline std::shared_ptr<Tensor> (layers::FfLayer::*ffForward)(const std::shared_ptr<Tensor>&) const            = &layers::FfLayer::forward;
-
-  inline std::shared_ptr<Tensor> (activation::ReLu::*reluF)(const std::shared_ptr<Tensor>&) const               = &activation::ReLu::operator();
-  inline std::shared_ptr<Tensor> (activation::LeakyReLu::*leakyReluF)(const std::shared_ptr<Tensor>&) const     = &activation::LeakyReLu::operator();
-  inline std::shared_ptr<Tensor> (activation::Softmax::*softmaxF)(const std::shared_ptr<Tensor>&) const         = &activation::Softmax::operator();
+  inline std::shared_ptr<Tensor> (module::ReLu::*reluF)(const std::shared_ptr<Tensor>&) const               = &module::ReLu::operator();
+  inline std::shared_ptr<Tensor> (module::LeakyReLu::*leakyReluF)(const std::shared_ptr<Tensor>&) const     = &module::LeakyReLu::operator();
+  inline std::shared_ptr<Tensor> (module::Softmax::*softmaxF)(const std::shared_ptr<Tensor>&) const         = &module::Softmax::operator();
 }
 

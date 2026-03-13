@@ -17,6 +17,9 @@
 #include "training/loss_functions/crossentropy_loss.h"
 
 #include "training/optimizers/sgd.h"
+#include "training/optimizers/rmsprop.h"
+
+#include "training/trainers/base_train_loop.h"
 
 #include <stdexcept>
 
@@ -37,19 +40,13 @@ BOOST_PYTHON_MODULE(py_layers)
   }
 
   // Networks
-  // TODO
-
-  // Layers
-  class_<layers::LayerBase, boost::noncopyable>("LayerBase", no_init)
-    // attributes
-    .add_property("dims", make_function(&layers::LayerBase::getDims, return_internal_reference<>()))
-    .add_property("weights", make_function(&layers::LayerBase::getWeights))
-    .add_property("bias", make_function(&layers::LayerBase::getBias))
-    // methods
-    .def("addActivation", make_function(&layers::LayerBase::addActivation))    
+  class_<Py_Network::ModuleBaseWrapper, std::shared_ptr<networks::Sequential>, boost::noncopyable>("Module", no_init)
+    // operators
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::ModuleBaseWrapper, Py_Network::moduleForward))
+    .def("__str__", &toString<module::FfLayer>)
   ;
 
-  class_<layers::FfLayer, std::shared_ptr<layers::FfLayer>, bases<layers::LayerBase>, boost::noncopyable>("FfLayer", no_init)
+  class_<module::FfLayer, std::shared_ptr<module::FfLayer>, boost::noncopyable>("FfLayer", no_init)
     // init
     .def(init<const std::vector<tensorDim_t>&>())
     .def(init<const std::vector<tensorDim_t>&, bool>())
@@ -58,24 +55,28 @@ BOOST_PYTHON_MODULE(py_layers)
     .def(init<const std::vector<tensorDim_t>&, Device, bool>())
     .def(init<const std::vector<tensorDim_t>&, Device, bool, bool>())
     // methods
-    .def("forward", WRAP_METHOD_ONE_TENSORARG(layers::FfLayer, Py_Network::ffForward))
-    // operators
-    .def("__str__", &toString<layers::FfLayer>)
+    .add_property("dims", make_function(&module::FfLayer::getDims, return_internal_reference<>()))
+    .add_property("weights", &module::FfLayer::getWeights)
+    .add_property("bias", &module::FfLayer::getBias)
+    .add_property("params", &module::ModuleBase::getParams)
+        // operators
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::FfLayer, Py_Network::ffForward))
+    .def("__str__", &toString<module::FfLayer>)
   ;
 
-  class_<activation::ReLu, std::shared_ptr<activation::ReLu>, boost::noncopyable>("ReLU")
-    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::ReLu, Py_Network::reluF))
-    .def("__str__", &toString<activation::ReLu>)
+  class_<module::ReLu, std::shared_ptr<module::ReLu>, boost::noncopyable>("ReLU")
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::ReLu, Py_Network::reluF))
+    .def("__str__", &toString<module::ReLu>)
   ;
 
-  class_<activation::LeakyReLu, std::shared_ptr<activation::LeakyReLu>, boost::noncopyable>("LeakyReLU", init<ftype>())
-    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::LeakyReLu, Py_Network::leakyReluF))
-    .def("__str__", &toString<activation::LeakyReLu>)
+  class_<module::LeakyReLu, std::shared_ptr<module::LeakyReLu>, boost::noncopyable>("LeakyReLU", init<ftype>())
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::LeakyReLu, Py_Network::leakyReluF))
+    .def("__str__", &toString<module::LeakyReLu>)
   ;
 
-  class_<activation::Softmax, std::shared_ptr<activation::Softmax>, boost::noncopyable>("Softmax")
-    .def("__call__", WRAP_METHOD_ONE_TENSORARG(activation::Softmax, Py_Network::softmaxF))
-    .def("__str__", &toString<activation::Softmax>)
+  class_<module::Softmax, std::shared_ptr<module::Softmax>, boost::noncopyable>("Softmax")
+    .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::Softmax, Py_Network::softmaxF))
+    .def("__str__", &toString<module::Softmax>)
   ;
 
   // Loss functions
@@ -93,12 +94,21 @@ BOOST_PYTHON_MODULE(py_layers)
     .def("step", &train::SgdOptimizer::step)
   ;
 
+  class_<train::RmsPropOptimizer, std::shared_ptr<train::RmsPropOptimizer>, boost::noncopyable>("RmsProp", no_init)
+    .def(init<std::vector< std::shared_ptr<Tensor> >, ftype, ftype>())
+    .def("step", &train::RmsPropOptimizer::step)
+  ;
+
   // Trainers
-  // TODO
+  class_<train::BaseTrainLoop, std::shared_ptr<train::BaseTrainLoop>, boost::noncopyable>("TrainLoop", no_init)
+    .def(init<std::shared_ptr<module::ModuleBase>&, std::shared_ptr<train::LossBase>, std::shared_ptr<train::OptimizerBase>,
+              ftype, size_t, tensorDim_t>())
+    .def("step", &train::RmsPropOptimizer::step)
+  ;
 }
 
 /*
-ftype Py_Layers::layerGetItem(const layers::LayerBase& self, boost::python::object index) {
+ftype Py_module::layerGetItem(const module::ModuleBase& self, boost::python::object index) {
   extract<int> int_extractor(index);
         
   // Single integer index (1D)
@@ -142,7 +152,7 @@ ftype Py_Layers::layerGetItem(const layers::LayerBase& self, boost::python::obje
   return 0.0; // Never reached
 }
 
-void Py_Layers::layerSetItem(layers::LayerBase& self, boost::python::object index, ftype value) {
+void Py_module::layerSetItem(module::ModuleBase& self, boost::python::object index, ftype value) {
   extract<int> int_extractor(index);
         
   // Single integer index (1D)

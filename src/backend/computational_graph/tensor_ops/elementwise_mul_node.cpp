@@ -12,7 +12,7 @@
 #include "elementwise_mul_node.h"
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 vector<shared_ptr<Tensor>> ElementwiseMulNode::backward(const Tensor& upstreamGrad) {
     assert(!upstreamGrad.getRequiresGrad());

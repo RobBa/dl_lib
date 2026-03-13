@@ -16,7 +16,7 @@
 #include <vector>
 #include <variant>
 
-namespace graph{
+namespace cgraph{
   /**
    * @brief When calling a get function, say as in 
    * loss += myTensor[i], then we need to build a graph in between 

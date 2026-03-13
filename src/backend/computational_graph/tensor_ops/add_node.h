@@ -13,7 +13,7 @@
 
 #include "computational_graph/graph_node.h"
 
-namespace graph {
+namespace cgraph {
   class AddNode final : public GraphNode {
     private:
       // if t2 has been a vector we broadcast t2 into t1, see Tensor::add()

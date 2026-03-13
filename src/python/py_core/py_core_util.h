@@ -97,39 +97,39 @@ namespace Py_DataModeling {
 
   // multiplications
   inline std::shared_ptr<Tensor> (*elementwisemul) 
-  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::mul);
+  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(cgraph::mul);
 
   inline std::shared_ptr<Tensor> (*scalarmul) 
-  (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::mul);
+  (const std::shared_ptr<Tensor>, ftype)                                              = &(cgraph::mul);
 
   inline std::shared_ptr<Tensor> (*rscalarmul) 
-  (ftype, const std::shared_ptr<Tensor>)                                              = &(graph::mul);
+  (ftype, const std::shared_ptr<Tensor>)                                              = &(cgraph::mul);
 
   // additions
   inline std::shared_ptr<Tensor> (*elementwiseadd) 
-  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::add);
+  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(cgraph::add);
 
   inline std::shared_ptr<Tensor> (*scalaradd) 
-  (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::add);
+  (const std::shared_ptr<Tensor>, ftype)                                              = &(cgraph::add);
 
   inline std::shared_ptr<Tensor> (*rscalaradd) 
-  (ftype, const std::shared_ptr<Tensor>)                                              = &(graph::add);
+  (ftype, const std::shared_ptr<Tensor>)                                              = &(cgraph::add);
 
   // matmul
   inline std::shared_ptr<Tensor> (*matmul) 
-  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(graph::matmul);
+  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(cgraph::matmul);
     
   // sub, div
   inline std::shared_ptr<Tensor> (*scalarsub) 
-  (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::sub);
+  (const std::shared_ptr<Tensor>, ftype)                                              = &(cgraph::sub);
 
   inline std::shared_ptr<Tensor> (*scalardiv) 
-  (const std::shared_ptr<Tensor>, ftype)                                              = &(graph::div);
+  (const std::shared_ptr<Tensor>, ftype)                                              = &(cgraph::div);
 
   // get
   inline std::shared_ptr<Tensor> (*getItemAsTensor1) 
-  (const std::shared_ptr<Tensor>& t, tensorSize_t idx)                                = &(graph::get);
+  (const std::shared_ptr<Tensor>& t, tensorSize_t idx)                                = &(cgraph::get);
 
   inline std::shared_ptr<Tensor> (*getItemAsTensor2) 
-  (const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx)             = &(graph::get);
+  (const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx)             = &(cgraph::get);
 }

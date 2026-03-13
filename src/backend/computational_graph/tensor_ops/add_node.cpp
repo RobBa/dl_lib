@@ -14,7 +14,7 @@
 #include "data_modeling/tensor_functions.h"
 
 using namespace std;
-using namespace graph;
+using namespace cgraph;
 
 vector< shared_ptr<Tensor> > AddNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());

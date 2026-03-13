@@ -11,6 +11,6 @@
 
 #include <gtest/gtest.h>
 
-#include "activation_functions/relu.h"
+#include "module/activation_functions/relu.h"
 #include "data_modeling/tensor_functions.h"
 
