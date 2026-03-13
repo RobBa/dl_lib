@@ -59,6 +59,18 @@ std::shared_ptr<Tensor> SequentialNetwork::forward(const std::shared_ptr<Tensor>
   return x;
 }
 
+std::vector<std::shared_ptr<Tensor>> SequentialNetwork::getParams() const {
+  std::vector<std::shared_ptr<Tensor>> res;
+  res.reserve(layers.size()*2);
+
+  for(const auto& layer: layers){
+    auto [weigths, bias] = layer->getParams();
+    res.push_back(std::move(weights));
+    res.push_back(std::move(bias));
+  }
+  
+  return res;
+}
 
 void SequentialNetwork::append(shared_ptr<layers::LayerBase> l) {
   if(!assertDims(*l)){

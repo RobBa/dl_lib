@@ -17,6 +17,7 @@
 
 #include <optional>
 #include <memory>
+#include <pair>
 
 #include <iostream>
 
@@ -57,6 +58,10 @@ namespace layers {
 
             auto getWeights() const noexcept { return weights; }
             auto getBias() const noexcept { return bias; }
+
+            std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>>getParams() const {
+                return std::make_pair(weights, bias);
+            }
 
             virtual void print(std::ostream& os) const noexcept;
             friend std::ostream& operator<<(std::ostream& os, const LayerBase& t) noexcept;

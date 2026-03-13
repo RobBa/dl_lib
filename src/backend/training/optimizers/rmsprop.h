@@ -10,14 +10,24 @@
  */
 
 #include "optimizer_base.h"
-
 #include "utility/global_params.h"
+
+#include <unordered_map>
 
 namespace train {
   class RmsPropOptimizer final : public OptimizerBase {
+    private:
+      const ftype decay;
+      std::unordered_map<Tensor*, std::unique_ptr<Tensor>> movingAvg;
+
     public:
-        RmsPropOptimizer(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 
-          : OptimizerBase(std::move(params), lr) { }
+        RmsPropOptimizer(std::vector< std::shared_ptr<Tensor> > params, ftype lr, ftype decay) 
+          : OptimizerBase(std::move(params), lr), decay{decay} 
+          {
+            for(const auto& param: params) {
+              movingAvg[param.get()] = nullptr; // lazy initialization
+            }
+          }
 
         void step() override;
   };

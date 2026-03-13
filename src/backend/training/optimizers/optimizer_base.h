@@ -20,8 +20,8 @@
 namespace train {
   class OptimizerBase {
     protected:
-      ftype lr;
-      std::vector< std::shared_ptr<Tensor> > params;
+      const ftype lr;
+      const std::vector< std::shared_ptr<Tensor> > params;
 
     public:
       OptimizerBase(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 

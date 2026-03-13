@@ -1,5 +1,5 @@
 /**
- * @file base_trainer.cpp
+ * @file base_train_loop.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -9,7 +9,7 @@
  * 
  */
 
-#include "base_trainer.h"
+#include "base_train_loop.h"
 
 #include <span>
 
@@ -19,7 +19,7 @@
 using namespace std;
 using namespace train;
 
-void BaseTrainer::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle) {
+void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle) {
   for(size_t e=0; e<epochs; e++){
       std::vector<tensorDim_t> indices(bsize);
       std::iota(indices.begin(), indices.end(), 0);

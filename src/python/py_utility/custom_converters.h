@@ -52,6 +52,30 @@ namespace custom_converters {
   };
 }
 
+/* struct DimsFromPython {
+    static void* convertible(PyObject* obj) {
+        if (!PyTuple_Check(obj) && !PyList_Check(obj)) return nullptr;
+        return obj;
+    }
+    
+    static void construct(PyObject* obj, 
+                         bp::converter::rvalue_from_python_stage1_data* data) {
+        void* storage = ((bp::converter::rvalue_from_python_object_data<Dims>*)data)->storage.bytes;
+        Dims* dims = new (storage) Dims();
+        int len = PySequence_Length(obj);
+        dims->ndim = len;
+        for (int i = 0; i < len; i++)
+            dims->data[i] = bp::extract<size_t>(PySequence_GetItem(obj, i));
+        data->convertible = storage;
+    }
+};
+
+// register it in your module init:
+bp::converter::registry::push_back(
+    &DimsFromPython::convertible,
+    &DimsFromPython::construct,
+    bp::type_id<Dims>()); */
+
 /******************************************************************************************/
 /******************************************************************************************/
 /******************************************************************************************/

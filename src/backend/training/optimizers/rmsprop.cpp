@@ -15,5 +15,33 @@ using namespace std;
 using namespace train;
 
 void RmsPropOptimizer::step() {
- __throw_runtime_error("Not implemented yet");
+  constexpr ftype eps = 1e-6;
+  for(const auto& param: params){
+    auto tPtr = param.get();
+    const auto gPtr = tPtr->getGrads().get();
+    auto vPtr = movingAvg[tPtr].get();
+
+    // update moving avg
+    if(vPtr!=nullptr) { // hot path
+      for(tensorSize_t i=0; i<gPtr->getSize(); i++){ 
+        auto g = (*gPtr)[i];
+        auto update = decay * (*vPtr)[i] + (1-decay)*g*g;
+        vPtr->setItem(update, i);
+      }
+    }
+    else { // init loop
+      movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), tPtr->getDevice(), false); // create empty tensor
+      vPtr = movingAvg[tPtr].get();
+      for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
+        auto g = (*tPtr)[i];
+        vPtr->setItem((1-decay)*g*g, i);
+      }
+    }
+
+    // update gradients
+    for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
+      auto update = (*tPtr)[i] - lr * (*gPtr)[i] / ((*vPtr)[i] + eps);
+      tPtr->setItem(update, i);
+    }
+  }
 }
