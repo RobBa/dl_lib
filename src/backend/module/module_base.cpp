@@ -16,15 +16,6 @@
 using namespace std;
 using namespace module;
 
-void ModuleBase::print(ostream& os) const noexcept {
-  if(weights){
-    os << "Weigths:\n" << *weights;
-  }
-  if(bias){
-    os << "\nBias:\n" << *bias;
-  }
-}
-
 ostream& module::operator<<(ostream& os, const ModuleBase& l) noexcept {
   l.print(os); // calling vtable
   return os;

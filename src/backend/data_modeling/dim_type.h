@@ -49,6 +49,7 @@ class Dimension final {
     }
 
     tensorDim_t getItem(int idx) const {
+      assert(size>0);
       if(idx<0){
         idx = dims.size() + idx; // -1 is last idx, -2 second last and so forth
       }
@@ -64,19 +65,6 @@ class Dimension final {
 
     size_t nDims() const noexcept {
       return dims.size();
-    }
-
-    /**
-     * @brief Returns empty dims. Used e.g. to identify dimensions
-     * of activation functions.
-     */
-    static const Dimension& getEmpty() {
-      static const auto emptyDims = Dimension(std::vector<tensorDim_t>());
-      return emptyDims;
-    }
-
-    bool empty() const noexcept {
-      return size > 0;
     }
 
     bool operator==(const Dimension& other) const {

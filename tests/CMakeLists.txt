@@ -9,8 +9,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(unit_tests_backend
     backend/test_data_modeling.cpp
     backend/test_computational_graph.cpp
-    backend/test_networks.cpp
-    backend/test_training.cpp
+    backend/test_module.cpp
     )
 
 target_link_libraries(unit_tests_backend PRIVATE

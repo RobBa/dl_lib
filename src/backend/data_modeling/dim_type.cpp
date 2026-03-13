@@ -18,9 +18,6 @@
 using namespace std;
 
 tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const noexcept {
-  if(dims.size()==0)
-    return 0;
-
   tensorDim_t res = 1;
 
 #ifndef NDEBUG
@@ -42,6 +39,7 @@ tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const no
 void Dimension::resize(const std::vector<tensorDim_t>& dims) {
   this->dims = dims;
   size = multVector(dims);
+  assert(size>0);
 }
 
 /**
@@ -55,6 +53,7 @@ void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) : dims{dims} {
   size = multVector(dims);
+  assert(size>0);
 }
 
 Dimension::Dimension(const Dimension& other) : dims{other.dims}, size{other.size} { }

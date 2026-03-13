@@ -1,9 +1,7 @@
 file(GLOB_RECURSE CORE_SOURCES
-    activation_functions/*.cpp
     computational_graph/*.cpp
     data_modeling/*.cpp
-    layers/*.cpp
-    networks/*.cpp
+    module/*.cpp
     system/*.cpp
     training/*.cpp
     utility/*.cpp

@@ -38,12 +38,12 @@ namespace module {
 
       // for inference -> no graph creation
       virtual Tensor operator()(const Tensor& input) const = 0;
-
       // for training -> creates graph
       virtual std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const = 0;
-      virtual std::vector<std::shared_ptr<Tensor>> parameters() const { return {}; }
 
-      virtual void print(std::ostream& os) const noexcept;
+      virtual std::vector< std::shared_ptr<Tensor> > parameters() const { return {}; }
+
+      virtual void print(std::ostream& os) const noexcept {};
       friend std::ostream& operator<<(std::ostream& os, const ModuleBase& t) noexcept;
   };
 }
