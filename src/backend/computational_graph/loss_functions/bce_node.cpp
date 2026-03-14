@@ -30,7 +30,7 @@ vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
 
     constexpr ftype eps = 1e-6;
     auto g = -yi/std::max(yiHat, eps) + (1-yi)/std::max(1-yiHat, eps);
-    res->setItem(g/bSize, i);
+    res->set(g/bSize, i);
   }
   
   return {res};

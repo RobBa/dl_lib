@@ -39,8 +39,8 @@ TEST(AutogradTest, SimpleAddition) {
     
     loss->backward();
     
-    EXPECT_NEAR(t1->getGrads()->getItem(0), 10.0, 1e-5);
-    EXPECT_NEAR(t2->getGrads()->getItem(0), 10.0, 1e-5);
+    EXPECT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
+    EXPECT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
 }
 
 TEST(AutogradTest, ScalarMultiplication) {
@@ -52,8 +52,8 @@ TEST(AutogradTest, ScalarMultiplication) {
     
     loss->backward();
     
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem(0), 36.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem(0), 24.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get(0), 36.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get(0), 24.0);
 }
 
 TEST(AutogradTest, MatMul) {
@@ -73,20 +73,20 @@ TEST(AutogradTest, MatMul) {
     EXPECT_TRUE(t2->hasGrads());
 
     // dL/dt1 = dloss/dt3 @ t2^t = Ones({2, 2}) @ t2^t
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({0, 0}), 3.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({0, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({0, 2}), 11.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({1, 0}), 3.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({1, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->getItem({1, 2}), 11.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 0}), 3.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 1}), 7.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 2}), 11.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 0}), 3.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 1}), 7.0);
+    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 2}), 11.0);
 
     // dL/dt2 = t1^t @ dloss/dt3 = t1^t @ Ones({2, 2})
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({0, 0}), 5.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({0, 1}), 5.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({1, 0}), 7.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({1, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({2, 0}), 9.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->getItem({2, 1}), 9.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 0}), 5.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 1}), 5.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 0}), 7.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 1}), 7.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 0}), 9.0);
+    ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 1}), 9.0);
 }
 
 TEST(AutogradTest, ChainRule) {
@@ -100,7 +100,7 @@ TEST(AutogradTest, ChainRule) {
     
     // dloss/dx = 2(x^2 + x) * (2x + 1)
     // At x=2: 2(4 + 2) * (4 + 1) = 2 * 6 * 5 = 60
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), 60.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 60.0);
 }
 
 TEST(AutogradTest, MultiVariateChainRule) {
@@ -115,11 +115,11 @@ TEST(AutogradTest, MultiVariateChainRule) {
     loss->backward();
     
     // dloss/dx = scalar = 3
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), 3.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(1), 3.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 3.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 3.0);
 
-    ASSERT_DOUBLE_EQ(y->getGrads()->getItem(0), 1.0);
-    ASSERT_DOUBLE_EQ(y->getGrads()->getItem(1), 1.0);
+    ASSERT_DOUBLE_EQ(y->getGrads()->get(0), 1.0);
+    ASSERT_DOUBLE_EQ(y->getGrads()->get(1), 1.0);
 }
 
 TEST(AutogradTest, ReLU) {
@@ -132,9 +132,9 @@ TEST(AutogradTest, ReLU) {
     loss->backward();
     
     // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(1), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(2), 1.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
 }
 
 TEST(AutogradTest, LeakyReLU) {
@@ -149,7 +149,7 @@ TEST(AutogradTest, LeakyReLU) {
     loss->backward();
     
     // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(0), eps);
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(1), eps); // by convention
-    ASSERT_DOUBLE_EQ(x->getGrads()->getItem(2), 1.0);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps); // by convention
+    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
 }

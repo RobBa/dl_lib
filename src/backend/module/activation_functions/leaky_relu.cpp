@@ -21,7 +21,7 @@ Tensor LeakyReLu::operator()(const Tensor& t) const {
   for(tensorSize_t i=0; i<t.getSize(); i++){
     constexpr ftype zero = 0;
     if(t[i] < zero){
-      res.setItem(eps, i);
+      res.set(eps, i);
     }
   }
 

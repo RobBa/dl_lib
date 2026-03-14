@@ -24,7 +24,7 @@ vector<shared_ptr<Tensor>> LeakyReLuNode::backward(const Tensor& upstreamGrad) {
   
   const auto& parent = parents[0];
   for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
-    res->setItem((*parent)[i] > zero ? upstreamGrad[i] : upstreamGrad[i] * eps, i);
+    res->set((*parent)[i] > zero ? upstreamGrad[i] : upstreamGrad[i] * eps, i);
   }
 
   return {res};

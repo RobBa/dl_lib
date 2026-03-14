@@ -26,10 +26,10 @@ Tensor Softmax::operator()(const Tensor& t) const {
 
   Tensor tmp(t.getDims(), t.getDevice());
   for(tensorSize_t i=0; i<t.getSize(); i++){
-    tmp.setItem(static_cast<ftype>(exp(t[i])), i);
+    tmp.set(static_cast<ftype>(exp(t[i])), i);
   }
 
-  const tensorSize_t stride = t.getDims().getItem(-1);
+  const tensorSize_t stride = t.getDims()[-1];
   auto compute = [&t, &res, &tmp, stride](tensorSize_t start){
     ftype sum = 0;
     for(tensorSize_t i=0; i<stride; i++){
@@ -37,7 +37,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
     }
 
     for(tensorSize_t i=0; i<t.getSize(); i++){
-      res.setItem(tmp[i] / sum, i);
+      res.set(tmp[i] / sum, i);
     }
   };
   

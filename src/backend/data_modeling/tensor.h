@@ -70,8 +70,8 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
             ftype& operator[](const tensorSize_t idx);
             ftype operator[](const tensorSize_t idx) const;
 
-            void setItem(ftype v, tensorSize_t idx);
-            ftype getItem(tensorSize_t idx);
+            void set(ftype v, tensorSize_t idx);
+            ftype get(tensorSize_t idx);
 
             tensorSize_t getSize() const noexcept;
 
@@ -152,7 +152,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad=false) :
             Tensor{dims, d, requiresGrad} {   
             for(tensorSize_t i=0; i<initValues.size(); i++){
-                values->setItem(initValues[i], i);
+                values->set(initValues[i], i);
             }
         }
 
@@ -219,22 +219,22 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         // for convenience we provide some simple getters
-        ftype getItem(tensorSize_t idx) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
+        ftype get(tensorSize_t idx) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
         // non-const version of operator[] does not exist because of CUDA
         ftype operator[](tensorSize_t idx) const;
 
-        ftype getItem(const std::vector<tensorDim_t>& idx) const;
+        ftype get(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters
-        void setItem(ftype item, tensorDim_t idx);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-        void setItem(ftype item, const std::vector<tensorDim_t>& idx);
+        void set(ftype item, tensorDim_t idx);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
+        void set(ftype item, const std::vector<tensorDim_t>& idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;

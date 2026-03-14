@@ -27,10 +27,10 @@ vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGr
 
     for(tensorDim_t j=0; i<nClasses; i++){
       constexpr ftype eps = 1e-6;
-      auto yijHat = std::max(yPred->getItem(i, j), eps);
+      auto yijHat = std::max(yPred->get(i, j), eps);
 
       auto g = -yi/yijHat;
-      res->setItem(g/bSize, i, j);
+      res->set(g/bSize, i, j);
     }
   }
   

@@ -33,7 +33,7 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
   };
 
   for(tensorSize_t i=0; i<t.getSize(); i++){
-    res.setItem(compute(t[i]), i);
+    res.set(compute(t[i]), i);
   }
 
   return res;

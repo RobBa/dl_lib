@@ -22,7 +22,7 @@ ftype Py_DataModeling::tensorGetItem(const Tensor& self, boost::python::object i
   // Single integer index (1D)
   if(int_extractor.check()) {
     auto i0 = static_cast<tensorDim_t>(int_extractor());
-    return self.getItem(i0);
+    return self.get(i0);
   }
         
   // Tuple index (2D, 3D, or 4D, or list)
@@ -32,25 +32,25 @@ ftype Py_DataModeling::tensorGetItem(const Tensor& self, boost::python::object i
     // Dispatch to convenience functions for 1-4 args
     if (len == 1) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      return self.getItem(i0);
+      return self.get(i0);
     }
     else if (len == 2) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      return self.getItem(i0, i1);
+      return self.get(i0, i1);
     }
     else if (len == 3) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
       auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      return self.getItem(i0, i1, i2);
+      return self.get(i0, i1, i2);
     }
     else if (len == 4) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
       auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
       auto i3 = static_cast<tensorDim_t>(extract<int>(index[3]));
-      return self.getItem(i0, i1, i2, i3);
+      return self.get(i0, i1, i2, i3);
     }
     else {
       // Arbitrary length - use vector version
@@ -58,7 +58,7 @@ ftype Py_DataModeling::tensorGetItem(const Tensor& self, boost::python::object i
       for (int i = 0; i < len; ++i) {
         indices.push_back(static_cast<tensorDim_t>(extract<int>(index[i])));
       }
-      return self.getItem(std::move(indices));
+      return self.get(std::move(indices));
     }
   }
         
@@ -71,7 +71,7 @@ void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, f
   extract<int> int_extractor(index);
   if(int_extractor.check()) {
       auto i0 = static_cast<tensorDim_t>(int_extractor());
-      self.setItem(value, i0);
+      self.set(value, i0);
       return;
   }
         
@@ -83,25 +83,25 @@ void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, f
     // Dispatch to convenience functions for 1-4 args
     if (len == 1) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
-      self.setItem(value, i0);
+      self.set(value, i0);
     }
     else if (len == 2) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
-      self.setItem(value, i0, i1);
+      self.set(value, i0, i1);
     }
     else if (len == 3) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
       auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
-      self.setItem(value, i0, i1, i2);
+      self.set(value, i0, i1, i2);
     }
     else if (len == 4) {
       auto i0 = static_cast<tensorDim_t>(extract<int>(index[0]));
       auto i1 = static_cast<tensorDim_t>(extract<int>(index[1]));
       auto i2 = static_cast<tensorDim_t>(extract<int>(index[2]));
       auto i3 = static_cast<tensorDim_t>(extract<int>(index[3]));
-      self.setItem(value, i0, i1, i2, i3);
+      self.set(value, i0, i1, i2, i3);
     }
     else {
       // Arbitrary length - use vector version
@@ -109,7 +109,7 @@ void Py_DataModeling::tensorSetItem(Tensor& self, boost::python::object index, f
       for (int i = 0; i < len; ++i) {
         indices.push_back(static_cast<tensorDim_t>(extract<int>(index[i])));
       }
-      self.setItem(value, std::move(indices));
+      self.set(value, std::move(indices));
     }
     return;
   }

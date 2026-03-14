@@ -24,7 +24,7 @@ vector<shared_ptr<Tensor>> ReLuNode::backward(const Tensor& upstreamGrad) {
 
   const auto& parent = parents[0];
   for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
-    res->setItem((*parent)[i] > zero ? upstreamGrad[i] : zero, i);
+    res->set((*parent)[i] > zero ? upstreamGrad[i] : zero, i);
   }
 
   return {res};

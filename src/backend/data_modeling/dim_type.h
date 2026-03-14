@@ -48,7 +48,7 @@ class Dimension final {
       return size;
     }
 
-    tensorDim_t getItem(int idx) const {
+    tensorDim_t get(int idx) const {
       return (*this)[idx];
     }
 

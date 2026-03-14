@@ -26,7 +26,7 @@ vector<shared_ptr<Tensor>> cgraph::ScalarMulNode::backward(const Tensor& upstrea
 
   auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
   for(tensorSize_t i=0; i<res->getSize(); i++){
-    res->setItem(res->getItem(i) * factor, i);
+    res->set(res->get(i) * factor, i);
   }
   return {std::move(res)};
 }

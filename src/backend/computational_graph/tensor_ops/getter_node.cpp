@@ -20,14 +20,14 @@ vector< shared_ptr<Tensor> > GetterNode::backward(const Tensor& upstreamGrad) {
 
   auto res = make_shared<Tensor>(parents[0]->getDims(), parents[0]->getDevice(), false);
   for(tensorSize_t i=0; i<res->getSize(); i++){
-    res->setItem(0, i);
+    res->set(0, i);
   }
 
   if(std::holds_alternative<tensorSize_t>(idx)){
-    res->setItem(upstreamGrad.getItem(0), std::get<tensorSize_t>(idx));
+    res->set(upstreamGrad.get(0), std::get<tensorSize_t>(idx));
   }
   else if(std::holds_alternative<multiDimIdx_t>(idx)){
-    res->setItem(upstreamGrad.getItem(0), std::get<multiDimIdx_t>(idx));
+    res->set(upstreamGrad.get(0), std::get<multiDimIdx_t>(idx));
   }
   else{
     __throw_runtime_error("Idx variant in unexpected state");

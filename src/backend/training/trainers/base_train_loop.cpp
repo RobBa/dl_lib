@@ -23,7 +23,7 @@ using namespace std;
 using namespace train;
 
 void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle, const bool verbose) {
-  const auto nSamples = x->getDims().getItem(0);
+  const auto nSamples = x->getDims()[0];
 
   for(size_t e=0; e<epochs; e++){
     std::vector<tensorDim_t> indices(nSamples);

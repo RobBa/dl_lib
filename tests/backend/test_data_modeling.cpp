@@ -23,10 +23,10 @@ TEST(TensorOpsTest, TestCtor) {
   ASSERT_EQ(t.getDevice(), Device::CPU);
   ASSERT_TRUE(!t.getRequiresGrad());
 
-  ASSERT_DOUBLE_EQ(t.getItem(0, 0), 2.0);
-  ASSERT_DOUBLE_EQ(t.getItem(0, 1), 3.0);
-  ASSERT_DOUBLE_EQ(t.getItem(1, 0), 4.0);
-  ASSERT_DOUBLE_EQ(t.getItem(1, 1), 5.0);
+  ASSERT_DOUBLE_EQ(t.get(0, 0), 2.0);
+  ASSERT_DOUBLE_EQ(t.get(0, 1), 3.0);
+  ASSERT_DOUBLE_EQ(t.get(1, 0), 4.0);
+  ASSERT_DOUBLE_EQ(t.get(1, 1), 5.0);
 }
 
 TEST(TensorOpsTest, ScalarAddWorks) {
@@ -35,9 +35,9 @@ TEST(TensorOpsTest, ScalarAddWorks) {
   auto res = t1 + 1.5;
 
   constexpr ftype sum = 2.5;
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), sum);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), sum);
     }
   }
 }
@@ -49,9 +49,9 @@ TEST(TensorOpsTest, TensorAddWorks) {
   auto res = t1 + t2;
 
   constexpr ftype sum = 5.0;
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), sum);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), sum);
     }
   }
 }
@@ -64,10 +64,10 @@ TEST(TensorOpsTest, TensorAddCanBroadCast) {
 
   ASSERT_EQ(res.getDims(), t1.getDims());
   
-  for(auto i=0; i<res.getDims().getItem(0); i++) {
-    for(auto j=0; j<res.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j, 0), 3.0);
-      ASSERT_DOUBLE_EQ(res.getItem(i, j, 1), 4.0);
+  for(auto i=0; i<res.getDims().get(0); i++) {
+    for(auto j=0; j<res.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j, 0), 3.0);
+      ASSERT_DOUBLE_EQ(res.get(i, j, 1), 4.0);
     }
   }
 }
@@ -92,9 +92,9 @@ TEST(TensorOpsTest, ScalarMulWorks) {
   constexpr ftype f = 2.5;
   auto res = t1 * f;
     
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), f);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), f);
     }
   }
 }
@@ -107,9 +107,9 @@ TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
     
   constexpr ftype resSum = 2.0;
 
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), resSum);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), resSum);
     }
   }
 }
@@ -121,9 +121,9 @@ TEST(TensorOpsTest, ElementwiseMulGivesCorrectResults) {
     
   auto res = t1 * t2;
     
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), factor);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), factor);
     }
   }
 }
@@ -145,9 +145,9 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues1) {
   ASSERT_EQ(res.getDims().toVector(), expectedDims);
 
   constexpr ftype resSum = 3.0;
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), resSum);
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), resSum);
     }
   }
 }
@@ -159,10 +159,10 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
   auto cmpRes = Tensor({2, 2}, false);
 
   auto populateTensor = [](Tensor& t, ftype v1, ftype v2, ftype v3, ftype v4) {
-    t.setItem(v1, {0, 0});
-    t.setItem(v2, {0, 1});
-    t.setItem(v3, {1, 0});
-    t.setItem(v4, {1, 1});
+    t.set(v1, {0, 0});
+    t.set(v2, {0, 1});
+    t.set(v3, {1, 0});
+    t.set(v4, {1, 1});
   };
 
   populateTensor(t1, 1, 2, 3, 4);
@@ -175,9 +175,9 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
   ASSERT_EQ(res.getDims().toVector(), expectedDims);
 
   constexpr ftype resSum = 3.0;
-  for(auto i=0; i<t1.getDims().getItem(0); i++) {
-    for(auto j=0; j<t1.getDims().getItem(1); j++) {
-      ASSERT_DOUBLE_EQ(res.getItem(i, j), cmpRes.getItem(i, j));
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), cmpRes.get(i, j));
     }
   }
 }
@@ -193,13 +193,13 @@ TEST(TensorOpsTest, TransposeWorksAsIntended1) {
   auto t = TensorFunctions::Gaussian({3, 2}, false);
   auto transposed = t.transpose(-1, -2);
   
-  ASSERT_EQ(t.getDims().getItem(-1), transposed.getDims().getItem(-2));
-  ASSERT_EQ(t.getDims().getItem(-2), transposed.getDims().getItem(-1));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-2));
+  ASSERT_EQ(t.getDims().get(-2), transposed.getDims().get(-1));
   ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
   
-  for(auto row=0; row<t.getDims().getItem(-2); row++) {
-    for(auto col=0; col<t.getDims().getItem(-1); col++) {
-      ASSERT_DOUBLE_EQ(t.getItem(row, col), transposed.getItem(col, row));
+  for(auto row=0; row<t.getDims().get(-2); row++) {
+    for(auto col=0; col<t.getDims().get(-1); col++) {
+      ASSERT_DOUBLE_EQ(t.get(row, col), transposed.get(col, row));
     }
   }
 }
@@ -211,16 +211,16 @@ TEST(TensorOpsTest, TransposeWorksAsIntended2) {
   auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
   auto transposed = t.transpose(0, 1);
 
-  ASSERT_EQ(t.getDims().getItem(0), transposed.getDims().getItem(1));
-  ASSERT_EQ(t.getDims().getItem(1), transposed.getDims().getItem(0));
-  ASSERT_EQ(t.getDims().getItem(-1), transposed.getDims().getItem(-1));
+  ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(1));
+  ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-1));
   ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
   
-  for(auto dim1=0; dim1<t.getDims().getItem(0); dim1++) {
-    for(auto dim2=0; dim2<t.getDims().getItem(1); dim2++) {
-      for(auto dim3=0; dim3<t.getDims().getItem(-1); dim3++) {
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
         // we transposed dim1 and dim3
-        ASSERT_DOUBLE_EQ(t.getItem(dim1, dim2, dim3), transposed.getItem(dim2, dim1, dim3));
+        ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), transposed.get(dim2, dim1, dim3));
       }
     }
   }
@@ -233,16 +233,16 @@ TEST(TensorOpsTest, TransposeWorksAsIntended3) {
   auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
   auto transposed = t.transpose(0, -1);
 
-  ASSERT_EQ(t.getDims().getItem(0), transposed.getDims().getItem(-1));
-  ASSERT_EQ(t.getDims().getItem(-1), transposed.getDims().getItem(0));
-  ASSERT_EQ(t.getDims().getItem(1), transposed.getDims().getItem(1));
+  ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(-1));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(1));
   ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
   
-  for(auto dim1=0; dim1<t.getDims().getItem(0); dim1++) {
-    for(auto dim2=0; dim2<t.getDims().getItem(1); dim2++) {
-      for(auto dim3=0; dim3<t.getDims().getItem(-1); dim3++) {
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
         // we transposed dim1 and dim3
-        ASSERT_DOUBLE_EQ(t.getItem(dim1, dim2, dim3), transposed.getItem(dim3, dim2, dim1));
+        ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), transposed.get(dim3, dim2, dim1));
       }
     }
   }
@@ -254,13 +254,13 @@ TEST(TensorOpsTest, TransposeThisWorksAsIntended1) {
 
   t.transposeThis();
 
-  ASSERT_EQ(t.getDims().getItem(-1), tCopy.getDims().getItem(-2));
-  ASSERT_EQ(t.getDims().getItem(-2), tCopy.getDims().getItem(-1));
+  ASSERT_EQ(t.getDims().get(-1), tCopy.getDims().get(-2));
+  ASSERT_EQ(t.getDims().get(-2), tCopy.getDims().get(-1));
   ASSERT_EQ(t.getDims().nDims(), tCopy.getDims().nDims());
   
-  for(auto row=0; row<t.getDims().getItem(-2); row++) {
-    for(auto col=0; col<t.getDims().getItem(-2); col++) {
-      ASSERT_DOUBLE_EQ(t.getItem(row, col), tCopy.getItem(col, row));
+  for(auto row=0; row<t.getDims().get(-2); row++) {
+    for(auto col=0; col<t.getDims().get(-2); col++) {
+      ASSERT_DOUBLE_EQ(t.get(row, col), tCopy.get(col, row));
     }
   }
 }
@@ -271,16 +271,16 @@ TEST(TensorOpsTest, TransposeThisWorksAsIntended2) {
   
   t.transposeThis(0, -1);
 
-  ASSERT_EQ(t.getDims().getItem(0), tCopy.getDims().getItem(-1));
-  ASSERT_EQ(t.getDims().getItem(-1), tCopy.getDims().getItem(0));
-  ASSERT_EQ(t.getDims().getItem(1), tCopy.getDims().getItem(1));
+  ASSERT_EQ(t.getDims().get(0), tCopy.getDims().get(-1));
+  ASSERT_EQ(t.getDims().get(-1), tCopy.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(1), tCopy.getDims().get(1));
   ASSERT_EQ(t.getDims().nDims(), tCopy.getDims().nDims());
   
-  for(auto dim1=0; dim1<t.getDims().getItem(0); dim1++) {
-    for(auto dim2=0; dim2<t.getDims().getItem(1); dim2++) {
-      for(auto dim3=0; dim3<t.getDims().getItem(-1); dim3++) {
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
         // we transposed dim1 and dim3
-        ASSERT_DOUBLE_EQ(t.getItem(dim1, dim2, dim3), tCopy.getItem(dim3, dim2, dim1));
+        ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), tCopy.get(dim3, dim2, dim1));
       }
     }
   }

@@ -31,7 +31,7 @@ vector< shared_ptr<Tensor> > RsmeNode::backward(const Tensor& upstreamGrad) {
     constexpr ftype eps = 1e-6;
     auto denom = rsme * bSize + eps;
     auto g = (yi-yiHat) / denom;
-    res->setItem(g, i);
+    res->set(g, i);
   }
   
   return {res};

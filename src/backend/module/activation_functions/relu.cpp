@@ -21,7 +21,7 @@ Tensor ReLu::operator()(const Tensor& t) const {
   for(tensorSize_t i=0; i<t.getSize(); i++){
     constexpr ftype zero = 0;
     if(t[i] < zero){
-      res.setItem(0, i);
+      res.set(0, i);
     }
   }
 

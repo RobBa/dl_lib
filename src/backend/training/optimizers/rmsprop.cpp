@@ -26,7 +26,7 @@ void RmsPropOptimizer::step() {
       for(tensorSize_t i=0; i<gPtr->getSize(); i++){ 
         auto g = (*gPtr)[i];
         auto update = decay * (*vPtr)[i] + (1-decay)*g*g;
-        vPtr->setItem(update, i);
+        vPtr->set(update, i);
       }
     }
     else { // init loop
@@ -34,14 +34,14 @@ void RmsPropOptimizer::step() {
       vPtr = movingAvg[tPtr].get();
       for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
         auto g = (*gPtr)[i];
-        vPtr->setItem((1-decay)*g*g, i);
+        vPtr->set((1-decay)*g*g, i);
       }
     }
 
     // update gradients
     for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
       auto update = (*tPtr)[i] - lr * (*gPtr)[i] / ((*vPtr)[i] + eps);
-      tPtr->setItem(update, i);
+      tPtr->set(update, i);
     }
   }
 }

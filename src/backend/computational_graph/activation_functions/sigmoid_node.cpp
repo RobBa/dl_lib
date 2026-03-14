@@ -28,7 +28,7 @@ vector<shared_ptr<Tensor>> SigmoidNode::backward(const Tensor& upstreamGrad) {
   };
 
   for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
-    res->setItem(derivative((*sigmoid)[i] * upstreamGrad[i]), i);
+    res->set(derivative((*sigmoid)[i] * upstreamGrad[i]), i);
   }
 
   return {res};

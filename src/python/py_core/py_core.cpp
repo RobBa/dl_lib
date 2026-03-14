@@ -113,7 +113,7 @@ BOOST_PYTHON_MODULE(_core)
 
   // classes
   class_<Dimension>("Dimension", no_init)
-    .add_property("list", &Dimension::getItem)
+    .add_property("list", &Dimension::get)
     .def("__str__", &Py_Util::toString<Dimension>)
     .def("__eq__", Py_DataModeling::dimEquals1)
     .def("__eq__", Py_DataModeling::dimEquals2)
@@ -184,10 +184,10 @@ BOOST_PYTHON_MODULE(_core)
     .def("__truediv__", WRAP_FREE_FUNC_4(Py_DataModeling::scalardiv, ftype))
 
     // member functions
-    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_1(Tensor::getItem))
-    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_2(Tensor::getItem))
-    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_3(Tensor::getItem))
-    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_4(Tensor::getItem))
+    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_1(Tensor::get))
+    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_2(Tensor::get))
+    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_3(Tensor::get))
+    .def("getitem", WRAP_FUNC_AND_CONVERT_DTYPE_4(Tensor::get))
     .def("getitem", Py_DataModeling::getItemVector) // the vector arg
 
     .def("sum", WRAP_FREE_FUNC_7(&(cgraph::sumTensor)))

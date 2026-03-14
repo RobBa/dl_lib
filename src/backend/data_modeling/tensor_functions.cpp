@@ -97,13 +97,13 @@ Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
 
   tensorSize_t stride = 1;
   for(tensorDim_t i=dim+1; i<t.getDims().nDims(); i++){
-    stride *= t.getDims().getItem(i);
+    stride *= t.getDims()[i];
   }
   
   tensorSize_t targetOffset = 0;
-  for(tensorDim_t loop=0; loop<t.getDims().getItem(dim); loop++){
+  for(tensorDim_t loop=0; loop<t.getDims()[dim]; loop++){
     for(tensorSize_t i=0; i<stride; i++){
-      res.setItem(res.getItem(i) + t.getItem(targetOffset), i);
+      res.set(res.get(i) + t.get(targetOffset), i);
       targetOffset++;
     }
   }

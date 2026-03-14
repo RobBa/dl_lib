@@ -92,14 +92,14 @@ shared_ptr<Tensor> cgraph::div(const shared_ptr<Tensor> t, ftype scalar) {
 }
 
 /**
- * @brief Special linear indexing, see getItem() overloads in tensor. 
+ * @brief Special linear indexing, see get() overloads in tensor. 
  * Used to keep the computational graph intact.
  * E.g. if we have something like 
  * 
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
 shared_ptr<Tensor> cgraph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
-  ftype val = t->getItem(idx);
+  ftype val = t->get(idx);
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
                              t->getDevice());
                              
@@ -117,7 +117,7 @@ shared_ptr<Tensor> cgraph::get(const shared_ptr<Tensor>& t, tensorSize_t idx) {
  * loss = loss + other.get(i), we need to make sure get(i) can map to computational graph.
  */
 shared_ptr<Tensor> cgraph::get(const shared_ptr<Tensor>& t, const vector<tensorDim_t>& idx) {
-  ftype val = t->getItem(std::move(idx));
+  ftype val = t->get(std::move(idx));
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val}, 
                              t->getDevice());
   if(t->getRequiresGrad()){

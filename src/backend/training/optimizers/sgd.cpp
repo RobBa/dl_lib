@@ -19,7 +19,7 @@ void SgdOptimizer::step() {
     auto grads = t->getGrads();
     for(auto idx=0; idx<t->getSize(); idx++){
       auto updatedWeight = (*t)[idx] - lr*(*grads)[idx];
-      t->setItem(updatedWeight, idx);
+      t->set(updatedWeight, idx);
     }
   }
 }

@@ -89,7 +89,7 @@ namespace Py_DataModeling {
   inline Tensor  (Tensor::*transpose1)(int, int) const                                            = &Tensor::transpose;
   inline Tensor  (Tensor::*transpose2)(int, int, bool) const                                      = &Tensor::transpose;
 
-  inline ftype   (Tensor::*getItemVector)(const std::vector<tensorDim_t>&) const                       = &Tensor::getItem;
+  inline ftype   (Tensor::*getItemVector)(const std::vector<tensorDim_t>&) const                       = &Tensor::get;
 
   /*********************************************************************************************************
   ***************************************** Graph creation *************************************************

@@ -89,7 +89,7 @@ Dimension& Dimension::operator=(Dimension&& other) noexcept {
  * @param idx The dimension to collapse.
  */
 Dimension Dimension::collapseDimension(int idx) const {
-  auto mappedIdx = getItem(idx);
+  auto mappedIdx = get(idx);
 
   std::vector<tensorDim_t> newDims;
   newDims.reserve(dims.size() - 1);
@@ -103,7 +103,7 @@ ostream& operator<<(ostream& os, const Dimension& d) noexcept {
   if(d.size>0){
     os << "\n(";
     for(int i=0; i<d.nDims(); i++){
-      os << d.getItem(i);
+      os << d.get(i);
 
       if(i+1<d.nDims()){
         os << ",";
