@@ -3,9 +3,12 @@ Module base class. We use it to automatically register network
 modules when defining graphs via Module.
 """
 
-class Module:
+from .._compiled._nn import _Module
+
+class Module(_Module):
   def __init__(self):
-    self._modules = {}
+    object.__setattr__(self, "_modules", {}) # not necessary, but more explicit
+    self._modules = {} 
   
   """
   Stores attributes defined in __init__ in private 

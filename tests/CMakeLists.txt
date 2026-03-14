@@ -10,6 +10,7 @@ add_executable(unit_tests_backend
     backend/test_data_modeling.cpp
     backend/test_computational_graph.cpp
     backend/test_module.cpp
+    backend/test_training.cpp
     )
 
 target_link_libraries(unit_tests_backend PRIVATE

@@ -39,7 +39,7 @@ void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
       auto xBatch = make_shared<Tensor>(x->getSlice(batchSpan));
       auto yBatch = y->getSlice(batchSpan);
 
-      auto yPred = graph->operator()(xBatch);
+      auto yPred = (*graph)(xBatch);
       auto l = (*loss)(yBatch, yPred);
       
       l->backward();

@@ -33,7 +33,9 @@ FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGra
  */
 FfLayer::FfLayer(const vector<tensorDim_t>& dims, Device d, bool useBias, bool requiresGrad)
   : useBias{useBias}, requiresGrad{requiresGrad} {
-  assert(dims.size()==2);
+  if(dims.size()!=2){
+    __throw_runtime_error("FfLayer needs only two dims, that's it.");
+  }
 
   weights = make_shared<Tensor>(Dimension({dims[0], dims[1]}), d, requiresGrad);
   TensorFunctions::ToGaussian(*weights);
@@ -72,6 +74,8 @@ std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input
 }
 
 void FfLayer::print(ostream& os) const noexcept {
-  ModuleBase::print(os);
-  os << "\nuseBias: " << useBias ? "true" : "false";
+  os << "Weigths:\n" << *weights;
+  if(bias){
+    os << "\nBias:\n" << *bias;
+  }
 }

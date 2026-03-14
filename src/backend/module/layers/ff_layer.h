@@ -32,10 +32,8 @@ namespace module {
     std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const override;
 
     const Dimension& getDims() const {
-      if(weights){
-        return weights->getDims();
-      }
-      return Dimension::getEmpty();
+      assert(weights);
+      return weights->getDims();
     }
 
     auto getWeights() const noexcept { return weights; }

@@ -24,11 +24,8 @@
 #include <boost/python/object.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
-namespace Py_Network {
+namespace Py_nn {
   using namespace boost::python;
-
-  ftype layerGetItem(const module::ModuleBase& self, boost::python::object index);
-  void layerSetItem(module::ModuleBase& self, boost::python::object index, ftype value);
 
   /**
    * @brief Wrapper class needed for Boost Python to get the virtual function working 

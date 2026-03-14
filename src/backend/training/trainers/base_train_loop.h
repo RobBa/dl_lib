@@ -33,11 +33,10 @@ namespace train {
       std::shared_ptr<module::ModuleBase> graph;
 
     public:
-      BaseTrainLoop(std::shared_ptr<module::ModuleBase>& graph, std::shared_ptr<LossBase> loss,
+      BaseTrainLoop(std::shared_ptr<module::ModuleBase> graph, std::shared_ptr<LossBase> loss,
                   std::shared_ptr<OptimizerBase> optim, ftype lr, size_t epochs, tensorDim_t bsize) 
-        : graph{std::move(graph)}, optim{std::move(optim)}, loss{loss}, lr{lr}, epochs{epochs}, bsize{bsize} {
-          
-        };
+        : graph{std::move(graph)}, optim{std::move(optim)}, loss{loss}, lr{lr}, epochs{epochs}, bsize{bsize} 
+        { }
       
       ~BaseTrainLoop() noexcept = default;
 

@@ -1,1 +1,1 @@
-from .._compiled._sys import getGlobalDevice, setGlobalDevice
+from dl_lib._compiled._sys import getGlobalDevice, setGlobalDevice
