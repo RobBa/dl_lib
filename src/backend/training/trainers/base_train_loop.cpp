@@ -17,13 +17,20 @@
 #include <algorithm>
 #include <random>
 
+#include <iostream>
+
 using namespace std;
 using namespace train;
 
-void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle) {
+void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool shuffle, const bool verbose) {
+  const auto nSamples = x->getDims().getItem(0);
+
   for(size_t e=0; e<epochs; e++){
-      std::vector<tensorDim_t> indices(bsize);
-      std::iota(indices.begin(), indices.end(), 0);
+    std::vector<tensorDim_t> indices(nSamples);
+    std::iota(indices.begin(), indices.end(), 0);
+
+    if(verbose)
+      cout << "\nEpoch " << e;
 
     if(shuffle){
       std::random_device rd;
@@ -31,19 +38,27 @@ void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
       std::shuffle(indices.begin(), indices.end(), rng);
     }
 
-    const auto nSamples = x->getDims().getItem(0);
     tensorDim_t low = 0;
+
+    int batch = 0;
     while(low < nSamples){
+      if(verbose)
+        cout << "\nBatch " << batch << endl;
+
       std::span<const tensorDim_t> batchSpan(indices.data() + low, low+bsize < nSamples ? bsize : nSamples-low);
 
       auto xBatch = make_shared<Tensor>(x->getSlice(batchSpan));
-      auto yBatch = y->getSlice(batchSpan);
+      auto yBatch = make_shared<Tensor>(y->getSlice(batchSpan));
 
       auto yPred = (*graph)(xBatch);
+      cout << "\nypred: " << *yPred << endl;
+
       auto l = (*loss)(yBatch, yPred);
-      
+      cout << "\nloss: " << (*l)[0] << endl;
+
       l->backward();
       optim->step();
+      optim->zeroGrad();
 
       low += bsize;
     }

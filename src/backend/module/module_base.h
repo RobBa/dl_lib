@@ -20,6 +20,11 @@
 
 #include <iostream>
 
+// if GCC or Clang
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif // __GNUC__
+
 namespace module {
   /** 
    * The base class for all the layers that we have. Not instantiable.
@@ -43,7 +48,19 @@ namespace module {
 
       virtual std::vector< std::shared_ptr<Tensor> > parameters() const { return {}; }
 
-      virtual void print(std::ostream& os) const noexcept {};
+      virtual void print(std::ostream& os) const noexcept {
+        os << "\n";
+      #ifdef __GNUC__
+        // demangle name on gcc and clang
+        int status;
+        char* demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+        os << (status == 0 ? demangled : typeid(*this).name());
+        std::free(demangled);
+      #else
+        os << typeid(*this).name();
+      #endif
+      };
+
       friend std::ostream& operator<<(std::ostream& os, const ModuleBase& t) noexcept;
   };
 }

@@ -23,8 +23,6 @@
 namespace train {
   class BaseTrainLoop {
     protected:
-      ftype lr;
-
       const size_t epochs;
       const tensorDim_t bsize;
 
@@ -34,8 +32,8 @@ namespace train {
 
     public:
       BaseTrainLoop(std::shared_ptr<module::ModuleBase> graph, std::shared_ptr<LossBase> loss,
-                  std::shared_ptr<OptimizerBase> optim, ftype lr, size_t epochs, tensorDim_t bsize) 
-        : graph{std::move(graph)}, optim{std::move(optim)}, loss{loss}, lr{lr}, epochs{epochs}, bsize{bsize} 
+                  std::shared_ptr<OptimizerBase> optim, size_t epochs, tensorDim_t bsize) 
+        : graph{std::move(graph)}, optim{std::move(optim)}, loss{loss}, epochs{epochs}, bsize{bsize} 
         { }
       
       ~BaseTrainLoop() noexcept = default;
@@ -46,6 +44,6 @@ namespace train {
       BaseTrainLoop(BaseTrainLoop&& other) noexcept = default;
       BaseTrainLoop& operator=(BaseTrainLoop&& other) noexcept = default;
 
-      void run(std::shared_ptr<Tensor>& x, std::shared_ptr<Tensor>& y, const bool shuffle);
+      void run(std::shared_ptr<Tensor>& x, std::shared_ptr<Tensor>& y, bool shuffle, bool verbose=true);
   };
 }

@@ -27,7 +27,7 @@ endif()
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-option(DOUBLE_PRECISION "Compile with double precision at cost of speed?" OFF) # TODO: not implemented yet
+# TODO: add flag for double precision?
 
 # include python libs
 if(APPLE)
@@ -107,4 +107,9 @@ option(BUILD_TESTS "Build tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+option(BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()

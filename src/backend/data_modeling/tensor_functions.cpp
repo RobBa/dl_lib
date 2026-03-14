@@ -44,11 +44,11 @@ Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const bool requiresGr
 }
 
 // Tensor manipulation
-void TensorFunctions::ToZeros(Tensor& t) {
+void TensorFunctions::ToZeros(Tensor& t) noexcept {
   t.reset(0);
 }
 
-void TensorFunctions::ToOnes(Tensor& t) {
+void TensorFunctions::ToOnes(Tensor& t) noexcept {
   t.reset(1);
 }
 

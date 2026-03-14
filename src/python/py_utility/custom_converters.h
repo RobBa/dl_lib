@@ -52,6 +52,7 @@ namespace custom_converters {
   };
 }
 
+// TODO: do array instead of tensor
 /* struct DimsFromPython {
     static void* convertible(PyObject* obj) {
         if (!PyTuple_Check(obj) && !PyList_Check(obj)) return nullptr;

@@ -38,5 +38,7 @@ namespace module {
       std::vector<std::shared_ptr<Tensor>> parameters() const override;
 
       void append(std::shared_ptr<module::ModuleBase> l);
+
+      void print(std::ostream& os) const noexcept override;
   };
 }

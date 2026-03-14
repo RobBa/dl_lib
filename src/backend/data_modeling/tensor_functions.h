@@ -48,8 +48,8 @@ namespace TensorFunctions { // class name acts as namespace for us
                                            Device d, bool requiresGrad=false);
 
   // Tensor manipulation
-  void ToZeros(Tensor& t);
-  void ToOnes(Tensor& t);
+  void ToZeros(Tensor& t) noexcept;
+  void ToOnes(Tensor& t) noexcept;
   void ToGaussian(Tensor& t);
 
   // Arithmetics

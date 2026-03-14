@@ -58,3 +58,10 @@ vector<shared_ptr<Tensor>> Sequential::parameters() const {
 void Sequential::append(shared_ptr<module::ModuleBase> l) {
   layers.push_back(move(l));
 }
+
+void Sequential::print(std::ostream& os) const noexcept {
+  os << "\nSequential";
+  for(const auto& l: layers){
+    os << *l;
+  }
+}

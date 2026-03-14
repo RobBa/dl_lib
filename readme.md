@@ -66,7 +66,8 @@ ctest
 - Boost Python
 - Cmake > 3.28
 - Python 3 (we test with 3.10, but it should work with any version)
-- pytest for unit tests (we use 9.0.2)
+- pytest and GTest for unit tests (we use pytest=9.0.2)
+- Google Benchmark for benchmarking
 
 ## Troubleshooting
 

@@ -174,7 +174,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         Tensor(Tensor&& other) noexcept;
         Tensor& operator=(Tensor&& other) noexcept;
 
-        void reset(const ftype x);
+        void reset(const ftype x) noexcept;
         void reset(const utility::InitClass ic);
         
         const Dimension& getDims() const noexcept;

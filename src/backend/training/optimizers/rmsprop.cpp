@@ -33,7 +33,7 @@ void RmsPropOptimizer::step() {
       movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), tPtr->getDevice(), false); // create empty tensor
       vPtr = movingAvg[tPtr].get();
       for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
-        auto g = (*tPtr)[i];
+        auto g = (*gPtr)[i];
         vPtr->setItem((1-decay)*g*g, i);
       }
     }

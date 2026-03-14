@@ -1,20 +1,19 @@
 /**
- * @file bce_loss.cpp
+ * @file rsme_loss.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-03-07
+ * @date 2026-03-14
  * 
  * @copyright Copyright (c) 2026
  * 
  */
 
-#include "bce_loss.h"
+#include "rsme_loss.h"
 
-#include "computational_graph/loss_functions/bce_node.h"
+#include "computational_graph/loss_functions/rsme_node.h"
 
 #include <cmath>
-
 #include <iostream>
 
 using namespace std;
@@ -24,7 +23,7 @@ using namespace train;
  * @brief Expected shapes: (batchsize) or (batchsize, 1)
  * @return Tensor of shape (1)
  */
-shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
+shared_ptr<Tensor> RsmeLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
   }  
@@ -35,20 +34,21 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
     __throw_invalid_argument("Tensors must be of same shape");
   }
 
-  auto bce = [](ftype y, ftype ypred){
-    constexpr ftype eps = 1e-6;
-    return y*log(std::max(ypred, eps)) + (1-y)*log(std::max(1-ypred, eps));
+  auto diffPow = [](ftype y, ftype ypred){
+    auto diff = y - ypred;
+    return diff * diff;
   };
 
   const auto nBatches = y->getDims()[0];
 
   ftype loss = 0;
   for(tensorSize_t i=0; i<nBatches; i++){
-    loss += bce((*y)[i], (*ypred)[i]);
+    loss += diffPow((*y)[i], (*ypred)[i]);
   }
+  loss = sqrt(loss/nBatches);
 
-  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
-  res->setCgNode(make_shared<cgraph::BceNode>(y, ypred));
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss}, y->getDevice(), true);
+  res->setCgNode(make_shared<cgraph::RsmeNode>(y, ypred, loss));
   assert(res->getRequiresGrad());
 
   return res; 

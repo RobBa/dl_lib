@@ -16,6 +16,7 @@
 namespace train {
   class CrossEntropyLoss final : public LossBase {
     public:
-      std::shared_ptr<Tensor> operator()(const Tensor& y, const std::shared_ptr<Tensor>& ypred) const override;
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor> y, 
+                                         const std::shared_ptr<Tensor> ypred) const override;
   };
 }

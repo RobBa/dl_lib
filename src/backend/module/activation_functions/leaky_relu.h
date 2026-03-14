@@ -25,6 +25,8 @@ namespace module {
       Tensor operator()(const Tensor& t) const override;
       std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
 
-      void print(std::ostream& os) const noexcept override { os << "\neps: " << eps; }
+      void print(std::ostream& os) const noexcept override { 
+        os << "\nLeakyReLU\neps: " << eps; 
+      }
   };
 }

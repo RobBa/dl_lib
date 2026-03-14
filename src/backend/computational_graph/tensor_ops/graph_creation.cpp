@@ -84,7 +84,8 @@ shared_ptr<Tensor> cgraph::sub(const shared_ptr<Tensor> t, ftype scalar) {
 shared_ptr<Tensor> cgraph::div(const shared_ptr<Tensor> t, ftype scalar) {
   auto res = make_shared<Tensor>((*t) / scalar);
   if(t->getRequiresGrad()){
-    res->setCgNode(std::make_shared<cgraph::ScalarMulNode>(t, 1 / scalar));
+    constexpr ftype eps = 1e-6;
+    res->setCgNode(std::make_shared<cgraph::ScalarMulNode>(t, 1/std::max(scalar, eps)));
     assert(res->getRequiresGrad());
   }
   return res;

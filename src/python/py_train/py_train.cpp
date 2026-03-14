@@ -47,8 +47,8 @@ BOOST_PYTHON_MODULE(_train)
 
   // Trainers
   class_<train::BaseTrainLoop, std::shared_ptr<train::BaseTrainLoop>, boost::noncopyable>("TrainLoop", no_init)
-    .def(init<std::shared_ptr<module::ModuleBase>&, std::shared_ptr<train::LossBase>, std::shared_ptr<train::OptimizerBase>,
-              ftype, size_t, tensorDim_t>())
+    .def(init<std::shared_ptr<module::ModuleBase>&, std::shared_ptr<train::LossBase>,
+              std::shared_ptr<train::OptimizerBase>, size_t, tensorDim_t>())
     .def("step", &train::RmsPropOptimizer::step)
   ;
 }

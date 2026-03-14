@@ -252,7 +252,7 @@ Tensor Tensor::createEmptyCopy() const {
   return res;
 }
 /**
- * @brief Does a deep copy.
+ * @brief Does a deep copy, but omits gradient and computational graph information.
  */
 Tensor Tensor::createDeepCopy() const {
   assert(!grads || (grads && !grads->requiresGrad)); // gradient should not require gradient
@@ -563,7 +563,10 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
+    cout << "backward of " << tPtr << endl;
+    cout << "grads " << *tensor.grads << endl;
     auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
+
     const auto& parents = tensor.cgNode->getParents();
 
     for(size_t i=0; i<parents.size(); i++){
@@ -791,7 +794,7 @@ void Tensor::permute(const std::vector<tensorDim_t>&& newOrder) noexcept {
 /**
  * @brief Populates the tensor with value.
  */
-void Tensor::reset(const ftype x) {
+void Tensor::reset(const ftype x) noexcept {
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = x;
   }

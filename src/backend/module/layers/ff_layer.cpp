@@ -74,7 +74,7 @@ std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input
 }
 
 void FfLayer::print(ostream& os) const noexcept {
-  os << "Weigths:\n" << *weights;
+  os << "\nFfLayer\nWeigths:\n" << *weights;
   if(bias){
     os << "\nBias:\n" << *bias;
   }

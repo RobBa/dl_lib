@@ -43,5 +43,7 @@ namespace train {
       OptimizerBase& operator=(OptimizerBase&& other) noexcept = default;
 
       virtual void step() = 0;
+
+      void zeroGrad() noexcept;
   };
 }
