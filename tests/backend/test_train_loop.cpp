@@ -34,13 +34,11 @@ using namespace std;
 static shared_ptr<module::Sequential> makeBinaryNet() {
     auto net = make_shared<module::Sequential>();
 
-    net->append(make_shared<module::FfLayer>(
-        vector<tensorDim_t>{2, 4}, true, true));
+    net->append(make_shared<module::FfLayer>(2, 4, true, true));
 
     net->append(make_shared<module::LeakyReLu>(1e-5));
 
-    net->append(make_shared<module::FfLayer>(
-        vector<tensorDim_t>{4, 1}, true, true));
+    net->append(make_shared<module::FfLayer>(4, 1, true, true));
 
     net->append(make_shared<module::Sigmoid>());
     return net;
@@ -49,19 +47,15 @@ static shared_ptr<module::Sequential> makeBinaryNet() {
 static shared_ptr<module::Sequential> makeMulticlassNet() {
     auto net = make_shared<module::Sequential>();
 
-    net->append(make_shared<module::FfLayer>(
-        vector<tensorDim_t>{2, 8}, true, true));
+    net->append(make_shared<module::FfLayer>(2, 8, true, true));
 
     net->append(make_shared<module::ReLu>());
 
-    net->append(make_shared<module::FfLayer>(
-        vector<tensorDim_t>{8, 3}, true, true));
+    net->append(make_shared<module::FfLayer>(8, 3, true, true));
 
     net->append(make_shared<module::Softmax>());
     return net;
 }
-
-// ─── binary overfit ─────────────────────────────────────────────────────────
 
 TEST(OverfitTest, BCE_SGD_OverfitsSmallDataset) {
     // XOR-like: 4 samples, 2 features, binary labels
@@ -77,15 +71,13 @@ TEST(OverfitTest, BCE_SGD_OverfitsSmallDataset) {
                  1.0,
                  0.0}, false);
 
-    auto net = makeBinaryNet();
-    cout << "Network: " << *net << endl;
-
+    auto net = makeBinaryNet();    
     auto loss = make_shared<train::BceLoss>();
     auto optim = make_shared<train::SgdOptimizer>(
         net->parameters(), /*lr=*/0.01);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/1, /*bsize=*/static_cast<tensorDim_t>(4));
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/static_cast<tensorDim_t>(4));
 
     trainLoop.run(x, y, /*shuffle=*/false);
 
@@ -98,9 +90,6 @@ TEST(OverfitTest, BCE_SGD_OverfitsSmallDataset) {
     EXPECT_LT((*finalLoss)[0], 0.05f)
         << "Network failed to overfit binary dataset";
 }
-
-
-// ─── multiclass overfit ──────────────────────────────────────────────────────
 
 // TEST(OverfitTest, CrossEntropy_RMSProp_OverfitsSmallDataset) {
 //     // 6 samples, 2 features, 3 classes

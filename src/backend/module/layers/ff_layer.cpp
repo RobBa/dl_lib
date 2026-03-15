@@ -20,8 +20,8 @@
 using namespace std;
 using namespace module;
 
-FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGrad) 
-    : FfLayer(dims, Tensor::getDefaultDevice(), useBias, requiresGrad) {}
+FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias, bool requiresGrad) 
+    : FfLayer(inSize, outSize, Tensor::getDefaultDevice(), useBias, requiresGrad) {}
 
 /**
  * @brief Construct a new Ff Layer:: Ff Layer object
@@ -31,17 +31,14 @@ FfLayer::FfLayer(const vector<tensorDim_t>& dims, bool useBias, bool requiresGra
  * @param useBias Use a bias if true. Bias will receiver shape (n_rows)
  * @param requiresGrad If true train this layer.
  */
-FfLayer::FfLayer(const vector<tensorDim_t>& dims, Device d, bool useBias, bool requiresGrad)
-  : useBias{useBias}, requiresGrad{requiresGrad} {
-  if(dims.size()!=2){
-    __throw_runtime_error("FfLayer needs only two dims, that's it.");
-  }
-
-  weights = make_shared<Tensor>(Dimension({dims[0], dims[1]}), d, requiresGrad);
+FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, bool useBias, bool requiresGrad)
+  : useBias{useBias}, requiresGrad{requiresGrad} 
+{
+  weights = make_shared<Tensor>(Dimension({inSize, outSize}), d, requiresGrad);
   TensorFunctions::ToGaussian(*weights);
     
   if(useBias){
-    bias = make_shared<Tensor>(vector<tensorDim_t>{dims[1]}, d, requiresGrad);
+    bias = make_shared<Tensor>(vector<tensorDim_t>{outSize}, d, requiresGrad);
     TensorFunctions::ToGaussian(*bias);
   }
 }
@@ -67,7 +64,7 @@ Tensor FfLayer::operator()(const Tensor& input) const {
 std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input) const {
   auto res = cgraph::matmul(input, weights);
   if(useBias){
-    res = cgraph::add(res, bias); // TODO: add needs to happen on each of those, how to broadcast?
+    res = cgraph::add(res, bias);
   }
 
   return res;  

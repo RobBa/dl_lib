@@ -85,11 +85,11 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low
   switch(device){
     case Device::CPU:
       for(tensorSize_t i=0; i<high-low; i++){
-        target[i] = values[low+i];
+        target[targetOffset+i] = values[low+i];
       }
       break;
     case Device::CUDA:
-      __throw_runtime_error("CUDA not implemented for deep copy");
+      __throw_runtime_error("CUDA not implemented for slicing");
       break;
   }
 }
@@ -115,7 +115,7 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tenso
       break; 
     }
     case Device::CUDA:
-      __throw_runtime_error("CUDA not implemented for deep copy");
+      __throw_runtime_error("CUDA not implemented for slicing");
       break;
   }
 }
@@ -293,21 +293,17 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) noexcep
  * The check of whether they do or not is to be performed by the surrounding
  * network class object instance upon construction. 
  */
-Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
+Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
   if(left.dims.get(-1) != right.dims.get(-2)){
     __throw_runtime_error("Tensor dimensions do not match");
   }
 
-  if(abs(static_cast<int>(right.dims.nDims()) - static_cast<int>(left.dims.nDims())) > 1){
-    auto str = "Tensor dimension assumptions violated. See file 'assumption_matrices.md'.";
-    __throw_invalid_argument(str);
-  }
-
+  // broadcasting
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
   resDims[resDims.size()-2] = left.dims.get(-2); // rows
   resDims[resDims.size()-1] = right.dims.get(-1); // cols
 
-  Tensor res(resDims, values->getDevice(), false);
+  Tensor res(resDims, left.values->getDevice(), false);
 
   // sizes of the 2D matrices respectively
   const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
@@ -318,73 +314,43 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
   tensorSize_t rightOffset = 0;
   tensorSize_t resOffset = 0;
 
-  // lambda expected to get inlined by compiler
-  auto multiplyNTimes = [&](const tensorDim_t n){
-    for(tensorDim_t i=0; i<n; i++){
-      matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+  while(leftOffset < left.getSize()){
+    matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
 
-      leftOffset += leftSize;
-      rightOffset += rightSize;
-      resOffset += resSize;
-    }
-  };
-
-  if(left.dims.nDims() == right.dims.nDims()){
-    const auto nMultiplications = res.values->getSize() / resSize; // total size / size of 2D matrix
-    multiplyNTimes(nMultiplications);
-  }
-  else if(left.dims.nDims() > right.dims.nDims()) {
-    const auto nBatches = left.dims.get(0);
-
-    for(tensorDim_t batch = 0; batch < nBatches; batch++){
-      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);
-      multiplyNTimes(nMultsPerBatch);
-      rightOffset = 0;
-    }
-  }
-  else {
-    const auto nBatches = right.dims.get(0);
-
-    for(tensorDim_t batch = 0; batch < nBatches; batch++){
-      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);  
-      multiplyNTimes(nMultsPerBatch);
-      leftOffset = 0;
-    }
+    leftOffset += leftSize;
+    rightOffset += rightSize;
+    resOffset += resSize;
   }
 
   return res;
 }
 
 /**
- * @brief Name says it all. Inplace operation on res
+ * @brief Name says it all. Inplace operation on res.
  */
 void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
-
+  
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
   const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
 
-  for(tensorSize_t row=0; row<nRowsLeft; row++){
-    const tensorSize_t leftRowOffset = row * nColsLeft;
-    const tensorSize_t resRowOffset = row * nColsRight;
-    
-    tensorSize_t resIdx = resOffset + resRowOffset;
-    // TODO: can we optimize mem-access for right matrix?
-    for(tensorSize_t col=0; col<nColsRight; col++){
-      ftype scalarProd = 0;
-      
-      tensorSize_t leftIdx = leftOffset + leftRowOffset;
-      tensorSize_t rightIdx = rightOffset + col;
-      for(tensorSize_t idx=0; idx<nColsLeft; idx++){
-        scalarProd += (*left.values)[leftIdx] * (*right.values)[rightIdx];
-        
+  tensorSize_t resIdx = resOffset;
+  for(tensorSize_t lrow=0; lrow<nRowsLeft; lrow++){
+
+    for(tensorSize_t rcol=0; rcol<nColsRight; rcol++){
+      tensorSize_t leftIdx = leftOffset + lrow * nColsLeft;
+      tensorSize_t rightIdx = rightOffset + rcol;
+
+      ftype scalar = 0.0;
+      for(tensorSize_t lcol=0; lcol<nColsLeft; lcol++){
+        scalar += (*left.values)[leftIdx] * (*right.values)[rightIdx];
         leftIdx++;
         rightIdx += nColsRight;
       }
 
-      (*res.values)[resIdx] = scalarProd;
+      (*res.values)[resIdx] = scalar;
       resIdx++;
     }
   }

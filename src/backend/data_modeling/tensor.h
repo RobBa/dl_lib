@@ -111,10 +111,12 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
     
         static Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) noexcept;
-        static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset);
 
-        Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
+        static Tensor matMulImpl(const Tensor& left, const Tensor& right);
+        static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, 
+                                const tensorSize_t resOffset, const tensorSize_t leftOffset, 
+                                const tensorSize_t rightOffset);
+
         void transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept;
         void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
 

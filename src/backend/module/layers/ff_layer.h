@@ -25,8 +25,8 @@ namespace module {
     std::shared_ptr<Tensor> bias = nullptr;
 
   public:
-    FfLayer(const std::vector<tensorDim_t>& dims, bool useBias=true, bool requiresGrad=false);
-    FfLayer(const std::vector<tensorDim_t>& dims, Device d, bool useBias=true, bool requiresGrad=false);
+    FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias=true, bool requiresGrad=false);
+    FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, bool useBias=true, bool requiresGrad=false);
 
     Tensor operator()(const Tensor& input) const override;
     std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const override;

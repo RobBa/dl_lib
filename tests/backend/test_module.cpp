@@ -71,7 +71,7 @@ TEST(TensorOpsTest, TestLeakyRelu2) {
 
 TEST(LayerTest, TestFfLayer) {
   auto t1 = TensorFunctions::Ones({3, 2}, false);
-  auto layer = FfLayer({2, 1}, true, false);
+  auto layer = FfLayer(2, 1, true, false);
 
   auto res = layer(t1);
 

@@ -42,12 +42,12 @@ BOOST_PYTHON_MODULE(_nn)
 
   class_<module::FfLayer, std::shared_ptr<module::FfLayer>, boost::noncopyable>("FfLayer", no_init)
     // init
-    .def(init<const std::vector<tensorDim_t>&>())
-    .def(init<const std::vector<tensorDim_t>&, bool>())
-    .def(init<const std::vector<tensorDim_t>&, bool, bool>())
-    .def(init<const std::vector<tensorDim_t>&, Device>())
-    .def(init<const std::vector<tensorDim_t>&, Device, bool>())
-    .def(init<const std::vector<tensorDim_t>&, Device, bool, bool>())
+    .def(init<tensorDim_t, tensorDim_t>())
+    .def(init<tensorDim_t, tensorDim_t, bool>())
+    .def(init<tensorDim_t, tensorDim_t, bool, bool>())
+    .def(init<tensorDim_t, tensorDim_t, Device>())
+    .def(init<tensorDim_t, tensorDim_t, Device, bool>())
+    .def(init<tensorDim_t, tensorDim_t, Device, bool, bool>())
     // methods
     .add_property("dims", make_function(&module::FfLayer::getDims, return_internal_reference<>()))
     .add_property("weights", &module::FfLayer::getWeights)
