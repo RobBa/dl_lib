@@ -209,6 +209,10 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
 
         bool hasGrads() const noexcept { return grads!=nullptr; }
         std::shared_ptr<Tensor> getGrads() const;
+        
+        void setGrads(std::shared_ptr<Tensor> grads) noexcept{
+          this->grads = std::move(grads);
+        }
 
         void transposeThis() noexcept;
         void transposeThis(int dim1, int dim2) noexcept;

@@ -11,6 +11,8 @@
 
 #include "softmax.h"
 
+#include "computational_graph/activation_functions/softmax_node.cpp"
+
 #include <cmath>
 
 using namespace std;
@@ -22,21 +24,37 @@ using namespace module;
  * @return Tensor of shape (dim1, dim2, ..., n_classes) [== input.shape]
  */
 Tensor Softmax::operator()(const Tensor& t) const {
-  Tensor res(t.getDims(), t.getDevice());
+  if(t.getDims().nDims()<2){
+    __throw_invalid_argument("Softmax expects input shape of minimum two dimensions");
+  }
 
-  Tensor tmp(t.getDims(), t.getDevice());
-  for(tensorSize_t i=0; i<t.getSize(); i++){
-    tmp.set(static_cast<ftype>(exp(t[i])), i);
+  const auto nRows = t.getDims()[-2];
+  const auto nCols = t.getDims()[-1];
+
+  // pre-compute exponents
+  Tensor tmp(t.getDims(), t.getDevice(), false);
+  for(tensorDim_t i=0; i<nRows; i++){
+    // for numerical stability, avoid inf
+    ftype maxValue = -std::numeric_limits<ftype>::infinity();
+    for(tensorDim_t j=0; j<nCols; j++){
+      maxValue = std::max(maxValue, t.get(i, j));
+    }
+
+    for(tensorDim_t j=0; j<nCols; j++){
+      ftype e = t.get(i, j)-maxValue;
+      tmp.set(exp(e), i, j);
+    }
   }
 
   const tensorSize_t stride = t.getDims()[-1];
-  auto compute = [&t, &res, &tmp, stride](tensorSize_t start){
+  Tensor res(t.getDims(), t.getDevice());
+  auto compute = [&res, &tmp, stride](tensorSize_t start){
     ftype sum = 0;
-    for(tensorSize_t i=0; i<stride; i++){
-      sum += static_cast<ftype>(t[start+i]);
+    for(tensorSize_t i=start; i<start+stride; i++){
+      sum += static_cast<ftype>(tmp[i]);
     }
 
-    for(tensorSize_t i=0; i<t.getSize(); i++){
+    for(tensorSize_t i=start; i<start+stride; i++){
       res.set(tmp[i] / sum, i);
     }
   };
@@ -54,7 +72,7 @@ shared_ptr<Tensor> Softmax::operator()(const shared_ptr<Tensor>& t) const {
   auto res = make_shared<Tensor>((*this)(*t));
   
   if(t->getRequiresGrad()){
-    //res->setCgNode(make_shared<cgraph::LeakyReLuNode>(t, eps));
+    res->setCgNode(make_shared<cgraph::SoftmaxNode>(t, res));
     assert(res->getRequiresGrad());
   }
 

@@ -1,5 +1,5 @@
 /**
- * @file rsme_node.cpp
+ * @file rmse_node.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -9,7 +9,7 @@
  * 
  */
 
-#include "rsme_node.h"
+#include "rmse_node.h"
 
 #include "data_modeling/tensor_functions.h"
 
@@ -18,19 +18,20 @@
 using namespace std;
 using namespace cgraph;
 
-vector< shared_ptr<Tensor> > RsmeNode::backward(const Tensor& upstreamGrad) {
+vector< shared_ptr<Tensor> > RmseNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
+  constexpr ftype eps = 1e-9;
 
   const auto& yPred = parents[0];
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());
 
-  for(tensorSize_t i=0; i<static_cast<tensorSize_t>(bSize); i++){
+  ftype bSize = yPred->getDims()[0];
+  for(tensorSize_t i=0; i<yPred->getDims()[0]; i++){
     auto yi = (*yTrue)[i];
     auto yiHat = (*yPred)[i];
 
-    constexpr ftype eps = 1e-6;
-    auto denom = rsme * bSize + eps;
-    auto g = (yi-yiHat) / denom;
+    auto denom = rmse * bSize + eps;
+    auto g = (yiHat-yi) / denom;
     res->set(g, i);
   }
   

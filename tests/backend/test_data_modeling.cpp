@@ -72,7 +72,23 @@ TEST(TensorOpsTest, TensorAddCanBroadCast) {
   }
 }
 
-TEST(TensorOpsTest, TensorAddBroadcastNotComutative) {
+TEST(TensorOpsTest, BroadcastAdd_2D) {
+    // (2,3) + (3) 
+    auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
+                               4.0, 5.0, 6.0}, false);
+    auto t2 = Tensor({3}, {10.0, 20.0, 30.0}, false);
+    auto res = t1 + t2;
+
+    // expected: each row of t1 gets t2 added elementwise
+    ASSERT_DOUBLE_EQ(res.get(0, 0), 11.0);
+    ASSERT_DOUBLE_EQ(res.get(0, 1), 22.0);
+    ASSERT_DOUBLE_EQ(res.get(0, 2), 33.0);
+    ASSERT_DOUBLE_EQ(res.get(1, 0), 14.0);
+    ASSERT_DOUBLE_EQ(res.get(1, 1), 25.0);
+    ASSERT_DOUBLE_EQ(res.get(1, 2), 36.0);
+}
+
+TEST(TensorOpsTest, TensorAddBroadcastNotCommutative) {
   auto t1 = TensorFunctions::Ones({3, 2, 2}, false);
   auto t2 = Tensor({2}, {2, 3}, false);
 

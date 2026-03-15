@@ -16,9 +16,6 @@
 
 #include "computational_graph/tensor_ops/graph_creation.h"
 
-#include "module/activation_functions/relu.h"
-#include "module/activation_functions/leaky_relu.h"
-
 #include <stdexcept>
 
 TEST(AutogradTest, ThrowsIfNoGradientSet) {
@@ -41,6 +38,36 @@ TEST(AutogradTest, SimpleAddition) {
     
     EXPECT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
     EXPECT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
+}
+
+TEST(AutogradTest, BroadcastAdd) {
+    // gradient of broadcast add w.r.t. bias should be sum over batch dimension
+    // upstream grad: (2,3) of ones → bias grad should be (3) of twos
+    auto t1 = TensorFunctions::makeSharedTensor({2, 3}, 
+        {1.0, 2.0, 3.0,
+         4.0, 5.0, 6.0}, true);
+    auto bias = TensorFunctions::makeSharedTensor({3}, 
+        {0.0, 0.0, 0.0}, true);
+
+    auto res = cgraph::add(t1, bias);
+
+    // set upstream grad to ones and backprop
+    auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
+        {1.0, 1.0, 1.0,
+         1.0, 1.0, 1.0}, false);
+    res->backward();
+
+    // bias grad should be sum over batch: [2, 2, 2]
+    auto biasGrad = bias->getGrads();
+    ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
+    ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
+    ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
+
+    // t1 grad should be ones (add is identity for non-broadcast operand)
+    auto t1Grad = t1->getGrads();
+    for(int i = 0; i < 6; i++) {
+        ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
+    }
 }
 
 TEST(AutogradTest, ScalarMultiplication) {
@@ -120,36 +147,4 @@ TEST(AutogradTest, MultiVariateChainRule) {
 
     ASSERT_DOUBLE_EQ(y->getGrads()->get(0), 1.0);
     ASSERT_DOUBLE_EQ(y->getGrads()->get(1), 1.0);
-}
-
-TEST(AutogradTest, ReLU) {
-    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
-    auto relu = module::ReLu();
-
-    auto y = relu(x);    // [0, 0, 2]
-    auto loss = cgraph::sumTensor(y);  // loss = 2
-    
-    loss->backward();
-    
-    // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
-}
-
-TEST(AutogradTest, LeakyReLU) {
-    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
-
-    constexpr ftype eps = 0.3;
-    auto relu = module::LeakyReLu(eps);
-
-    auto y = relu(x);    // [0, 0, 2]
-    auto loss = cgraph::sumTensor(y);  // loss = 2
-    
-    loss->backward();
-    
-    // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps); // by convention
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
 }

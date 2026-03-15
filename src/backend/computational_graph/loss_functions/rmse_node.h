@@ -1,5 +1,5 @@
 /**
- * @file rsme_node.h
+ * @file rmse_node.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -15,21 +15,17 @@
 #include "utility/global_params.h"
 
 namespace cgraph {
-  class RsmeNode final : public GraphNode {
+  class RmseNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> yTrue;
-      
-      const ftype bSize;
-      ftype rsme;
+      ftype rmse;
 
     public:
-      explicit RsmeNode(std::shared_ptr<Tensor> y, std::shared_ptr<Tensor> yPred, ftype rsme) 
-        : GraphNode({yPred}), yTrue{std::move(y)}, bSize{static_cast<ftype>(yPred->getDims()[0])}, 
-          rsme{rsme}
+      explicit RmseNode(std::shared_ptr<Tensor> y, std::shared_ptr<Tensor> yPred, ftype rmse) 
+        : GraphNode({std::move(yPred)}), yTrue{std::move(y)}, rmse{rmse}
         {
-          assert(yPred->getDims()==yTrue->getDims());
-
-          if(!yPred->getRequiresGrad()){
+          assert(parents[0]->getDims()==yTrue->getDims());
+          if(!parents[0]->getRequiresGrad()){
             std::__throw_invalid_argument("yPred must be a graph node");
           }
         }

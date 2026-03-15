@@ -24,12 +24,13 @@ using namespace module;
 Tensor Sigmoid::operator()(const Tensor& t) const {
   auto res = t.createEmptyCopy();
 
+  constexpr ftype one = 1.0;
   auto compute = [](ftype x){
     if(x>=0){
-      return static_cast<ftype>(1.0f) / (static_cast<ftype>(1.0f) + exp(x));
+      return one / (one + exp(-x));
     }
     auto e = exp(x);
-    return e / (static_cast<ftype>(1.0f) + e);
+    return e / (one + e);
   };
 
   for(tensorSize_t i=0; i<t.getSize(); i++){
@@ -41,7 +42,7 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
 
 shared_ptr<Tensor> Sigmoid::operator()(const shared_ptr<Tensor>& t) const {
   auto res = make_shared<Tensor>((*this)(*t));
-  
+
   if(t->getRequiresGrad()){
     res->setCgNode(make_shared<cgraph::SigmoidNode>(t, res));
     assert(res->getRequiresGrad());

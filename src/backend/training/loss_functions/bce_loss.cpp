@@ -36,7 +36,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   }
 
   auto bce = [](ftype y, ftype ypred){
-    constexpr ftype eps = 1e-6;
+    constexpr ftype eps = 1e-9;
     return y*log(std::max(ypred, eps)) + (1-y)*log(std::max(1-ypred, eps));
   };
 

@@ -19,9 +19,6 @@ namespace cgraph {
     private:
       const std::shared_ptr<const Tensor> yTrue;
 
-      const ftype bSize;
-      const tensorDim_t nClasses;
-
     public:
 
       /**
@@ -31,11 +28,10 @@ namespace cgraph {
        * @param yPred shape (batchsize, nclasses)
        */
       explicit CrossEntropyNode(std::shared_ptr<Tensor> y, std::shared_ptr<Tensor> yPred) 
-        : GraphNode({yPred}), yTrue{std::move(y)}, bSize{static_cast<ftype>(yPred->getDims()[0])},
-          nClasses{yPred->getDims()[1]}
+        : GraphNode({std::move(yPred)}), yTrue{std::move(y)}
         {
-          assert(yPred->getDims()[0]==yTrue->getDims()[0]);
-          if(!yPred->getRequiresGrad()){
+          assert(parents[0]->getDims()==yTrue->getDims());
+          if(!parents[0]->getRequiresGrad()){
             std::__throw_invalid_argument("yPred must be a graph node");
           }
         }

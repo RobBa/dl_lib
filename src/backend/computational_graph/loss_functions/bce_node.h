@@ -18,15 +18,13 @@ namespace cgraph {
   class BceNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> yTrue;
-      const ftype bSize;
 
     public:
       explicit BceNode(std::shared_ptr<Tensor> y, std::shared_ptr<Tensor> yPred) 
-        : GraphNode({yPred}), yTrue{std::move(y)}, bSize{static_cast<ftype>(yPred->getDims()[0])}
+        : GraphNode({std::move(yPred)}), yTrue{std::move(y)}
         {
-          assert(yPred->getDims()==yTrue->getDims());
-
-          if(!yPred->getRequiresGrad()){
+          assert(parents[0]->getDims()==yTrue->getDims());
+          if(!parents[0]->getRequiresGrad()){
             std::__throw_invalid_argument("yPred must be a graph node");
           }
         }

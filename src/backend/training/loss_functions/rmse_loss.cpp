@@ -1,5 +1,5 @@
 /**
- * @file rsme_loss.cpp
+ * @file rmse_loss.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -9,9 +9,9 @@
  * 
  */
 
-#include "rsme_loss.h"
+#include "rmse_loss.h"
 
-#include "computational_graph/loss_functions/rsme_node.h"
+#include "computational_graph/loss_functions/rmse_node.h"
 
 #include <cmath>
 #include <iostream>
@@ -23,7 +23,7 @@ using namespace train;
  * @brief Expected shapes: (batchsize) or (batchsize, 1)
  * @return Tensor of shape (1)
  */
-shared_ptr<Tensor> RsmeLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
+shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
   }  
@@ -48,7 +48,7 @@ shared_ptr<Tensor> RsmeLoss::operator()(const shared_ptr<Tensor> y, const shared
   loss = sqrt(loss/nBatches);
 
   auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss}, y->getDevice(), true);
-  res->setCgNode(make_shared<cgraph::RsmeNode>(y, ypred, loss));
+  res->setCgNode(make_shared<cgraph::RmseNode>(y, ypred, loss));
   assert(res->getRequiresGrad());
 
   return res; 
