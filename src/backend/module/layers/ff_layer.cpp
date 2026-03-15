@@ -35,11 +35,13 @@ FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, bool useBias
   : useBias{useBias}, requiresGrad{requiresGrad} 
 {
   weights = make_shared<Tensor>(Dimension({inSize, outSize}), d, requiresGrad);
-  TensorFunctions::ToGaussian(*weights);
+  TensorFunctions::ToGaussian(*weights, 0, 0.1);
+  weights = weights;
     
   if(useBias){
     bias = make_shared<Tensor>(vector<tensorDim_t>{outSize}, d, requiresGrad);
-    TensorFunctions::ToGaussian(*bias);
+    TensorFunctions::ToGaussian(*bias, 0, 0.001);
+    bias = bias;
   }
 }
 

@@ -31,6 +31,6 @@ namespace utility{
     class InitializerFactory final {
         public:
             InitializerFactory() = delete;
-            static std::unique_ptr<InitializerBase> getInitializer(InitClass ic);
+            static std::unique_ptr<InitializerBase> getInitializer(InitClass ic, ftype mean=0, ftype stddev=0.5);
     };
 }

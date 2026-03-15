@@ -19,26 +19,28 @@ using namespace utility;
 
 namespace {
     class GaussianInitializer final : public InitializerBase {
+    private:
+      std::random_device rd{};
+      mutable std::mt19937 gen;
+      mutable std::normal_distribution<ftype> dist;
+
     public:
-        GaussianInitializer();
+        GaussianInitializer(ftype mean, ftype stddev);
         ftype drawNumber() const override;
     };
 
-    GaussianInitializer::GaussianInitializer() : InitializerBase() {}
+    GaussianInitializer::GaussianInitializer(ftype mean, ftype stddev) 
+      : InitializerBase(), gen{rd()}, dist{mean, stddev} {}
 
     ftype GaussianInitializer::drawNumber() const {
-        static std::random_device rd;
-        static std::mt19937 gen{rd()};
-        static std::normal_distribution<ftype> dist;
-
         return dist(gen);
     }
 }
 
-unique_ptr<InitializerBase> InitializerFactory::getInitializer(InitClass ic) {
+unique_ptr<InitializerBase> InitializerFactory::getInitializer(InitClass ic, ftype mean, ftype stddev) {
     switch(ic){
         case InitClass::Gaussian:
-            return make_unique<GaussianInitializer>();
+            return make_unique<GaussianInitializer>(mean, stddev);
         default:
             __throw_invalid_argument("Init class not implemented yet");
     }

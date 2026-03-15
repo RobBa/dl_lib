@@ -89,6 +89,16 @@ BOOST_PYTHON_MODULE(_core)
     return (*fPtr)(self.getSharedPtr()); \
   }
 
+  #define WRAP_FREE_FUNC_8(fPtr, T1, T2, T3, T4) \
+  +[](T1 v1, T2 v2, T3 v3, T4 v4) -> std::shared_ptr<Tensor> { \
+    return std::make_shared<Tensor>((*fPtr)(v1, v2, v3, v4)); \
+  }
+
+  #define WRAP_FREE_FUNC_9(fPtr, T1, T2, T3, T4, T5) \
+  +[](T1 v1, T2 v2, T3 v3, T4 v4, T5 v5) -> std::shared_ptr<Tensor> { \
+    return std::make_shared<Tensor>((*fPtr)(v1, v2, v3, v4, v5)); \
+  }
+
   #define WRAP_FUNC_AND_CONVERT_DTYPE_1(method) \
   +[](const Tensor& self, int v1) -> ftype { \
     return self.method(static_cast<tensorSize_t>(v1)); \
@@ -144,17 +154,20 @@ BOOST_PYTHON_MODULE(_core)
     .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>))
     .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device))
     .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool))
-    .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("ones")
+    .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool))
+    .staticmethod("ones")
 
     .def("zeros", WRAP_FREE_FUNC_1(Py_DataModeling::Zeros0, std::vector<tensorDim_t>))
     .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device))
     .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool))
-    .def("zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("zeros")
+    .def("zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool))
+    .staticmethod("zeros")
 
-    .def("gauss", WRAP_FREE_FUNC_1(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>))
-    .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device))
-    .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, const bool))
-    .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, const bool)).staticmethod("gauss")
+    .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>, ftype, ftype))
+    .def("gauss", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, ftype, ftype, Device))
+    .def("gauss", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, ftype, ftype, const bool))
+    .def("gauss", WRAP_FREE_FUNC_9(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, ftype, ftype, Device, const bool))
+    .staticmethod("gauss")
 
     // properties
     .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
@@ -214,8 +227,8 @@ BOOST_PYTHON_MODULE(_core)
   def("Zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool));
   def("Zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool));
 
-  def("Gaussian", WRAP_FREE_FUNC_1(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>));
-  def("Gaussian", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device));
-  def("Gaussian", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, const bool));
-  def("Gaussian", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, const bool));
+  def("Gaussian", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>, ftype, ftype));
+  def("Gaussian", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, ftype, ftype, Device));
+  def("Gaussian", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, ftype, ftype, const bool));
+  def("Gaussian", WRAP_FREE_FUNC_9(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, ftype, ftype, Device, const bool));
 }

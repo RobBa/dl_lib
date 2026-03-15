@@ -32,8 +32,8 @@ namespace TensorFunctions { // class name acts as namespace for us
   Tensor Ones(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false);
   Tensor Ones(std::vector<tensorDim_t> dims, const bool requiresGrad=false);
 
-  Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, const bool requiresGrad=false);
-  Tensor Gaussian(std::vector<tensorDim_t> dims, const bool requiresGrad=false);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, ftype mean, ftype stddev, Device d, const bool requiresGrad=false);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, ftype mean=0, ftype stddev=1, const bool requiresGrad=false);
 
   std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false);
 
@@ -50,7 +50,7 @@ namespace TensorFunctions { // class name acts as namespace for us
   // Tensor manipulation
   void ToZeros(Tensor& t) noexcept;
   void ToOnes(Tensor& t) noexcept;
-  void ToGaussian(Tensor& t);
+  void ToGaussian(Tensor& t, ftype mean, ftype stddev);
 
   // Arithmetics
   Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size

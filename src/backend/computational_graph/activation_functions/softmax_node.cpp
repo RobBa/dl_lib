@@ -26,6 +26,7 @@ vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());
 
   ftype bSize = yPred->getDims()[0];
+  assert(bSize>0);
   for(tensorDim_t i=0; i<yPred->getDims()[0]; i++){
     for(tensorDim_t j=0; j<yPred->getDims()[1]; j++){
       ftype g = 0;

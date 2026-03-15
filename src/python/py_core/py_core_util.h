@@ -58,12 +58,12 @@ namespace Py_DataModeling {
     return TensorFunctions::Zeros(std::move(dims), d); 
   }
 
-  inline auto GaussianWrapper0(std::vector<tensorDim_t> dims) { 
-    return TensorFunctions::Gaussian(std::move(dims)); 
+  inline auto GaussianWrapper0(std::vector<tensorDim_t> dims, ftype mean, ftype stddev) { 
+    return TensorFunctions::Gaussian(std::move(dims), mean, stddev); 
   }
 
-  inline auto GaussianWrapper1(std::vector<tensorDim_t> dims, Device d) { 
-    return TensorFunctions::Gaussian(std::move(dims), d); 
+  inline auto GaussianWrapper1(std::vector<tensorDim_t> dims, ftype mean, ftype stddev, Device d) { 
+    return TensorFunctions::Gaussian(std::move(dims), mean, stddev, d); 
   }
 
   inline Tensor    (*Ones0)(std::vector<tensorDim_t>)                                             = &OnesWrapper0;
@@ -76,13 +76,13 @@ namespace Py_DataModeling {
   inline Tensor    (*Zeros2)(std::vector<tensorDim_t>, const bool)                                = &(TensorFunctions::Zeros);
   inline Tensor    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)                        = &(TensorFunctions::Zeros);
 
-  inline Tensor    (*Gaussian0)(std::vector<tensorDim_t>)                                         = &GaussianWrapper0;
-  inline Tensor    (*Gaussian1)(std::vector<tensorDim_t>, Device)                                 = &GaussianWrapper1;
-  inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, const bool)                             = &(TensorFunctions::Gaussian);
-  inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, Device, const bool)                     = &(TensorFunctions::Gaussian);
+  inline Tensor    (*Gaussian0)(std::vector<tensorDim_t>, ftype, ftype)                           = &GaussianWrapper0;
+  inline Tensor    (*Gaussian1)(std::vector<tensorDim_t>, ftype, ftype, Device)                   = &GaussianWrapper1;
+  inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, ftype, ftype, const bool)               = &(TensorFunctions::Gaussian);
+  inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, ftype, ftype, Device, const bool)       = &(TensorFunctions::Gaussian);
 
   inline void    (Tensor::*reset1)(const ftype)                                                   = &Tensor::reset;
-  inline void    (Tensor::*reset2)(const utility::InitClass)                                      = &Tensor::reset;
+  inline void    (Tensor::*reset2)(const utility::InitClass, ftype, ftype)                        = &Tensor::reset;
 
   inline void    (Tensor::*transposeThis1)()                                                      = &Tensor::transposeThis;
   inline void    (Tensor::*transposeThis2)(int, int)                                              = &Tensor::transposeThis;

@@ -529,8 +529,12 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
-    cout << "backward of " << tPtr << endl;
-    cout << "grads " << *tensor.grads << endl;
+    static int count = 0;
+    if(tPtr->requiresGrad && count % 50 == 0){
+      cout << "\nbackward of " << tPtr << endl; // TODO: remove
+      cout << "\ngrads " << *tensor.grads << endl; // TODO: remove
+    }
+
     auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
 
     const auto& parents = tensor.cgNode->getParents();
@@ -769,8 +773,8 @@ void Tensor::reset(const ftype x) noexcept {
 /**
  * @brief Populates the tensor with values drawn according to initializer.
  */
-void Tensor::reset(const utility::InitClass ic) {
-  const auto init = utility::InitializerFactory::getInitializer(ic);
+void Tensor::reset(const utility::InitClass ic, const ftype mean, const ftype stddev) {
+  const auto init = utility::InitializerFactory::getInitializer(ic, mean, stddev);
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = init->drawNumber();
   }
