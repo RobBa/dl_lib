@@ -15,8 +15,6 @@
 
 namespace train {
   class SgdOptimizer final : public OptimizerBase {
-    private:
-
     public:
         SgdOptimizer(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 
           : OptimizerBase(std::move(params), lr) { }

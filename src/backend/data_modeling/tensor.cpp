@@ -868,7 +868,7 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
 
   printVals(t);
   if(t.grads){
-    os << "Grads:\n";
+    os << "\n\nGrads:\n";
     printVals(*t.grads);
   }
 }
