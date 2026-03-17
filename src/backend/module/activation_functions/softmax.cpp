@@ -11,7 +11,7 @@
 
 #include "softmax.h"
 
-#include "computational_graph/activation_functions/softmax_node.cpp"
+#include "computational_graph/activation_functions/softmax_node.h"
 
 #include <cmath>
 
