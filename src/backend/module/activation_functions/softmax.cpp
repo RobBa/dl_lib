@@ -34,7 +34,8 @@ Tensor Softmax::operator()(const Tensor& t) const {
   // pre-compute exponents
   Tensor tmp(t.getDims(), t.getDevice(), false);
   for(tensorDim_t i=0; i<nRows; i++){
-    // for numerical stability, avoid inf
+    // for numerical stability, avoid large values
+    // by centering around maxValue for each sample
     ftype maxValue = -std::numeric_limits<ftype>::infinity();
     for(tensorDim_t j=0; j<nCols; j++){
       maxValue = std::max(maxValue, t.get(i, j));
@@ -51,7 +52,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
   auto compute = [&res, &tmp, stride](tensorSize_t start){
     ftype sum = 0;
     for(tensorSize_t i=start; i<start+stride; i++){
-      sum += static_cast<ftype>(tmp[i]);
+      sum += tmp[i];
     }
 
     for(tensorSize_t i=start; i<start+stride; i++){

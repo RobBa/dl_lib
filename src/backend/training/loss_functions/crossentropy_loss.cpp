@@ -1,9 +1,9 @@
 /**
- * @file bce_loss.cpp
+ * @file crossentropy_loss.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-03-07
+ * @date 2026-03-17
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -36,8 +36,7 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
   auto ce = [&y, &ypred](const tensorDim_t b){
     ftype res = 0;
     for(tensorDim_t i=0; i<y->getDims()[-1]; i++){
-      constexpr ftype eps = 1e-5;
-      res += y->get(b, i) * log(std::max(ypred->get(b, i), eps));
+      res += y->get(b, i) * log(std::max(ypred->get(b, i), epsCrossentropy));
     }
     return res;
   };

@@ -18,7 +18,6 @@ using namespace cgraph;
 
 vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
-  constexpr ftype eps = 1e-9;
   
   const auto& yPred = parents[0];
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());
@@ -27,9 +26,9 @@ vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGr
   for(tensorDim_t i=0; i<yPred->getDims()[0]; i++){
     for(tensorDim_t j=0; j<yPred->getDims()[1]; j++){
       auto yij = yTrue->get(i, j);
-      auto yijHat = std::max(yPred->get(i, j), eps);
+      auto yijHat = yPred->get(i, j);
 
-      auto g = -yij/yijHat;
+      auto g = -yij/std::max(yijHat, epsCrossentropy);
       res->set(g/bSize, i, j);
     }
   }

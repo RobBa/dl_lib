@@ -19,7 +19,7 @@ namespace module {
       const ftype eps;
 
     public:
-      LeakyReLu(ftype eps) : eps{eps}
+      LeakyReLu(ftype eps=0.01) : eps{eps}
       { }
 
       Tensor operator()(const Tensor& t) const override;

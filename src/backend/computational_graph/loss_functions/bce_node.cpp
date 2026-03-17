@@ -13,14 +13,11 @@
 
 #include "data_modeling/tensor_functions.h"
 
-#include <iostream>
-
 using namespace std;
 using namespace cgraph;
 
 vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
-  constexpr ftype eps = 1e-5;
 
   const auto& yPred = parents[0];
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());
@@ -30,7 +27,7 @@ vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
     auto yi = (*yTrue)[i];
     auto yiHat = (*yPred)[i];
 
-    auto g = -yi/std::max(yiHat, eps) + (1-yi)/std::max(1-yiHat, eps);
+    auto g = -yi/std::max(yiHat, epsBce) + (1-yi)/std::max(1-yiHat, epsBce);
     res->set(g/bSize, i);
   }
   
