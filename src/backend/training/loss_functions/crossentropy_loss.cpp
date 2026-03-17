@@ -36,7 +36,7 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
   auto ce = [&y, &ypred](const tensorDim_t b){
     ftype res = 0;
     for(tensorDim_t i=0; i<y->getDims()[-1]; i++){
-      constexpr ftype eps = 1e-9;
+      constexpr ftype eps = 1e-5;
       res += y->get(b, i) * log(std::max(ypred->get(b, i), eps));
     }
     return res;

@@ -18,6 +18,11 @@
 
 #include <utility>
 
+// if GCC or Clang
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif // __GNUC__
+
 namespace cgraph {
   class GraphNode {
     protected:
@@ -37,6 +42,24 @@ namespace cgraph {
       
       const auto& getParents() const noexcept {
         return parents;
+      }
+
+      virtual void print(std::ostream& os) const noexcept {
+        os << "\n";
+      #ifdef __GNUC__
+        // demangle name on gcc and clang
+        int status;
+        char* demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+        os << (status == 0 ? demangled : typeid(*this).name());
+        std::free(demangled);
+      #else
+        os << typeid(*this).name();
+      #endif
+      };
+
+      friend std::ostream& operator<<(std::ostream& os, const GraphNode& n) noexcept {
+        n.print(os); // calling vtable
+        return os;
       }
   };
 }

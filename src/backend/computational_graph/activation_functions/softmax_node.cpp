@@ -25,22 +25,22 @@ vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
   const auto& yPred = parents[0];
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());
 
-  ftype bSize = yPred->getDims()[0];
+  const auto bSize = yPred->getDims()[0];
   assert(bSize>0);
-  for(tensorDim_t i=0; i<yPred->getDims()[0]; i++){
-    for(tensorDim_t j=0; j<yPred->getDims()[1]; j++){
-      ftype g = 0;
 
-      if(i!=j){
-        g = -softmax->get(i) * softmax->get(j);
+  for(tensorDim_t b=0; b<bSize; b++){
+    for(tensorDim_t i=0; i<yPred->getDims()[1]; i++){
+      ftype grad = 0;
+      const ftype yi = softmax->get(b, i);
+      
+      for(tensorDim_t j=0; j<yPred->getDims()[1]; j++){
+        ftype yj = softmax->get(b, j);
+        ftype jacobian = (i==j) ? yi*(1-yj) : -yi*yj;
+        grad += upstreamGrad.get(b, j) * jacobian;
       }
-      else{
-        g = softmax->get(i) * (1-softmax->get(j));
-      }
-
-      res->set(upstreamGrad[i] * g / bSize, i, j);
+      res->set(grad, b, i);
     }
   }
-  
+
   return {res};
 }

@@ -20,7 +20,7 @@ using namespace cgraph;
 
 vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
-  constexpr ftype eps = 1e-9;
+  constexpr ftype eps = 1e-5;
 
   const auto& yPred = parents[0];
   auto res = make_shared<Tensor>(yPred->createEmptyCopy());

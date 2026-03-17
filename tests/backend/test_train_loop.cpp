@@ -36,7 +36,7 @@ static shared_ptr<module::Sequential> makeBinaryNet() {
 
     net->append(make_shared<module::FfLayer>(2, 4, true, true));
 
-    net->append(make_shared<module::LeakyReLu>(1e-5));
+    net->append(make_shared<module::LeakyReLu>(0.01));
 
     net->append(make_shared<module::FfLayer>(4, 1, true, true));
 
@@ -49,7 +49,7 @@ static shared_ptr<module::Sequential> makeMulticlassNet() {
 
     net->append(make_shared<module::FfLayer>(2, 8, true, true));
 
-    net->append(make_shared<module::LeakyReLu>(1e-5));
+    net->append(make_shared<module::LeakyReLu>(0.01));
 
     net->append(make_shared<module::FfLayer>(8, 3, true, true));
 
@@ -77,7 +77,7 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
         net->parameters(), /*lr=*/0.05);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/2000, /*bsize=*/static_cast<tensorDim_t>(1));
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/static_cast<tensorDim_t>(4));
 
     trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 
@@ -85,44 +85,42 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
     auto pred = (*net)(x);
     auto finalLoss = (*loss)(y, pred);
 
-    cout << "pred: " << *pred << "\nloss: " << *finalLoss << endl;
-
     EXPECT_LT((*finalLoss)[0], 0.05f)
         << "Network failed to overfit binary dataset";
 }
 
-//TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
-//    // 6 samples, 2 features, 3 classes
-//    auto x = TensorFunctions::makeSharedTensor(
-//        {6, 2}, {1.0, 0.0,
-//                 1.0, 0.1,
-//                 0.0, 1.0,
-//                 0.1, 1.0,
-//                 0.5, 0.5,
-//                 0.4, 0.6}, false);
-//
-//    // one-hot encoded labels
-//    auto y = TensorFunctions::makeSharedTensor(
-//        {6, 3}, {1.0, 0.0, 0.0,
-//                 1.0, 0.0, 0.0,
-//                 0.0, 1.0, 0.0,
-//                 0.0, 1.0, 0.0,
-//                 0.0, 0.0, 1.0,
-//                 0.0, 0.0, 1.0}, false);
-//
-//    auto net = makeMulticlassNet();
-//    auto loss = make_shared<train::CrossEntropyLoss>();
-//    auto optim = make_shared<train::RmsPropOptimizer>(
-//        net->parameters(), /*lr=*/0.0001, /*decay=*/0.95);
-//
-//    auto trainLoop = train::BaseTrainLoop(
-//        net, loss, optim, /*epochs=*/2000, /*bsize=*/6);
-//
-//    trainLoop.run(x, y, /*shuffle=*/false);
-//
-//    auto pred = (*net)(x);
-//    auto finalLoss = (*loss)(y, pred);
-//
-//    EXPECT_LT((*finalLoss)[0], 0.05f)
-//        << "Network failed to overfit multiclass dataset";
-//}
+TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
+    // 6 samples, 2 features, 3 classes
+    auto x = TensorFunctions::makeSharedTensor(
+        {6, 2}, {1.0, 0.0,
+                 1.0, 0.1,
+                 0.0, 1.0,
+                 0.1, 1.0,
+                 0.5, 0.5,
+                 0.4, 0.6}, false);
+
+    // one-hot encoded labels
+    auto y = TensorFunctions::makeSharedTensor(
+        {6, 3}, {1.0, 0.0, 0.0,
+                 1.0, 0.0, 0.0,
+                 0.0, 1.0, 0.0,
+                 0.0, 1.0, 0.0,
+                 0.0, 0.0, 1.0,
+                 0.0, 0.0, 1.0}, false);
+
+    auto net = makeMulticlassNet();
+    auto loss = make_shared<train::CrossEntropyLoss>();
+    auto optim = make_shared<train::RmsPropOptimizer>(
+        net->parameters(), /*lr=*/0.00001, /*decay=*/0.95);
+
+    auto trainLoop = train::BaseTrainLoop(
+        net, loss, optim, /*epochs=*/3000, /*bsize=*/6);
+
+    trainLoop.run(x, y, /*shuffle=*/false);
+
+    auto pred = (*net)(x);
+    auto finalLoss = (*loss)(y, pred);
+
+    EXPECT_LT((*finalLoss)[0], 0.05f)
+        << "Network failed to overfit multiclass dataset";
+}
