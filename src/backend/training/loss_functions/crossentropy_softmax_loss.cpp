@@ -64,16 +64,17 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
    * log(sum_j(exp(z_j))) = max(z) + log(sum_j(exp(z_j - max(z)))).
    * for numerical stability 
    */ 
-  auto compute = [&loss, &y, &logits, &tmp, stride](tensorSize_t start){
+  auto compute = [&loss, &y, &logits, &tmp, &maxValues, stride](tensorSize_t start){
     ftype lsum = 0;
     for(tensorSize_t i=start; i<start+stride; i++){
       lsum += tmp[i];
     }
     lsum = log(lsum);
 
+    const tensorSize_t j = start/stride;
     for(tensorSize_t i=start; i<start+stride; i++){
       if((*y)[i]>0){ // y either zero or one
-        loss += (*logits)[i] - lsum;
+        loss += -(*logits)[i] + maxValues[j] + lsum;
       }
     }
   };
@@ -84,7 +85,7 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
     offset += stride;
   }
 
-  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / logits->getDims()[0]}, y->getDevice(), true);
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / logits->getDims()[0]}, y->getDevice(), true);
   res->setCgNode(std::make_shared<cgraph::CrossEntropySoftmaxNode>(y, logits));
   assert(res->getRequiresGrad());
 

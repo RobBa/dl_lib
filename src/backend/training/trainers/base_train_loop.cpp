@@ -51,10 +51,7 @@ void BaseTrainLoop::run(shared_ptr<Tensor>& x, shared_ptr<Tensor>& y, const bool
       auto yBatch = make_shared<Tensor>(y->getSlice(batchSpan));
 
       auto yPred = (*graph)(xBatch);
-      cout << "\nypred: " << *yPred << endl;
-
       auto l = (*loss)(yBatch, yPred);
-      cout << "\nloss: " << (*l)[0] << endl;
 
       l->backward();
       optim->step();

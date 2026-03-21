@@ -29,7 +29,7 @@ vector< shared_ptr<Tensor> > CrossEntropySoftmaxNode::backward(const Tensor& ups
   for(tensorSize_t b=0; b<logits->getDims()[0]; b++){
     for(tensorSize_t i=0; i<logits->getDims()[1]; i++){
       auto g = s.get(b, i) - yTrue->get(b, i);
-      res->set(g, b, i);
+      res->set(g / bSize, b, i);
     }
   }
 

@@ -34,7 +34,8 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
   }
 
   auto bceSimplified = [](ftype y, ftype logit){
-    return std::max(y, (ftype)0) - logit*y + log(1+exp(logit < 0 ? logit : -logit));
+    constexpr ftype zero = 0;
+    return std::max(y, zero) - logit*y + log(1+exp(logit < 0 ? logit : -logit));
   };
 
   const auto nBatches = y->getDims()[0];
@@ -44,7 +45,7 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
     loss += bceSimplified((*y)[i], (*logits)[i]);
   }
 
-  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
+  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / nBatches}, y->getDevice(), true);
   res->setCgNode(make_shared<cgraph::BceSigmoidNode>(y, logits));
   assert(res->getRequiresGrad());
 

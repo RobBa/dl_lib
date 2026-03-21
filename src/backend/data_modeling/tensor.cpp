@@ -529,12 +529,6 @@ void Tensor::backward() {
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
-    static int count = 0;
-    if(tPtr->requiresGrad && count % 50 == 0){
-      cout << "\nbackward of " << tPtr << endl; // TODO: remove
-      cout << "\ngrads " << *tensor.grads << endl; // TODO: remove
-    }
-
     auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
 
     const auto& parents = tensor.cgNode->getParents();
