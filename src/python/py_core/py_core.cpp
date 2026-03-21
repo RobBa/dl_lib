@@ -207,6 +207,11 @@ BOOST_PYTHON_MODULE(_core)
         
     .def("reset", Py_DataModeling::reset1)
     .def("reset", Py_DataModeling::reset2)
+    
+    .def("hasGrads", &Tensor::hasGrads)
+    .def("hasGrads", +[](const std::shared_ptr<Tensor>& t) -> bool {
+      return t->hasGrads();
+      })
 
     .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1, int, int))
     .def("transpose", WRAP_FREE_MEMBER_FUNC_2(Py_DataModeling::transpose2, int, int, bool))

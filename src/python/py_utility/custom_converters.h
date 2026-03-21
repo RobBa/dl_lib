@@ -50,6 +50,16 @@ namespace custom_converters {
     static void* convertible(PyObject* obj_ptr);
     static void construct(PyObject* obj_ptr,rvalueFromPythonData* data);
   };
+
+  /**
+   * @brief Convert from Python list to std::vector<shared_ptr<Tensor>>
+   */
+  struct TensorListFromPython {
+    using rvalueFromPythonData = boost::python::converter::rvalue_from_python_stage1_data;
+
+    static void* convertible(PyObject* obj);
+    static void construct(PyObject* obj, rvalueFromPythonData* data);
+  };
 }
 
 // TODO: do array instead of tensor
@@ -80,6 +90,29 @@ bp::converter::registry::push_back(
 /******************************************************************************************/
 /******************************************************************************************/
 /******************************************************************************************/
+
+void* custom_converters::TensorListFromPython::convertible(PyObject* obj) {
+  using namespace boost::python;
+  if (!PyList_Check(obj)) return nullptr;
+  return obj;
+}
+
+void custom_converters::TensorListFromPython::construct(PyObject* obj, rvalueFromPythonData* data) {
+  using namespace boost::python;
+  void* storage = ((converter::rvalue_from_python_storage< std::vector<std::shared_ptr<Tensor>> >*)data)->storage.bytes;
+  //void* storage = ((converter::rvalue_from_python_storage< std::vector<T> >*)data)->storage.bytes;
+
+  new (storage) std::vector<std::shared_ptr<Tensor>>();
+  auto* vec = reinterpret_cast<std::vector<std::shared_ptr<Tensor>>*>(storage);
+    
+  int len = PyList_Size(obj);
+  vec->reserve(len);
+  for (int i = 0; i < len; i++) {
+      vec->push_back(extract<std::shared_ptr<Tensor>>(
+          PyList_GetItem(obj, i)));
+  }
+  data->convertible = storage;
+}
 
 template<typename T>
 requires ( std::is_integral_v< T > || 

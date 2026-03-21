@@ -11,7 +11,10 @@
 
 #include "py_nn_util.h"
 #include "python_templates.h"
+#include "custom_converters.h"
 #include "utility/global_params.h"
+
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <stdexcept>
 
@@ -30,6 +33,17 @@ BOOST_PYTHON_MODULE(_nn)
   +[](const T& self, Tensor& t1, Tensor& t2) -> std::shared_ptr<Tensor> { \
     return (self.*method)(t1.getSharedPtr(), t2.getSharedPtr()); \
   }
+
+  // register vector of shared_ptr<Tensor> converter; needed for ModuleBase::parameters()
+  class_<std::vector<std::shared_ptr<Tensor>>>("TensorList")
+    .def(vector_indexing_suite<std::vector<std::shared_ptr<Tensor>>>())
+  ;
+
+  // convert python list of tensors back to c++ 
+  converter::registry::push_back(
+    &custom_converters::TensorListFromPython::convertible,
+    &custom_converters::TensorListFromPython::construct,
+    type_id<std::vector<std::shared_ptr<Tensor>>>());
 
   // Networks
   class_<Py_nn::ModuleBaseWrapper, std::shared_ptr<Py_nn::ModuleBaseWrapper>, boost::noncopyable>("_Module", no_init)

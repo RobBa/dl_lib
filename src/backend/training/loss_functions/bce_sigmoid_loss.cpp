@@ -35,7 +35,7 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
 
   auto bceSimplified = [](ftype y, ftype logit){
     constexpr ftype zero = 0;
-    return std::max(y, zero) - logit*y + log(1+exp(logit < 0 ? logit : -logit));
+    return std::max(logit, zero) - logit*y + log(1+exp(-std::abs(logit)));
   };
 
   const auto nBatches = y->getDims()[0];

@@ -28,3 +28,32 @@ class Module(_Module):
     for module in self._modules.values():
       params.extend(module.parameters())
     return params
+  
+"""
+For convenience.
+"""
+class Sequential(Module):
+  def __init__(self):
+    super().__init__()
+    object.__setattr__(self, "_layers", [])
+
+  def append(self, module):
+    self._layers.append(module)
+
+  def forward(self, x):
+    for layer in self._layers:
+      x = layer(x)
+    return x
+
+  def parameters(self):
+    params = []
+    for layer in self._layers:
+      if hasattr(layer, 'parameters'):
+        result = layer.parameters()
+        if isinstance(result, list):
+          params.extend(result)
+        else:
+          params.extend(list(result))  # force conversion from BP proxy
+      elif hasattr(layer, 'params'):
+        params.extend(list(layer.params))
+    return params
