@@ -767,8 +767,7 @@ void Tensor::reset(const ftype x) noexcept {
 /**
  * @brief Populates the tensor with values drawn according to initializer.
  */
-void Tensor::reset(const utility::InitClass ic, const ftype mean, const ftype stddev) {
-  const auto init = utility::InitializerFactory::getInitializer(ic, mean, stddev);
+void Tensor::reset(const shared_ptr<utility::InitializerBase> init) noexcept {
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = init->drawNumber();
   }

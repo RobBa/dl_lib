@@ -11,38 +11,27 @@
 
 #include "initializers.h"
 
-#include <random>
-#include <algorithm>
+#include <cmath>
 
 using namespace std;
 using namespace utility;
 
-namespace {
-    class GaussianInitializer final : public InitializerBase {
-    private:
-      std::random_device rd{};
-      mutable std::mt19937 gen;
-      mutable std::normal_distribution<ftype> dist;
-
-    public:
-        GaussianInitializer(ftype mean, ftype stddev);
-        ftype drawNumber() const override;
-    };
-
-    GaussianInitializer::GaussianInitializer(ftype mean, ftype stddev) 
-      : InitializerBase(), gen{rd()}, dist{mean, stddev} {}
-
-    ftype GaussianInitializer::drawNumber() const {
-        return dist(gen);
-    }
+ftype GaussianInitializer::drawNumber() const {
+  return dist(gen);
 }
 
-unique_ptr<InitializerBase> InitializerFactory::getInitializer(InitClass ic, ftype mean, ftype stddev) {
-    switch(ic){
-        case InitClass::Gaussian:
-            return make_unique<GaussianInitializer>(mean, stddev);
-        default:
-            __throw_invalid_argument("Init class not implemented yet");
-    }
-    return nullptr; // never reached, suppress warning
+ftype UniformXavierInitializer::computeRange(ftype nInputs, ftype nOutputs) {
+  return sqrt(6/nInputs + nOutputs);
+}
+
+ftype UniformXavierInitializer::drawNumber() const {
+  return dist(gen);
+}
+
+ftype NormalXavierInitializer::computeSigma(ftype nInputs, ftype nOutputs) {
+  return sqrt(6/nInputs + nOutputs);
+}
+
+ftype NormalXavierInitializer::drawNumber() const {
+  return dist(gen);
 }

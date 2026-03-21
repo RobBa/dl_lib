@@ -33,16 +33,16 @@ Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, const bool requiresGrad) 
   return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
-Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype mean, const ftype stddev, 
-                                 const Device d, const bool requiresGrad) {
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const Device d, 
+                                 const ftype stddev, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
-  res.reset(utility::InitClass::Gaussian, mean, stddev);
+  res.reset(std::make_shared<utility::GaussianInitializer>(stddev));
   return res;
 }
     
-Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype mean, 
-                                 const ftype stddev, const bool requiresGrad) {
-  return Gaussian(std::move(dims), mean, stddev, Tensor::getDefaultDevice(), requiresGrad);
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype stddev, 
+                                 const bool requiresGrad) {
+  return Gaussian(std::move(dims), Tensor::getDefaultDevice(), stddev, requiresGrad);
 }
 
 // Tensor manipulation
@@ -54,8 +54,8 @@ void TensorFunctions::ToOnes(Tensor& t) noexcept {
   t.reset(1);
 }
 
-void TensorFunctions::ToGaussian(Tensor& t, const ftype mean, const ftype stddev) {
-  t.reset(utility::InitClass::Gaussian, mean, stddev);
+void TensorFunctions::ToGaussian(Tensor& t, const ftype stddev) {
+  t.reset(std::make_shared<utility::GaussianInitializer>(stddev));
 }
 
 shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, bool requiresGrad){

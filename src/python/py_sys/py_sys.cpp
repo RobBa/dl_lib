@@ -18,6 +18,7 @@ BOOST_PYTHON_MODULE(_sys)
 {
     using namespace boost::python;
     
-    def("setGlobalDevice", &sys::setGlobalDevice);
-    def("getGlobalDevice", &sys::getGlobalDevice);
+    def("setDevice", &sys::setDevice);
+    def("getDevice", &sys::getDevice);
+    def("setSeed", &sys::setRandomSeed);
 }

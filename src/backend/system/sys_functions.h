@@ -15,6 +15,8 @@
 #include "data_modeling/device.h"
 
 namespace sys {
-  void setGlobalDevice(Device d) noexcept;
-  Device getGlobalDevice() noexcept;
+  void setDevice(Device d) noexcept;
+  Device getDevice() noexcept;
+
+  void setRandomSeed(unsigned int s) noexcept;
 }

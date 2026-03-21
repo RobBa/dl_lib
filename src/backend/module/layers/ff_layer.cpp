@@ -19,9 +19,10 @@
 
 using namespace std;
 using namespace module;
+using namespace utility;
 
-FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias, bool requiresGrad) 
-    : FfLayer(inSize, outSize, Tensor::getDefaultDevice(), useBias, requiresGrad) {}
+FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias, bool requiresGrad, shared_ptr<InitializerBase> init) 
+    : FfLayer(inSize, outSize, Tensor::getDefaultDevice(), useBias, requiresGrad, init) {}
 
 /**
  * @brief Construct a new Ff Layer:: Ff Layer object
@@ -31,17 +32,20 @@ FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias, bool req
  * @param useBias Use a bias if true. Bias will receiver shape (n_rows)
  * @param requiresGrad If true train this layer.
  */
-FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, bool useBias, bool requiresGrad)
+FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, 
+    bool useBias, bool requiresGrad, shared_ptr<InitializerBase> init)
   : useBias{useBias}, requiresGrad{requiresGrad} 
 {
+  if(!init){
+    init = make_shared<NormalXavierInitializer>(inSize, outSize);  
+  }
+
   weights = make_shared<Tensor>(Dimension({inSize, outSize}), d, requiresGrad);
-  TensorFunctions::ToGaussian(*weights, 0, 0.2);
-  weights = weights;
+  weights->reset(init);
     
   if(useBias){
     bias = make_shared<Tensor>(vector<tensorDim_t>{outSize}, d, requiresGrad);
     TensorFunctions::ToZeros(*bias);
-    bias = bias;
   }
 }
 

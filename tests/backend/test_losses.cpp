@@ -101,9 +101,7 @@ TEST(LossTest, CrossEntropyBackward) {
 
     CrossEntropyLoss loss;
     auto result = loss(y, ypred);
-    std::cout << "before bw" << std::endl;
     result->backward();
-    std::cout << "past bw" << std::endl;
 
     auto grads = ypred->getGrads();
     EXPECT_NEAR((*grads)[0], -0.7143f, kTol);

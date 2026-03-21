@@ -31,6 +31,8 @@
 
 #include "data_modeling/tensor_functions.h"
 
+#include "system/sys_functions.h"
+
 using namespace std;
 
 static shared_ptr<module::Sequential> makeBinaryNet() {
@@ -83,6 +85,12 @@ static shared_ptr<module::Sequential> makeMulticlassNet2() {
     return net;
 }
 
+int main(int argc, char** argv) {
+    testing::InitGoogleTest(&argc, argv);
+    sys::setRandomSeed(42);
+    return RUN_ALL_TESTS();
+}
+
 TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
     // XOR-like: 4 samples, 2 features, binary labels
     auto x = TensorFunctions::makeSharedTensor(
@@ -100,10 +108,10 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
     auto net = makeBinaryNet();    
     auto loss = make_shared<train::BceLoss>();
     auto optim = make_shared<train::SgdOptimizer>(
-        net->parameters(), /*lr=*/0.01);
+        net->parameters(), /*lr=*/0.05);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/10000, /*bsize=*/static_cast<tensorDim_t>(4));
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/static_cast<tensorDim_t>(4));
 
     trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 
@@ -112,10 +120,11 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
     auto finalLoss = (*loss)(y, pred);
 
     EXPECT_LT((*finalLoss)[0], 0.05f)
-        << "Network failed to overfit binary dataset";
+        << "Network failed to overfit binary dataset\n"
+        << "Final prediction: " << *pred << "\nFinal loss: " << *finalLoss;
 }
 
-TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
+TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {    
     // XOR-like: 4 samples, 2 features, binary labels
     auto x = TensorFunctions::makeSharedTensor(
         {4, 2}, {0.0, 0.0,
@@ -132,10 +141,10 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
     auto net = makeBinaryNet2();    
     auto loss = make_shared<train::BceSigmoidLoss>();
     auto optim = make_shared<train::SgdOptimizer>(
-        net->parameters(), /*lr=*/0.02);
+        net->parameters(), /*lr=*/0.05);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/10000, /*bsize=*/static_cast<tensorDim_t>(4));
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/static_cast<tensorDim_t>(4));
 
     trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 
@@ -144,10 +153,9 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
     auto finalLoss = (*loss)(y, pred);
 
     auto sigmoid = module::Sigmoid();
-    cout << "Final prediction: " << sigmoid(*pred) << "\nFinal loss: " << *finalLoss << endl;
-
     EXPECT_LT((*finalLoss)[0], 0.05f)
-        << "Network failed to overfit binary dataset";
+        << "Network failed to overfit binary dataset\n"
+        << "Final prediction: " << sigmoid(*pred) << "\nFinal loss: " << *finalLoss;
 }
 
 TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
@@ -172,19 +180,19 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
     auto net = makeMulticlassNet();
     auto loss = make_shared<train::CrossEntropyLoss>();
     auto optim = make_shared<train::RmsPropOptimizer>(
-        net->parameters(), /*lr=*/0.00002, /*decay=*/0.95);
+        net->parameters(), /*lr=*/0.0001, /*decay=*/0.95);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/10000, /*bsize=*/6);
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/6);
 
-    trainLoop.run(x, y, /*shuffle=*/false);
+    trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 
     auto pred = (*net)(x);
     auto finalLoss = (*loss)(y, pred);
-    cout << "Final prediction: " << *pred << "\nFinal loss: " << *finalLoss << endl;
 
     EXPECT_LT((*finalLoss)[0], 0.05f)
-        << "Network failed to overfit multiclass dataset";
+        << "Network failed to overfit multiclass dataset"
+        << "Final prediction: " << *pred << "\nFinal loss: " << *finalLoss;
 }
 
 TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
@@ -209,20 +217,18 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
     auto net = makeMulticlassNet2();
     auto loss = make_shared<train::CrossEntropySoftmaxLoss>();
     auto optim = make_shared<train::RmsPropOptimizer>(
-        net->parameters(), /*lr=*/0.00002, /*decay=*/0.95);
+        net->parameters(), /*lr=*/0.0003, /*decay=*/0.95);
 
     auto trainLoop = train::BaseTrainLoop(
         net, loss, optim, /*epochs=*/10000, /*bsize=*/6);
 
-    trainLoop.run(x, y, /*shuffle=*/false);
+    trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 
     auto pred = (*net)(x);
     auto finalLoss = (*loss)(y, pred);
 
     auto softmax = module::Softmax();
-    pred = softmax(pred);
-    cout << "Final prediction: " << softmax(*pred) << "\nFinal loss: " << *finalLoss << endl;
-
     EXPECT_LT((*finalLoss)[0], 0.05f)
-        << "Network failed to overfit multiclass dataset";
+        << "Network failed to overfit multiclass dataset"
+        << "Final prediction: " << softmax(*pred) << "\nFinal loss: " << *finalLoss;
 }
