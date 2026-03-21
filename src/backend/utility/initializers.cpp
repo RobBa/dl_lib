@@ -11,36 +11,27 @@
 
 #include "initializers.h"
 
-#include <random>
-#include <algorithm>
+#include <cmath>
 
 using namespace std;
 using namespace utility;
 
-namespace {
-    class GaussianInitializer final : public InitializerBase {
-    public:
-        GaussianInitializer();
-        ftype drawNumber() const override;
-    };
-
-    GaussianInitializer::GaussianInitializer() : InitializerBase() {}
-
-    ftype GaussianInitializer::drawNumber() const {
-        static std::random_device rd;
-        static std::mt19937 gen{rd()};
-        static std::normal_distribution<ftype> dist;
-
-        return dist(gen);
-    }
+ftype GaussianInitializer::drawNumber() const {
+  return dist(gen);
 }
 
-unique_ptr<InitializerBase> InitializerFactory::getInitializer(InitClass ic) {
-    switch(ic){
-        case InitClass::Gaussian:
-            return make_unique<GaussianInitializer>();
-        default:
-            __throw_invalid_argument("Init class not implemented yet");
-    }
-    return nullptr; // never reached, suppress warning
+ftype UniformXavierInitializer::computeRange(ftype nInputs, ftype nOutputs) {
+  return sqrt(6/nInputs + nOutputs);
+}
+
+ftype UniformXavierInitializer::drawNumber() const {
+  return dist(gen);
+}
+
+ftype NormalXavierInitializer::computeSigma(ftype nInputs, ftype nOutputs) {
+  return sqrt(6/nInputs + nOutputs);
+}
+
+ftype NormalXavierInitializer::drawNumber() const {
+  return dist(gen);
 }

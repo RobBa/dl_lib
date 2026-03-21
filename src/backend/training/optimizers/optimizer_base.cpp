@@ -1,9 +1,9 @@
 /**
- * @file optimizer_base.h
- * @author your name (you@domain.com)
+ * @file optimizer_base.cpp
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
- * @date 2026-02-02
+ * @date 2026-03-14
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -11,10 +11,15 @@
 
 #include "optimizer_base.h"
 
-float OptimizerBase::getLr() const noexcept {
-    return lr;
-}
+#include "data_modeling/tensor_functions.h"
 
-void OptimizerBase::setLr(const float lr) noexcept {
-    this->lr = lr;
+using namespace train;
+
+void OptimizerBase::zeroGrad() noexcept{ 
+  for(auto& p: params){
+    auto grads = p->getGrads();
+    
+    if(grads)
+      TensorFunctions::ToZeros(*grads);
+  }
 }

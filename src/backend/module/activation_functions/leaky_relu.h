@@ -1,0 +1,32 @@
+/**
+ * @file leaky_relu.h
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2026-02-01
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
+
+#pragma once
+
+#include "module/module_base.h"
+
+namespace module {
+  class LeakyReLu final : public ModuleBase {
+    private:
+      const ftype eps;
+
+    public:
+      LeakyReLu(ftype eps=0.01) : eps{eps}
+      { }
+
+      Tensor operator()(const Tensor& t) const override;
+      std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& t) const override;
+
+      void print(std::ostream& os) const noexcept override { 
+        os << "\nLeakyReLU\neps: " << eps; 
+      }
+  };
+}

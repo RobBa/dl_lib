@@ -12,9 +12,11 @@
 
 #pragma once
 
-#include "data_modeling/tensor.h"
+#include "data_modeling/device.h"
 
-namespace global {
+namespace sys {
   void setDevice(Device d) noexcept;
   Device getDevice() noexcept;
+
+  void setRandomSeed(unsigned int s) noexcept;
 }

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "dim_type.h"
+#include "device.h"
 #include "computational_graph/topological_sort.h"
 #include "computational_graph/graph_node.h"
 
@@ -19,38 +20,22 @@
 #include "utility/initializers.h"
 
 #include <memory>
-#include <optional>
+#include <span>
 
 #include <iostream>
 
 #include <concepts>
+#include <type_traits>
 #include <cassert>
 
 // break circular dependency
-namespace graph {
+namespace cgraph {
     class GraphNode;
     class TopologicalSort;
 }
 
-enum class Device {
-    CPU,
-    CUDA
-};
-
-constexpr const char* DeviceToString(Device d) {
-    switch(d){
-        case Device::CPU:
-            return "CPU";
-        case Device::CUDA:
-            return "CUDA";
-    }
-
-    std::__throw_invalid_argument("Unknown device encountered");
-    return ""; // suppress
-}
-
 class Tensor final : public std::enable_shared_from_this<Tensor> {
-    friend class graph::TopologicalSort;
+    friend class cgraph::TopologicalSort;
 
     private:
         /**
@@ -85,8 +70,8 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
             ftype& operator[](const tensorSize_t idx);
             ftype operator[](const tensorSize_t idx) const;
 
-            void setItem(ftype v, tensorSize_t idx);
-            ftype getItem(tensorSize_t idx);
+            void set(ftype v, tensorSize_t idx);
+            ftype get(tensorSize_t idx);
 
             tensorSize_t getSize() const noexcept;
 
@@ -110,7 +95,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
             void setDevice(const Device d) noexcept;
             Device getDevice() const noexcept;
 
-            static void copyValues(tensorValues_t& target, const tensorValues_t& origin);
+            void copyValues(tensorValues_t& target) const;
+            void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
+            void copyValues(tensorValues_t& target, std::span<const tensorDim_t> indices, const tensorSize_t sizeOfDim) const;
 
             static void setDefaultDevice(const Device d) noexcept;
             static Device getDefaultDevice() noexcept;
@@ -121,13 +108,15 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         
         bool requiresGrad = false;
         std::shared_ptr<Tensor> grads = nullptr; // gradients
-        std::shared_ptr<graph::GraphNode> cgNode = nullptr;
+        std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
     
         static Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) noexcept;
-        static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset);
 
-        Tensor matMulImpl(const Tensor& left, const Tensor& right) const;
+        static Tensor matMulImpl(const Tensor& left, const Tensor& right);
+        static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, 
+                                const tensorSize_t resOffset, const tensorSize_t leftOffset, 
+                                const tensorSize_t rightOffset);
+
         void transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept;
         void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
 
@@ -165,7 +154,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad=false) :
             Tensor{dims, d, requiresGrad} {   
             for(tensorSize_t i=0; i<initValues.size(); i++){
-                values->setItem(initValues[i], i);
+                values->set(initValues[i], i);
             }
         }
 
@@ -187,8 +176,8 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         Tensor(Tensor&& other) noexcept;
         Tensor& operator=(Tensor&& other) noexcept;
 
-        void reset(const ftype x);
-        void reset(const utility::InitClass ic);
+        void reset(const ftype x) noexcept;
+        void reset(const std::shared_ptr<utility::InitializerBase> init) noexcept;
         
         const Dimension& getDims() const noexcept;
         tensorSize_t getSize() const noexcept;
@@ -217,9 +206,12 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         friend Tensor operator+(ftype scalar, const Tensor& tensor);                                    
 
         void backward();
-
+        
+        std::shared_ptr<Tensor> getGrads() const;
+        void setGrads(std::shared_ptr<Tensor> grads) noexcept {
+          this->grads = std::move(grads);
+        }
         bool hasGrads() const noexcept { return grads!=nullptr; }
-        std::shared_ptr<const Tensor> getGrads() const;
 
         void transposeThis() noexcept;
         void transposeThis(int dim1, int dim2) noexcept;
@@ -232,35 +224,30 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
         friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
         // for convenience we provide some simple getters
-        ftype getItem(tensorSize_t idx) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
-        ftype getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
+        ftype get(tensorSize_t idx) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
+        ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
 
-        ftype getItem(const std::vector<tensorDim_t>& idx) const;
+        // non-const version of operator[] does not exist because of CUDA
+        ftype operator[](tensorSize_t idx) const;
+
+        ftype get(const std::vector<tensorDim_t>& idx) const;
 
         // for convenience we provide some simple setters
-        void setItem(ftype item, tensorDim_t idx);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
-        void setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-        void setItem(ftype item, const std::vector<tensorDim_t>& idx);
+        void set(ftype item, tensorDim_t idx);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
+        void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
+        void set(ftype item, const std::vector<tensorDim_t>& idx);
 
         void setDevice(const Device d) noexcept;
         Device getDevice() const noexcept;
 
         bool getRequiresGrad() const noexcept { return requiresGrad; }
-        void setRequiresGrad(const bool requiresGrad) noexcept { 
-            this->requiresGrad=requiresGrad;
-            if(!requiresGrad && cgNode){
-                cgNode = nullptr;
-            }
-            if(!requiresGrad && grads){
-                grads = nullptr;
-            }
-        }
+        void setRequiresGrad(const bool requiresGrad) noexcept { this->requiresGrad=requiresGrad; }
 
-        void setCgNode(std::shared_ptr<graph::GraphNode> node) noexcept { 
+        void setCgNode(std::shared_ptr<cgraph::GraphNode> node) noexcept { 
             cgNode = std::move(node);
             requiresGrad = true; 
         }
@@ -275,6 +262,9 @@ class Tensor final : public std::enable_shared_from_this<Tensor> {
                 );
             }        
         }
+
+        Tensor getSlice(tensorSize_t low, tensorSize_t high) const;
+        Tensor getSlice(std::span<const tensorDim_t> indices) const;
 
         // these two should not be exposed to the python interface
         static void setDefaultDevice(const Device d) noexcept;

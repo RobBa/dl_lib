@@ -18,17 +18,48 @@
 
 #include <utility>
 
-namespace graph {
+// if GCC or Clang
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif // __GNUC__
+
+namespace cgraph {
   class GraphNode {
     protected:
       std::vector< std::shared_ptr<Tensor> > parents;
       explicit GraphNode(std::vector< std::shared_ptr<Tensor> > parents) : parents{std::move(parents)}{}
       
     public:
+      GraphNode(const GraphNode& other) = delete;
+      GraphNode& operator=(const GraphNode& other) = delete;
+
+      GraphNode(GraphNode&& other) = default;
+      GraphNode& operator=(GraphNode&& other) = default;
+
+      virtual ~GraphNode() noexcept = default; 
+
       virtual std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) = 0;
       
       const auto& getParents() const noexcept {
         return parents;
+      }
+
+      virtual void print(std::ostream& os) const noexcept {
+        os << "\n";
+      #ifdef __GNUC__
+        // demangle name on gcc and clang
+        int status;
+        char* demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+        os << (status == 0 ? demangled : typeid(*this).name());
+        std::free(demangled);
+      #else
+        os << typeid(*this).name();
+      #endif
+      };
+
+      friend std::ostream& operator<<(std::ostream& os, const GraphNode& n) noexcept {
+        n.print(os); // calling vtable
+        return os;
       }
   };
 }

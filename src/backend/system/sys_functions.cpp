@@ -10,13 +10,20 @@
  */
 
 #include "sys_functions.h"
+#include "data_modeling/tensor.h"
 
-using namespace global;
+#include "utility/initializers.h"
 
-void setDevice(Device d) noexcept {
+using namespace sys;
+
+void sys::setDevice(Device d) noexcept {
   Tensor::setDefaultDevice(d);
 }
 
-Device getDevice() noexcept {
+Device sys::getDevice() noexcept {
   return Tensor::getDefaultDevice();
+}
+
+void sys::setRandomSeed(const unsigned int s) noexcept {
+  utility::InitializerBase::setSeed(s);
 }
