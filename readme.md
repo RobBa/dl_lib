@@ -16,7 +16,8 @@ For some examples on Python interface, see tests/python.
 - **Core Components**: 
   - Automatic differentiation (autograd)
   - Backpropagation engine
-  - Neural network layers (in progress)
+  - Neural network layers
+  - Training framework (optimizers, loss functions, layers, and networks)
 - **Python Interface**: Seamless integration via Boost.Python
 - **Clean Architecture**: Modular design, ~4K LOC
 - **CI/CD**: Automated testing with GTest and GitHub Actions
@@ -34,10 +35,10 @@ For some examples on Python interface, see tests/python.
 🚧 **Work in Progress** - Implementing additional layers and optimizations
 
 Roadmap:
-- [ ] Python Binding Unit Tests
-- [ ] Additional layer types (Conv2D, LSTM, etc.)
-- [ ] Optimizers and training framework
-- [ ] CUDA kernels for performance-critical operations
+- [x] Python Binding Unit Tests
+- [x] Optimizers and training framework
+- [ ] CUDA mode for operations
+- [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
 - [ ] Docker deployment example
 
@@ -62,11 +63,12 @@ ctest
 
 ## Required
 
-- Compiler capable of C++20 at least (we test with gcc 12.3.0)
+- Compiler capable of C++23 at least (we test with gcc 13.3.0)
 - Boost Python
-- Cmake > 3.24
+- Cmake > 3.28
 - Python 3 (we test with 3.10, but it should work with any version)
-- pytest for unit tests (we use 9.0.2)
+- pytest and GTest for unit tests (we use pytest=9.0.2)
+- Google Benchmark for benchmarking
 
 ## Troubleshooting
 

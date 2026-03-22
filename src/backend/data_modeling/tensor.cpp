@@ -60,18 +60,63 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
  */
-void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target, 
-                                            const Tensor::tensorValues_t& origin) {
-  assert(origin.device==target.device && origin.size==target.size);
+void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
+  assert(device==target.device && size==target.size);
 
-  switch(origin.device){
+  switch(device){
     case Device::CPU:
-      for(tensorSize_t i=0; i<origin.size; i++){
-        target[i] = origin.values[i];
+      for(tensorSize_t i=0; i<size; i++){
+        target[i] = values[i];
       }
       break;
     case Device::CUDA:
       __throw_runtime_error("CUDA not implemented for deep copy");
+      break;
+  }
+}
+
+/**
+ * @brief Does what you think it does. For linear slicing.
+ */
+void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low, 
+                                        tensorSize_t high, tensorSize_t targetOffset) const {
+  assert(target.size >= high - low);
+
+  switch(device){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<high-low; i++){
+        target[targetOffset+i] = values[low+i];
+      }
+      break;
+    case Device::CUDA:
+      __throw_runtime_error("CUDA not implemented for slicing");
+      break;
+  }
+}
+
+/**
+ * @brief Indexed slicing along first dimension.
+ * 
+ * @param indices The indices of the first dimension.
+ * @param sizeOfDim Complete size of the flattened first dimension.
+ */
+void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tensorDim_t> indices, 
+                                        const tensorSize_t sizeOfDim) const {
+  assert(target.size >= sizeOfDim * indices.size());
+
+  switch(device){
+    case Device::CPU: {
+      tensorSize_t targetOffset = 0;
+      for(tensorDim_t idx: indices){
+        tensorSize_t thisOffset = idx * sizeOfDim;
+        copyValues(target, thisOffset, thisOffset+sizeOfDim, targetOffset);
+        targetOffset += sizeOfDim;
+      }
+      break; 
+    }
+    case Device::CUDA:
+      __throw_runtime_error("CUDA not implemented for slicing");
+      break;
   }
 }
 
@@ -116,6 +161,7 @@ Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
       break;
     case Device::CUDA:
       __throw_invalid_argument("CUDA not supported yet for += operation");
+      break;
   }
 
   return *this;
@@ -141,7 +187,7 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   return values[idx];
 }
 
-void Tensor::tensorValues_t::setItem(ftype v, tensorSize_t idx) {
+void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
@@ -156,7 +202,7 @@ void Tensor::tensorValues_t::setItem(ftype v, tensorSize_t idx) {
   __throw_runtime_error("Should never reach here.");
 }
 
-ftype Tensor::tensorValues_t::getItem(tensorSize_t idx) {
+ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
   
@@ -206,13 +252,13 @@ Tensor Tensor::createEmptyCopy() const {
   return res;
 }
 /**
- * @brief Does a deep copy.
+ * @brief Does a deep copy, but omits gradient and computational graph information.
  */
 Tensor Tensor::createDeepCopy() const {
   assert(!grads || (grads && !grads->requiresGrad)); // gradient should not require gradient
 
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
-  tensorValues_t::copyValues(*res.values, *this->values);
+  values->copyValues(*res.values);
 
   /* if(grads){
     res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
@@ -247,98 +293,64 @@ Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) noexcep
  * The check of whether they do or not is to be performed by the surrounding
  * network class object instance upon construction. 
  */
-Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) const {
-  if(left.dims.getItem(-1) != right.dims.getItem(-2)){
+Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
+  if(left.dims.get(-1) != right.dims.get(-2)){
     __throw_runtime_error("Tensor dimensions do not match");
   }
 
-  if(abs(static_cast<int>(right.dims.nDims()) - static_cast<int>(left.dims.nDims())) > 1){
-    auto str = "Tensor dimension assumptions violated. See file 'assumption_matrices.md'.";
-    __throw_invalid_argument(str);
-  }
-
+  // broadcasting
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
-  resDims[resDims.size()-2] = left.dims.getItem(-2); // rows
-  resDims[resDims.size()-1] = right.dims.getItem(-1); // cols
+  resDims[resDims.size()-2] = left.dims.get(-2); // rows
+  resDims[resDims.size()-1] = right.dims.get(-1); // cols
 
-  Tensor res(resDims, values->getDevice(), false);
+  Tensor res(resDims, left.values->getDevice(), false);
 
   // sizes of the 2D matrices respectively
-  const tensorSize_t leftSize = left.dims.getItem(-1) * left.dims.getItem(-2); 
-  const tensorSize_t rightSize = right.dims.getItem(-1) * right.dims.getItem(-2);
-  const tensorSize_t resSize = left.dims.getItem(-2) * right.dims.getItem(-1);
+  const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
+  const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
+  const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
 
   tensorSize_t leftOffset = 0;
   tensorSize_t rightOffset = 0;
   tensorSize_t resOffset = 0;
 
-  // lambda expected to get inlined by compiler
-  auto multiplyNTimes = [&](const tensorDim_t n){
-    for(tensorDim_t i=0; i<n; i++){
-      matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+  while(leftOffset < left.getSize()){
+    matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
 
-      leftOffset += leftSize;
-      rightOffset += rightSize;
-      resOffset += resSize;
-    }
-  };
-
-  if(left.dims.nDims() == right.dims.nDims()){
-    const auto nMultiplications = res.values->getSize() / resSize; // total size / size of 2D matrix
-    multiplyNTimes(nMultiplications);
-  }
-  else if(left.dims.nDims() > right.dims.nDims()) {
-    const auto nBatches = left.dims.getItem(0);
-
-    for(tensorDim_t batch = 0; batch < nBatches; batch++){
-      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);
-      multiplyNTimes(nMultsPerBatch);
-      rightOffset = 0;
-    }
-  }
-  else {
-    const auto nBatches = right.dims.getItem(0);
-
-    for(tensorDim_t batch = 0; batch < nBatches; batch++){
-      const auto nMultsPerBatch = res.values->getSize() / (nBatches * resSize);  
-      multiplyNTimes(nMultsPerBatch);
-      leftOffset = 0;
-    }
+    leftOffset += leftSize;
+    rightOffset += rightSize;
+    resOffset += resSize;
   }
 
   return res;
 }
 
 /**
- * @brief Name says it all. Inplace operation on res
+ * @brief Name says it all. Inplace operation on res.
  */
 void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
+  
+  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
+  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
+  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
+  const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
 
-  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.getItem(-2));
-  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.getItem(-1));
-  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.getItem(-2));
-  const auto nColsRight = static_cast<tensorSize_t>(right.dims.getItem(-1));
+  tensorSize_t resIdx = resOffset;
+  for(tensorSize_t lrow=0; lrow<nRowsLeft; lrow++){
 
-  for(tensorSize_t row=0; row<nRowsLeft; row++){
-    const tensorSize_t leftRowOffset = row * nColsLeft;
-    const tensorSize_t resRowOffset = row * nColsRight;
-    
-    tensorSize_t resIdx = resOffset + resRowOffset;
-    // TODO: can we optimize mem-access for right matrix?
-    for(tensorSize_t col=0; col<nColsRight; col++){
-      ftype scalarProd = 0;
-      
-      tensorSize_t leftIdx = leftOffset + leftRowOffset;
-      tensorSize_t rightIdx = rightOffset + col;
-      for(tensorSize_t idx=0; idx<nColsLeft; idx++){
-        scalarProd += (*left.values)[leftIdx] * (*right.values)[rightIdx];
-        
+    for(tensorSize_t rcol=0; rcol<nColsRight; rcol++){
+      tensorSize_t leftIdx = leftOffset + lrow * nColsLeft;
+      tensorSize_t rightIdx = rightOffset + rcol;
+
+      ftype scalar = 0.0;
+      for(tensorSize_t lcol=0; lcol<nColsLeft; lcol++){
+        scalar += (*left.values)[leftIdx] * (*right.values)[rightIdx];
         leftIdx++;
         rightIdx += nColsRight;
       }
 
-      (*res.values)[resIdx] = scalarProd;
+      (*res.values)[resIdx] = scalar;
       resIdx++;
     }
   }
@@ -348,6 +360,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
  * @brief Matrix multiplication.
  */
 Tensor Tensor::matmul(const Tensor& other) const {
+  assert(values->getDevice()==other.values->getDevice());
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
@@ -356,36 +369,45 @@ Tensor Tensor::matmul(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  // TODO: check what to do about these two gradients and if you want broadcasting here at all
-  if(other.dims.getSize()==1){
-    return multiplyScalar(other, *this);
-  }
-  else if(dims.getSize()==1){
-    return multiplyScalar(*this, other); 
-  }
-  
   return matMulImpl(*this, other);
 }
 
 /**
- * @brief Elementise addition.
+ * @brief Addition of two tensors. This works in two ways: 
+ * 1. Shapes of the two tensors are identical. In this case it is simple 
+ * elementwise addition.
+ * 2. The second tensor is a vector. In this case broadcast it. We assume 
+ * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
 Tensor Tensor::operator+(const Tensor& other) const {
   if(values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Multiplication not implemented on CUDA");
+    __throw_invalid_argument("Addition not implemented on CUDA");
   }
 
-  if(this->dims != other.dims){
-    __throw_invalid_argument("Tensors need same dimensions");
+  if(this->dims != other.dims && 
+    !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
+    __throw_invalid_argument("Tensors need matching dimensions");
   }
   else if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  assert(values->getSize()==other.values->getSize());
-  Tensor res(dims, values->getDevice(), false);
-  for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*res.values)[i] = (*values)[i] + (*other.values)[i];
+  Tensor res(dims, values->getDevice());
+
+  if(dims==other.dims){
+    // elementwise add
+    for(tensorSize_t i=0; i<values->getSize(); i++){
+      (*res.values)[i] = (*values)[i] + (*other.values)[i];
+    }
+  }
+  else { [[likely]]
+    // broadcasted add
+    const auto stride = static_cast<tensorSize_t>(other.dims.get(0));
+    for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
+      for(tensorSize_t i=0; i<stride; i++){
+        (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+      }
+    }
   }
 
   return res;
@@ -402,17 +424,18 @@ Tensor Tensor::add(const Tensor& other) const {
  * @brief Elementwise multiplication.
  */
 Tensor Tensor::operator*(const Tensor& other) const {
+  assert(values->getDevice()==other.values->getDevice());
   if(values->getDevice()==Device::CUDA){
     __throw_invalid_argument("Multiplication not implemented on CUDA");
   }
 
   // TODO: check what to do about these two gradients and if you want broadcasting here at all
-  if(other.dims.getSize()==1){
+/*   if(other.dims.getSize()==1){
     return multiplyScalar(other, *this);
   }
   else if(dims.getSize()==1){
     return multiplyScalar(*this, other);
-  }
+  } */
 
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
@@ -501,26 +524,25 @@ void Tensor::backward() {
     }
   }
 
-  vector<Tensor*> sortedTensors = graph::TopologicalSort::reverseSort(this);
+  vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
   for(auto tPtr: sortedTensors){
     auto& tensor = *tPtr;
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
-    if(tensor.cgNode){
-      auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
-      const auto& parents = tensor.cgNode->getParents();
+    auto incomingGrads = tensor.cgNode->backward(*tensor.grads);
 
-      for(size_t i=0; i<parents.size(); i++){
-        auto parent = parents[i];
-        if(!parent->requiresGrad){
-          continue;
-        }
-        else if(!parent->grads){
-          parent->grads = incomingGrads[i];
-        }
-        else{
-          *parent->grads->values += *incomingGrads[i]->values;
-        }
+    const auto& parents = tensor.cgNode->getParents();
+
+    for(size_t i=0; i<parents.size(); i++){
+      auto parent = parents[i];
+      if(!parent->requiresGrad){
+        continue;
+      }
+      else if(!parent->grads){
+        parent->grads = incomingGrads[i];
+      }
+      else{
+        *parent->grads->values += *incomingGrads[i]->values;
       }
     }
   }
@@ -529,7 +551,7 @@ void Tensor::backward() {
 /**
  * @brief Get gradients
  */
-shared_ptr<const Tensor> Tensor::getGrads() const {
+shared_ptr<Tensor> Tensor::getGrads() const {
   if(!grads){
     __throw_runtime_error("Tensor has no gradients.");
   }
@@ -574,7 +596,7 @@ void Tensor::transposeImpl(Tensor& target, const int dim1, const int dim2) const
     // strides for source
     tensorSize_t stride = 1;
     for(int d = numDims - 1; d >= 0; d--) {
-        dimSizes[d] = source.dims.getItem(d);
+        dimSizes[d] = source.dims.get(d);
         sourceStrides[d] = stride;
         stride *= dimSizes[d];
     }
@@ -647,8 +669,8 @@ void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) con
   transposedValues->resize(source.values->getSize());
 
   tensorSize_t resIdx = 0;
-  for(tensorSize_t smallDimCount=0; smallDimCount<source.dims.getItem(smallDim); smallDimCount++){
-    for(tensorSize_t largeDimCount=0; largeDimCount<source.dims.getItem(largeDim); largeDimCount++){
+  for(tensorSize_t smallDimCount=0; smallDimCount<source.dims.get(smallDim); smallDimCount++){
+    for(tensorSize_t largeDimCount=0; largeDimCount<source.dims.get(largeDim); largeDimCount++){
       tensorSize_t offset = largeDimCount * largeDimOffset + smallDimCount * smallDimOffset;
 
       for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimOffset; smallDimIdx++){
@@ -736,7 +758,7 @@ void Tensor::permute(const std::vector<tensorDim_t>&& newOrder) noexcept {
 /**
  * @brief Populates the tensor with value.
  */
-void Tensor::reset(const ftype x) {
+void Tensor::reset(const ftype x) noexcept {
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = x;
   }
@@ -745,8 +767,7 @@ void Tensor::reset(const ftype x) {
 /**
  * @brief Populates the tensor with values drawn according to initializer.
  */
-void Tensor::reset(const utility::InitClass ic) {
-  const auto init = utility::InitializerFactory::getInitializer(ic);
+void Tensor::reset(const shared_ptr<utility::InitializerBase> init) noexcept {
   for(tensorSize_t i=0; i<values->getSize(); i++){
     (*values)[i] = init->drawNumber();
   }
@@ -777,6 +798,46 @@ Device Tensor::getDevice() const noexcept {
 }
 
 /**
+ * @brief Gets a slice of this tensor.
+ * 
+ * Quick and dirty implementation for now: Copies and
+ * returns. 
+ * 
+ * @param low Lower idx, inclusive bound.
+ * @param high Upper idx, non-inclusive bound.
+ * @return Tensor The slices tensor.
+ */
+Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) const {
+  if(high<=low){
+    __throw_invalid_argument("Upper bound most be larger than lower bound.");
+  }
+
+  auto resDims = dims.toVector();
+  resDims[0] = high-low;
+  Tensor res(std::move(resDims), values->getDevice(), false);
+  values->copyValues(*res.values, low, high, 0);
+  return res;
+}
+
+/**
+ * @brief Like overload, but gets the slicing according to the 
+ * indices given by the argument. Used e.g. in batch-size.
+ * 
+ * @param indices A list of indices
+ * @return Tensor The result.
+ */
+Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
+  assert(indices.size()>0);
+  
+  auto resDims = dims.toVector();
+  resDims[0] = indices.size();
+
+  Tensor res(std::move(resDims), values->getDevice(), false);
+  values->copyValues(*res.values, indices, getDimOffset(0, resDims));
+  return res;
+}
+
+/**
  * @brief Prints only sample of up to 2D tensors.
  */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
@@ -784,9 +845,9 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
     constexpr auto MAX_IDX = static_cast<tensorDim_t>(10);
 
     if(t.dims.nDims()==2){
-      for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.getItem(0)); i++){
-        for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.getItem(1)); j++){
-          os << t.getItem({i, j}) << " ";
+      for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
+        for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.get(1)); j++){
+          os << t.get({i, j}) << " ";
         }
         os << "\n";
       }
@@ -800,7 +861,7 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
 
   printVals(t);
   if(t.grads){
-    os << "Grads:\n";
+    os << "\n\nGrads:\n";
     printVals(*t.grads);
   }
 }
@@ -845,12 +906,12 @@ tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const
   }
 
   const auto lastIdx = idx.size()-1;
-  tensorSize_t offsetFactor = dims.getItem(lastIdx);
+  tensorSize_t offsetFactor = dims.get(lastIdx);
   
   tensorSize_t res = idx[lastIdx];
   for(int i=lastIdx-1; i>=0; i--){
     res += idx[i] * offsetFactor;
-    offsetFactor *= dims.getItem(i);
+    offsetFactor *= dims.get(i);
   }
 
   return res;
@@ -864,7 +925,7 @@ tensorSize_t Tensor::getDimOffset(const tensorDim_t dim, const Dimension& dims) 
   tensorSize_t res = 1; // minimum possible dimsize
 
   for(size_t idx = dims.nDims()-1; idx>dim; idx--){
-    res *= dims.getItem(idx);
+    res *= dims.get(idx);
   }
 
   assert(res!=0);
@@ -881,7 +942,7 @@ tensorSize_t Tensor::getDimOffset(const int dim, const Dimension& dims) {
 /**
  * @brief No explanation needed.
  */
-ftype Tensor::getItem(const std::vector<tensorDim_t>& idx) const {
+ftype Tensor::get(const std::vector<tensorDim_t>& idx) const {
   return (*values)[computeLinearIdx(idx, dims)]; 
 }
 
@@ -889,26 +950,34 @@ ftype Tensor::getItem(const std::vector<tensorDim_t>& idx) const {
  * @brief Special getter, indexes the contained underlying array linearly.
  * Can lead to unexpected results in multidimensional tensors.
  */
-ftype Tensor::getItem(tensorSize_t idx) const {
+ftype Tensor::get(tensorSize_t idx) const {
+  return (*this)[idx];
+}
+
+/**
+ * @brief For convenience.
+ */
+ftype Tensor::operator[](tensorSize_t idx) const {
   return (*values)[idx];
 }
 
-ftype Tensor::getItem(tensorDim_t idx0, tensorDim_t idx1) const {
-  return getItem({idx0, idx1});
+
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1) const {
+  return get({idx0, idx1});
 }
 
-ftype Tensor::getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const {
-  return getItem({idx0, idx1, idx2});
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const {
+  return get({idx0, idx1, idx2});
 }
 
-ftype Tensor::getItem(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const {
-  return getItem({idx0, idx1, idx2, idx3});
+ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const {
+  return get({idx0, idx1, idx2, idx3});
 }
 
 /**
  * @brief No explanation needed.
  */
-void Tensor::setItem(ftype item, const std::vector<tensorDim_t>& idx) {
+void Tensor::set(ftype item, const std::vector<tensorDim_t>& idx) {
   (*values)[computeLinearIdx(idx, dims)] = item;
 }
 
@@ -916,18 +985,18 @@ void Tensor::setItem(ftype item, const std::vector<tensorDim_t>& idx) {
  * @brief Special setter, indexes the contained underlying array linearly.
  * Can lead to unexpected results in multidimensional tensors.
  */
-void Tensor::setItem(ftype item, tensorDim_t idx) { 
+void Tensor::set(ftype item, tensorDim_t idx) { 
   (*values)[idx] = item;
 }
 
-void Tensor::setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
-  setItem(item, {idx0, idx1});
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
+  set(item, {idx0, idx1});
 }
 
-void Tensor::setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
-  setItem(item, {idx0, idx1, idx2});
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
+  set(item, {idx0, idx1, idx2});
 }
 
-void Tensor::setItem(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
-  setItem(item, {idx0, idx1, idx2, idx3});
+void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
+  set(item, {idx0, idx1, idx2, idx3});
 }

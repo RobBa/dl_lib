@@ -33,27 +33,29 @@ Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, const bool requiresGrad) 
   return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
-Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const Device d, 
+                                 const ftype stddev, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
-  res.reset(utility::InitClass::Gaussian);
+  res.reset(std::make_shared<utility::GaussianInitializer>(stddev));
   return res;
 }
     
-Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const bool requiresGrad) {
-  return Gaussian(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype stddev, 
+                                 const bool requiresGrad) {
+  return Gaussian(std::move(dims), Tensor::getDefaultDevice(), stddev, requiresGrad);
 }
 
 // Tensor manipulation
-void TensorFunctions::ToZeros(Tensor& t) {
+void TensorFunctions::ToZeros(Tensor& t) noexcept {
   t.reset(0);
 }
 
-void TensorFunctions::ToOnes(Tensor& t) {
+void TensorFunctions::ToOnes(Tensor& t) noexcept {
   t.reset(1);
 }
 
-void TensorFunctions::ToGaussian(Tensor& t) {
-  t.reset(utility::InitClass::Gaussian);
+void TensorFunctions::ToGaussian(Tensor& t, const ftype stddev) {
+  t.reset(std::make_shared<utility::GaussianInitializer>(stddev));
 }
 
 shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& dims, bool requiresGrad){
@@ -75,4 +77,38 @@ shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& 
                                            Device d, 
                                            bool requiresGrad){
   return make_shared<Tensor>(dims, initValues, d, requiresGrad);   
+}
+
+/************************************************************************************
+ ************************************ Arithmetics ***********************************
+ ***********************************************************************************/
+
+ /**
+  * @brief Sums over the dimensions. If input is (b-size, dim1, dim2), and 
+  * input dim-parameter is 1, then output will be (b-size, dim2). If 
+  * input dim-parameter is 0, then output will be (dim1, dim2).
+  * Input dim must be smaller then t.dims.nDims()-1
+  */
+Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
+  if(dim>=t.getDims().nDims()-1){
+    __throw_invalid_argument("Dim parameter must be smaller than number of dims, but was " + dim);
+  }
+
+  auto resDims = t.getDims().collapseDimension(dim);
+  Tensor res = Zeros(resDims.toVector(), t.getDevice(), t.getRequiresGrad()); // inefficiency toVector
+
+  tensorSize_t stride = 1;
+  for(tensorDim_t i=dim+1; i<t.getDims().nDims(); i++){
+    stride *= t.getDims()[i];
+  }
+  
+  tensorSize_t targetOffset = 0;
+  for(tensorDim_t loop=0; loop<t.getDims()[dim]; loop++){
+    for(tensorSize_t i=0; i<stride; i++){
+      res.set(res.get(i) + t.get(targetOffset), i);
+      targetOffset++;
+    }
+  }
+  
+  return res;
 }
