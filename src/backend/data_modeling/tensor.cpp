@@ -552,9 +552,6 @@ void Tensor::backward() {
  * @brief Get gradients
  */
 shared_ptr<Tensor> Tensor::getGrads() const {
-  if(!grads){
-    __throw_runtime_error("Tensor has no gradients.");
-  }
   return grads;
 }
 

@@ -120,4 +120,29 @@ class TestOverfitBinary:
 
     assert final_loss < initial_loss, \
       f"Loss did not decrease: {initial_loss} -> {final_loss}"
-  
+    
+  def test_gradients_are_zeroed_between_steps(self):
+    """Verify zeroGrad works — gradients should not accumulate"""
+    x, y = make_xor_data()
+    net = make_binary_net()
+    loss_fn = BceWithSigmoid()
+    optim = SGD(net.parameters(), 0.01)
+
+    # two steps
+    for _ in range(2):
+      pred = net.forward(x)
+      loss = loss_fn(y, pred)
+
+      loss.backward()
+      optim.step()
+      optim.zeroGrad()
+
+    # after zeroGrad all parameter grads should be zero
+    for p in net.parameters():
+      if p.grads is not None:
+        for i in range(p.grads.size):
+          assert p.grads.getitem(i) == pytest.approx(0.0), \
+            f"Gradient not zeroed at index {i}"
+          
+if __name__ == '__main__':
+  raise RuntimeError("Not a standalone script")

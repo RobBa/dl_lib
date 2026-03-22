@@ -14,14 +14,23 @@
 #include "custom_converters.h"
 #include "utility/global_params.h"
 
+#include "data_modeling/tensor.h"
+
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <stdexcept>
 
 BOOST_PYTHON_MODULE(_nn)
 {
+  /**
+   * Return values, so BP knows how to wrap them. Example: parameters(), see FfLayer
+   * Omitting these steps will result in crashes when working with tensors returned by
+   * those functions
+   */
+  boost::python::object coreModule = boost::python::import("dl_lib._compiled._core");
+  boost::python::register_ptr_to_python<std::shared_ptr<Tensor>>();
+
   using namespace Py_Util;
-  
   using namespace boost::python;
 
   #define WRAP_METHOD_ONE_TENSORARG(T, method) \
@@ -62,12 +71,18 @@ BOOST_PYTHON_MODULE(_nn)
     .def(init<tensorDim_t, tensorDim_t, Device>())
     .def(init<tensorDim_t, tensorDim_t, Device, bool>())
     .def(init<tensorDim_t, tensorDim_t, Device, bool, bool>())
-    // methods
+    // properties
     .add_property("dims", make_function(&module::FfLayer::getDims, return_internal_reference<>()))
     .add_property("weights", &module::FfLayer::getWeights)
     .add_property("bias", &module::FfLayer::getBias)
-    .add_property("params", &module::ModuleBase::parameters)
-        // operators
+    // methods
+    .def("parameters", +[](const module::FfLayer& f) -> boost::python::list {
+                            boost::python::list result;
+                            for(auto& t : f.parameters())
+                                result.append(t);
+                            return result;
+                        })
+    // operators
     .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::FfLayer, Py_nn::ffForward))
     .def("__str__", &toString<module::FfLayer>)
   ;

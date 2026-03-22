@@ -172,8 +172,9 @@ BOOST_PYTHON_MODULE(_core)
     // properties
     .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
     .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
-    .add_property("grads", make_function(&Tensor::getGrads))
+    .add_property("grads", &Tensor::getGrads)
     .add_property("requiresGrad", &Tensor::getRequiresGrad, &Tensor::setRequiresGrad)
+    .add_property("size", &Tensor::getSize)
 
     // operators
     .def("__str__", &Py_Util::toString<Tensor>)

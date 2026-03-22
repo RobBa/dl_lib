@@ -16,7 +16,8 @@ For some examples on Python interface, see tests/python.
 - **Core Components**: 
   - Automatic differentiation (autograd)
   - Backpropagation engine
-  - Neural network layers (in progress)
+  - Neural network layers
+  - Training framework (optimizers, loss functions, layers, and networks)
 - **Python Interface**: Seamless integration via Boost.Python
 - **Clean Architecture**: Modular design, ~4K LOC
 - **CI/CD**: Automated testing with GTest and GitHub Actions
@@ -36,9 +37,9 @@ For some examples on Python interface, see tests/python.
 
 Roadmap:
 - [x] Python Binding Unit Tests
-- [ ] Additional layer types (Conv2D, Dropout, etc.)
-- [ ] Optimizers and training framework
+- [x] Optimizers and training framework
 - [ ] CUDA mode for operations
+- [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
 - [ ] Docker deployment example
 
