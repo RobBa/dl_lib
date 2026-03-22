@@ -232,3 +232,47 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
         << "Network failed to overfit multiclass dataset"
         << "Final prediction: " << softmax(*pred) << "\nFinal loss: " << *finalLoss;
 }
+
+TEST(OptimizerTest, ZeroGrad_ClearsAllGradients) {
+    auto x = TensorFunctions::makeSharedTensor(
+        {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, false);
+    auto y = TensorFunctions::makeSharedTensor(
+        {4, 1}, {0.0, 1.0, 1.0, 0.0}, false);
+
+    auto net = makeBinaryNet();
+    auto loss = std::make_shared<train::BceSigmoidLoss>();
+    auto optim = std::make_shared<train::SgdOptimizer>(
+        net->parameters(), 0.01f);
+
+    // one forward/backward pass to populate gradients
+    auto pred = (*net)(x);
+    auto l = (*loss)(y, pred);
+    l->backward();
+
+    // verify gradients are non-zero before zeroing
+    bool anyNonZero = false;
+    for(auto& p : net->parameters()) {
+        if(p->getGrads()) {
+            for(tensorSize_t i = 0; i < p->getGrads()->getSize(); i++) {
+                if((*p->getGrads())[i] != 0.0f) {
+                    anyNonZero = true;
+                    break;
+                }
+            }
+        }
+    }
+    EXPECT_TRUE(anyNonZero) << "Expected some non-zero gradients before zeroGrad";
+
+    // zero gradients
+    optim->zeroGrad();
+
+    // verify all gradients are zero after zeroing
+    for(auto& p : net->parameters()) {
+        if(p->getGrads()) {
+            for(tensorSize_t i = 0; i < p->getGrads()->getSize(); i++) {
+                EXPECT_FLOAT_EQ((*p->getGrads())[i], 0.0f)
+                    << "Gradient not zeroed at index " << i;
+            }
+        }
+    }
+}

@@ -25,6 +25,10 @@
 
 BOOST_PYTHON_MODULE(_train)
 {
+  // enable conversion from Tensor registered in _core 
+  boost::python::object coreModule = boost::python::import("dl_lib._compiled._core");
+  boost::python::register_ptr_to_python<std::shared_ptr<Tensor>>();
+
   using namespace boost::python;
 
   // Loss functions

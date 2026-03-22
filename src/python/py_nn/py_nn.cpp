@@ -25,9 +25,10 @@ BOOST_PYTHON_MODULE(_nn)
   /**
    * Return values, so BP knows how to wrap them. Example: parameters(), see FfLayer
    * Omitting these steps will result in crashes when working with tensors returned by
-   * those functions
+   * those functions.
    */
   boost::python::object coreModule = boost::python::import("dl_lib._compiled._core");
+  // this works when function returns a single shared_ptr<Tensor>
   boost::python::register_ptr_to_python<std::shared_ptr<Tensor>>();
 
   using namespace Py_Util;
@@ -77,9 +78,10 @@ BOOST_PYTHON_MODULE(_nn)
     .add_property("bias", &module::FfLayer::getBias)
     // methods
     .def("parameters", +[](const module::FfLayer& f) -> boost::python::list {
+                            // we get a vector of shared_ptr, therefore need to give instructions on conversion
                             boost::python::list result;
                             for(auto& t : f.parameters())
-                                result.append(t);
+                                result.append(t); // forces conversion through Object*
                             return result;
                         })
     // operators
@@ -92,7 +94,9 @@ BOOST_PYTHON_MODULE(_nn)
     .def("__str__", &toString<module::ReLu>)
   ;
 
-  class_<module::LeakyReLu, std::shared_ptr<module::LeakyReLu>, boost::noncopyable>("LeakyReLU", init<ftype>())
+  class_<module::LeakyReLu, std::shared_ptr<module::LeakyReLu>, boost::noncopyable>("LeakyReLU")
+    .def(init<>()) // default epsilon
+    .def(init<ftype>())
     .def("__call__", WRAP_METHOD_ONE_TENSORARG(module::LeakyReLu, Py_nn::leakyReluF))
     .def("__str__", &toString<module::LeakyReLu>)
   ;
