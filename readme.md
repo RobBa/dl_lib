@@ -26,7 +26,8 @@ For some examples on Python interface, see tests/python.
 - C++17/20
 - CMake build system
 - Boost.Python for Python bindings
-- Google Test (GTest) for unit testing
+- Python 3 for library interface and examples
+- Google Test (GTest) and PyTest for unit testing
 - GitHub Actions for CI/CD
 
 ## Current Status
