@@ -18,6 +18,7 @@ For some examples on Python interface, see tests/python.
   - Backpropagation engine
   - Neural network layers
   - Training framework (optimizers, loss functions, layers, and networks)
+- **Example code**: Full MNIST dataset training example
 - **Python Interface**: Seamless integration via Boost.Python
 - **Clean Architecture**: Modular design, ~4K LOC
 - **CI/CD**: Automated testing with GTest and GitHub Actions
@@ -38,6 +39,7 @@ For some examples on Python interface, see tests/python.
 Roadmap:
 - [x] Python Binding Unit Tests
 - [x] Optimizers and training framework
+- [x] MNIST example
 - [ ] CUDA mode for operations
 - [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
@@ -68,11 +70,11 @@ ctest
 - Boost Python
 - Cmake > 3.28
 - Python 3 (we test with 3.10, but it should work with any version)
+- numpy 1.26.4
 - pytest and GTest for unit tests (we use pytest=9.0.2)
 - Google Benchmark for benchmarking
 
 ## Troubleshooting
-
 
 ### Building on Windows
 

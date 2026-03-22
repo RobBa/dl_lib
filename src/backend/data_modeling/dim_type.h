@@ -23,7 +23,7 @@ class Dimension final {
     std::vector<tensorDim_t> dims;
     tensorSize_t size = 0;
 
-    tensorDim_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
+    tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
 
   public:
     /**

@@ -23,6 +23,9 @@
 #include <boost/python/enum.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
+#define PY_ARRAY_UNIQUE_SYMBOL MY_ARRAY_API
+#include <numpy/arrayobject.h>
+
 BOOST_PYTHON_MODULE(_core)
 {
   using namespace boost::python;
@@ -237,4 +240,9 @@ BOOST_PYTHON_MODULE(_core)
   def("Gaussian", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, Device, ftype));
   def("Gaussian", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, ftype, const bool));
   def("Gaussian", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, Device, ftype, const bool));
+
+  // must call this before using numpy C API
+  Py_DataModeling::initNumpy();  // numpy initialization
+  def("fromNumpy", &Py_DataModeling::fromNumpy<ftype>);
+  def("toNumpy", &Py_DataModeling::toNumpy);
 }

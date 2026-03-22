@@ -1,5 +1,5 @@
-from ._compiled._core import Tensor, Dimension, Device
+from ._compiled._core import Tensor, Dimension, Device, fromNumpy, toNumpy
 
 __all__ = ['Tensor', 'Device', 'Dimension']
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"

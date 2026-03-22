@@ -15,7 +15,7 @@ using namespace std;
 using namespace train;
 
 void RmsPropOptimizer::step() {
-  constexpr ftype eps = 1e-9;
+  constexpr ftype eps = 1e-8;
   for(const auto& param: params){
     auto tPtr = param.get();
     const auto gPtr = tPtr->getGrads().get();

@@ -11,7 +11,7 @@ print(sys.path)
 from dl_lib import Tensor
 from dl_lib.nn import FfLayer, Sequential
 from dl_lib.nn.activation import LeakyReLU
-from dl_lib.train.loss import BCE, BceWithSigmoid, CrossEntropyWithSoftmax
+from dl_lib.train.loss import BceWithSigmoid, CrossEntropyWithSoftmax
 from dl_lib.train.optim import SGD, RmsProp
 
 from dl_lib.sys import setSeed
@@ -32,16 +32,16 @@ def train(net, loss_fn, optim, x, y, epochs):
 
 def make_binary_net():
   net = Sequential()
-  net.append(FfLayer(2, 4, True, True))
+  net.append(FfLayer(2, 4))
   net.append(LeakyReLU(0.01))
-  net.append(FfLayer(4, 1, True, True))
+  net.append(FfLayer(4, 1))
   return net
 
 def make_multiclass_net():
   net = Sequential()
-  net.append(FfLayer(2, 8, True, True))
+  net.append(FfLayer(2, 8))
   net.append(LeakyReLU(0.01))
-  net.append(FfLayer(8, 3, True, True))
+  net.append(FfLayer(8, 3))
   return net
 
 def make_xor_data():

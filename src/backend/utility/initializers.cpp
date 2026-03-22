@@ -21,7 +21,7 @@ ftype GaussianInitializer::drawNumber() const {
 }
 
 ftype UniformXavierInitializer::computeRange(ftype nInputs, ftype nOutputs) {
-  return sqrt(6/nInputs + nOutputs);
+  return sqrt(6 / (nInputs + nOutputs));
 }
 
 ftype UniformXavierInitializer::drawNumber() const {
@@ -29,7 +29,7 @@ ftype UniformXavierInitializer::drawNumber() const {
 }
 
 ftype NormalXavierInitializer::computeSigma(ftype nInputs, ftype nOutputs) {
-  return sqrt(6/nInputs + nOutputs);
+  return sqrt(2/ (nInputs + nOutputs));
 }
 
 ftype NormalXavierInitializer::drawNumber() const {
