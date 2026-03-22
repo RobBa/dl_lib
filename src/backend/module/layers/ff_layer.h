@@ -26,10 +26,10 @@ namespace module {
 
   public:
     FfLayer(tensorDim_t inSize, tensorDim_t outSize,
-            bool useBias=true, bool requiresGrad=false, std::shared_ptr<utility::InitializerBase> init=nullptr);
+            bool useBias=true, bool requiresGrad=true, std::shared_ptr<utility::InitializerBase> init=nullptr);
     
     FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, 
-            bool useBias=true, bool requiresGrad=false, std::shared_ptr<utility::InitializerBase> init=nullptr);
+            bool useBias=true, bool requiresGrad=true, std::shared_ptr<utility::InitializerBase> init=nullptr);
 
     Tensor operator()(const Tensor& input) const override;
     std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor>& input) const override;

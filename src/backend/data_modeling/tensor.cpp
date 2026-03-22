@@ -16,6 +16,7 @@
 
 #include <utility>
 #include <limits>
+#include <cstring>
 
 using namespace std;
 
@@ -56,6 +57,20 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
 }
 
 /**
+ * @brief Copy from pointer into this object.
+ */
+void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
+  assert(n == size);
+  switch(device){
+    case Device::CPU:
+      std::memcpy(values, src, n * sizeof(ftype));
+      break;
+    case Device::CUDA:
+      __throw_runtime_error("copyFromRaw not implemented for CUDA");
+  }
+}
+
+/**
  * @brief For convenience, since copy- and std::move-constructors and assigment operators
  * do not create a deepcopy, but construct another pointer pointing to the same piece
  * of memory.
@@ -70,7 +85,7 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
       }
       break;
     case Device::CUDA:
-      __throw_runtime_error("CUDA not implemented for deep copy");
+      __throw_runtime_error("Deep copy not implemented for CUDA");
       break;
   }
 }
@@ -349,7 +364,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
         leftIdx++;
         rightIdx += nColsRight;
       }
-
+      
       (*res.values)[resIdx] = scalar;
       resIdx++;
     }

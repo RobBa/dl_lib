@@ -45,5 +45,6 @@ namespace train {
       virtual void step() = 0;
 
       void zeroGrad() noexcept;
+      void clipGradients(ftype maxNorm) noexcept;
   };
 }

@@ -17,8 +17,8 @@
 
 using namespace std;
 
-tensorDim_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const noexcept {
-  tensorDim_t res = 1;
+tensorSize_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const noexcept {
+  tensorSize_t res = 1;
 
 #ifndef NDEBUG
   utility::SafeArithmetics_t<tensorSize_t> mult(1);
