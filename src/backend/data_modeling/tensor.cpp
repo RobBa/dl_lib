@@ -18,6 +18,11 @@
 #include <limits>
 #include <cstring>
 
+#ifdef __CUDA
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#endif
+
 using namespace std;
 
 /******************************************************************** 
@@ -51,7 +56,11 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
       free(values);
       break;
     case Device::CUDA:
-      std::__throw_invalid_argument("Cuda destructor not implemented yet.");
+      #ifdef __CUDA
+        gpuErrchk(cudaFree(values));
+      #else
+        std::__throw_invalid_argument("Not compiled with CUDA.");
+      #endif
       break;
   }
 }
@@ -66,7 +75,11 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
       std::memcpy(values, src, n * sizeof(ftype));
       break;
     case Device::CUDA:
-      __throw_runtime_error("copyFromRaw not implemented for CUDA");
+      #ifdef __CUDA
+        gpuErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyHostToDevice));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
   }
 }
 

@@ -28,6 +28,11 @@
 #include <type_traits>
 #include <cassert>
 
+#ifdef __CUDA
+#include "cuda.h"
+#include "utility/cuda/cuda_common.cuh"
+#endif
+
 // break circular dependency
 namespace cgraph
 {
@@ -88,13 +93,17 @@ private:
     void resize(const T size)
     {
       this->size = static_cast<tensorSize_t>(size);
-      switch (this->device)
+      switch (device)
       {
       case Device::CPU:
         values = static_cast<ftype* >(std::malloc(this->size * sizeof(ftype)));
         break;
-      case Device::CUDA:
-        std::__throw_invalid_argument("Not implemented yet.");
+      case Device::CUDA
+        #ifdef __CUDA
+          gpuErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
+        #else
+          std::__throw_invalid_argument("Not compiled with CUDA.");
+        #endif
         break;
       }
     }

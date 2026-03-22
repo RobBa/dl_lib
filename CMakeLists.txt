@@ -27,7 +27,22 @@ endif()
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-# TODO: add flag for double precision?
+option(CUDA "Enable CUDA execution for some faster data structures" OFF)
+
+if (CUDA)  
+  include(CheckLanguage)
+  check_language(CUDA)
+
+  if(CMAKE_CUDA_COMPILER)
+    add_definitions(-D__CUDA)
+    enable_language(CUDA)
+    
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  else()
+    message(WARNING "Could not find CUDA on system. Exiting.")
+  endif()
+endif()
 
 # include python libs
 if(APPLE)

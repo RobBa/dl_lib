@@ -5,5 +5,9 @@ python_lib/dl_lib/_compiled
 *__pycache__*
 *_cache
 
+perf.data*
+
+docs
+
 # TODO: remove later
 benchmarks
