@@ -7,7 +7,7 @@ python_lib/dl_lib/_compiled
 
 perf.data*
 
-docs
+optimization
 
 # TODO: remove later
 benchmarks
