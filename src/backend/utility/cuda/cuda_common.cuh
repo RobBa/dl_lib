@@ -11,7 +11,9 @@
 
 #pragma once
 
-#ifdef __CUDA
+#ifndef __CUDA
+static_assert(false, "File should not be included without CUDA enabled");
+#endif // __CUDA
 
 #include "cuda.h"
 
@@ -19,6 +21,5 @@ namespace utility {
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);
 }
 
-#define gpuErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
+#define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
-#endif // __CUDA

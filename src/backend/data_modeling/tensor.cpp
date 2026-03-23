@@ -57,7 +57,7 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        gpuErrchk(cudaFree(values));
+        cudaErrchk(cudaFree(values));
       #else
         std::__throw_invalid_argument("Not compiled with CUDA.");
       #endif
@@ -76,7 +76,7 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        gpuErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyHostToDevice));
+        cudaErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyHostToDevice));
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -370,15 +370,16 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
 
     tensorSize_t rightIdx = rightOffset;
     // res likely has undefined memory content
-    for(tensorSize_t rrow=0; rrow<nRowsRight; rrow++){
-      (*res.values)[resRowOffset+rrow] = (*left.values)[leftRowOffset] + (*right.values)[rightIdx];
+    for(tensorSize_t rrow=0; rrow<nColsRight; rrow++){
+      (*res.values)[resRowOffset+rrow] = (*left.values)[leftRowOffset] * (*right.values)[rightIdx];
       rightIdx++;
     }
 
     for(tensorSize_t lcol=1; lcol<nColsLeft; lcol++){
       const auto leftIdx = leftRowOffset + lcol;
-      for(tensorSize_t rrow=0; rrow<nRowsRight; rrow++){
-        (*res.values)[resRowOffset+rrow] += (*left.values)[leftIdx] + (*right.values)[rightIdx];
+      for(tensorSize_t rrow=0; rrow<nColsRight; rrow++){
+        (*res.values)[resRowOffset+rrow] += (*left.values)[leftIdx] * (*right.values)[rightIdx];
+        rightIdx++;
       }
     }
   }

@@ -10,7 +10,7 @@
  */
 
 #ifndef __CUDA
-static_assert(false, "Should not inlcude this file without CUDA compile options");
+static_assert(false, "File should not be included without CUDA enabled");
 #endif
 
 #include "cuda_common.cuh"

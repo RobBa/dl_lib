@@ -98,9 +98,9 @@ private:
       case Device::CPU:
         values = static_cast<ftype* >(std::malloc(this->size * sizeof(ftype)));
         break;
-      case Device::CUDA
+      case Device::CUDA:
         #ifdef __CUDA
-          gpuErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
+          cudaErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
         #else
           std::__throw_invalid_argument("Not compiled with CUDA.");
         #endif

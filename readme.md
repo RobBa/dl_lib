@@ -53,6 +53,15 @@ make
 ctest
 ```
 
+### Building with CUDA
+
+To build with CUDA, a flag has to be supplied to CMake.
+
+```bash
+cmake --DCUDA=On ..
+```
+
+
 ## Running Unit Tests
 
 Compile with building tests enabled: 

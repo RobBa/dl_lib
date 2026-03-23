@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # setup
     net = make_net()
     loss_fn = CrossEntropyWithSoftmax()
-    optim = RmsProp(net.parameters(), 0.0001, 0.95)  # lr and decay
+    optim = RmsProp(net.parameters(), 0.00001, 0.9)  # lr and decay
 
     # training loop
     n_epochs = 5
