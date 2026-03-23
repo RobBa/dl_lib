@@ -364,22 +364,22 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
 
-  tensorSize_t resIdx = resOffset;
   for(tensorSize_t lrow=0; lrow<nRowsLeft; lrow++){
+    const tensorSize_t resRowOffset = resOffset + lrow * nColsRight;
+    const tensorSize_t leftRowOffset = leftOffset + lrow * nColsLeft;
 
-    for(tensorSize_t rcol=0; rcol<nColsRight; rcol++){
-      tensorSize_t leftIdx = leftOffset + lrow * nColsLeft;
-      tensorSize_t rightIdx = rightOffset + rcol;
+    tensorSize_t rightIdx = rightOffset;
+    // res likely has undefined memory content
+    for(tensorSize_t rrow=0; rrow<nRowsRight; rrow++){
+      (*res.values)[resRowOffset+rrow] = (*left.values)[leftRowOffset] + (*right.values)[rightIdx];
+      rightIdx++;
+    }
 
-      ftype scalar = 0.0;
-      for(tensorSize_t lcol=0; lcol<nColsLeft; lcol++){
-        scalar += (*left.values)[leftIdx] * (*right.values)[rightIdx];
-        leftIdx++;
-        rightIdx += nColsRight;
+    for(tensorSize_t lcol=1; lcol<nColsLeft; lcol++){
+      const auto leftIdx = leftRowOffset + lcol;
+      for(tensorSize_t rrow=0; rrow<nRowsRight; rrow++){
+        (*res.values)[resRowOffset+rrow] += (*left.values)[leftIdx] + (*right.values)[rightIdx];
       }
-      
-      (*res.values)[resIdx] = scalar;
-      resIdx++;
     }
   }
 }
