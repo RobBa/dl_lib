@@ -34,9 +34,16 @@ if(CMAKE_CUDA_COMPILER)
         CUDA_SEPARABLE_COMPILATION ON
         # nvidia-smi --query-gpu=compute_cap --format=csv,noheader 
         # I get 12.0, hence 120
-        CUDA_ARCHITECTURES 120
+        #set(CMAKE_CUDA_ARCHITECTURES "75;86;89;100;120")
+        CMAKE_CUDA_ARCHITECTURES native
     )
 
-    find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
-    target_link_libraries(BackendCore ${CUDART_LIBRARY})
+    find_package(CUDAToolkit REQUIRED)
+    target_include_directories(BackendCore PRIVATE 
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+    target_link_libraries(BackendCore 
+        CUDA::cudart
+    )
 endif()
+

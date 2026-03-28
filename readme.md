@@ -20,7 +20,7 @@ For some examples on Python interface, see tests/python.
   - Training framework (optimizers, loss functions, layers, and networks)
 - **Example code**: Full MNIST dataset training example
 - **Python Interface**: Seamless integration via Boost.Python
-- **Clean Architecture**: Modular design, ~4K LOC
+- **Clean Architecture**: Modular design, maintainable and extensible
 - **CI/CD**: Automated testing with GTest and GitHub Actions
 
 ## Tech Stack
@@ -50,7 +50,6 @@ Roadmap:
 mkdir build && cd build
 cmake ..
 make
-ctest
 ```
 
 ### Building with CUDA
@@ -70,7 +69,7 @@ Compile with building tests enabled:
 mkdir build && cd build
 cmake -DBUILD_TESTS=On ..
 make
-ctest 
+ctest .
 ```
 
 ## Required

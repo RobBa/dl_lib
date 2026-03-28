@@ -15,7 +15,7 @@
 static_assert(false, "File should not be included without CUDA enabled");
 #endif // __CUDA
 
-#include "cuda.h"
+#include "cuda_runtime.h"
 
 namespace utility {  
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);

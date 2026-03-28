@@ -28,11 +28,6 @@
 #include <type_traits>
 #include <cassert>
 
-#ifdef __CUDA
-#include "cuda.h"
-#include "utility/cuda/cuda_common.cuh"
-#endif
-
 // break circular dependency
 namespace cgraph
 {
@@ -56,7 +51,7 @@ private:
   {
   private:
     tensorSize_t size = 0;
-    ftype *values = nullptr;
+    ftype* values = nullptr;
 
     Device device;
     inline static Device defaultDevice = Device::CPU;
@@ -76,6 +71,7 @@ private:
 
     void copyFromRaw(const ftype* src, tensorSize_t n);
 
+    ftype* getData() const noexcept;
     explicit operator bool() const noexcept;
     ftype& operator[](const tensorSize_t idx);
     ftype operator[](const tensorSize_t idx) const;
@@ -88,25 +84,7 @@ private:
     // needed for gradient descent
     tensorValues_t& operator+=(const tensorValues_t& other);
 
-    template<typename T>
-      requires(std::is_integral_v<std::remove_const_t<T>>)
-    void resize(const T size)
-    {
-      this->size = static_cast<tensorSize_t>(size);
-      switch (device)
-      {
-      case Device::CPU:
-        values = static_cast<ftype* >(std::malloc(this->size * sizeof(ftype)));
-        break;
-      case Device::CUDA:
-        #ifdef __CUDA
-          cudaErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
-        #else
-          std::__throw_invalid_argument("Not compiled with CUDA.");
-        #endif
-        break;
-      }
-    }
+    void resize(const tensorSize_t size);
 
     void setDevice(const Device d) noexcept;
     Device getDevice() const noexcept;
@@ -126,15 +104,13 @@ private:
   std::shared_ptr<Tensor> grads = nullptr; // gradients
   std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
 
-  static Tensor multiplyScalar(const Tensor& scalar, const Tensor& other) noexcept;
-
   static Tensor matMulImpl(const Tensor& left, const Tensor& right);
   static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right,
                           const tensorSize_t resOffset, const tensorSize_t leftOffset,
                           const tensorSize_t rightOffset);
 
-  void transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept;
-  void transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept;
+  void transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) const noexcept;
+  void transposeImplCpu(Tensor& target, const int dim1, const int dim2) const noexcept;
 
   // convenience functions that appear in multiple places
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
@@ -145,6 +121,9 @@ private:
   static tensorDim_t mapDim(const int dim, const Dimension& dims);
 
   friend void printValuesCpu(std::ostream& os, const Tensor& t);
+  #ifdef __CUDA
+  friend void printValuesCuda(std::ostream& os, const Tensor& t);
+  #endif
 
 public:
   template <typename T>
@@ -153,21 +132,25 @@ public:
       : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
   { }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad = false) : dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad}
+  explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad = false) 
+    : dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad}
   {
     values->resize(this->dims.getSize());
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad = false) : dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad}
+  explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad = false) 
+    : dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad}
   {
     values->resize(this->dims.getSize());
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad = false) : Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad}
+  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad = false) 
+    : Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad}
   {
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad = false) : Tensor{dims, d, requiresGrad}
+  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad = false) 
+    : Tensor{dims, d, requiresGrad}
   {
     for (tensorSize_t i=0; i<initValues.size(); i++){
       values->set(initValues[i], i);
@@ -199,6 +182,8 @@ public:
    */
   Tensor(Tensor&& other) noexcept;
   Tensor& operator=(Tensor&& other) noexcept;
+
+  ftype* getData() const noexcept;
 
   void reset(const ftype x) noexcept;
   void reset(const std::shared_ptr<utility::InitializerBase> init) noexcept;

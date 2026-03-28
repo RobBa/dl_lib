@@ -18,9 +18,11 @@
 #include <limits>
 #include <cstring>
 
+#include <format>
+
 #ifdef __CUDA
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#include "utility/cuda/cuda_common.cuh"
+#include "data_modeling/cuda/tensorops.cuh"
 #endif
 
 using namespace std;
@@ -65,6 +67,33 @@ Tensor::tensorValues_t::~tensorValues_t() noexcept {
   }
 }
 
+void Tensor::tensorValues_t::resize(const tensorSize_t size) {
+  this->size = size;
+  switch (device) {
+    case Device::CPU:
+      values = static_cast<ftype*>(std::malloc(this->size * sizeof(ftype)));
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cudaErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
+      #else
+        std::__throw_invalid_argument("Not compiled with CUDA.");
+      #endif
+      break;
+  }
+}
+
+ftype* Tensor::tensorValues_t::getData() const noexcept {
+#ifndef __CUDA
+  static_assert(false, "Should only be callable with CUDA enabled");
+#endif
+
+  if(device==Device::CPU){
+    __throw_runtime_error("Should only be called on CUDA tensor.");
+  }
+  return values;
+}
+
 /**
  * @brief Copy from pointer into this object.
  */
@@ -76,10 +105,11 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cudaErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyHostToDevice));
+        cudaErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyDeviceToDevice));
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
+      break;
   }
 }
 
@@ -93,12 +123,14 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
 
   switch(device){
     case Device::CPU:
-      for(tensorSize_t i=0; i<size; i++){
-        target[i] = values[i];
-      }
+      std::memcpy(target.values, values, size * sizeof(ftype));
       break;
     case Device::CUDA:
-      __throw_runtime_error("Deep copy not implemented for CUDA");
+      #ifdef __CUDA
+        cudaErrchk(cudaMemcpy(target.values, values, size * sizeof(ftype), cudaMemcpyDeviceToDevice));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
       break;
   }
 }
@@ -109,15 +141,22 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
 void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low, 
                                         tensorSize_t high, tensorSize_t targetOffset) const {
   assert(target.size >= high - low);
+  if(high<low){
+    __throw_invalid_argument(
+      std::format("high argument should be higher than low, but received {0} and {1}", high, low).c_str()
+    );
+  }
 
   switch(device){
     case Device::CPU:
-      for(tensorSize_t i=0; i<high-low; i++){
-        target[targetOffset+i] = values[low+i];
-      }
+      std::memcpy(target.values+targetOffset, values+low, (high-low) * sizeof(ftype));
       break;
     case Device::CUDA:
-      __throw_runtime_error("CUDA not implemented for slicing");
+      #ifdef __CUDA
+        cudaErrchk(cudaMemcpy(target.values+targetOffset, values+low, (high-low) * sizeof(ftype), cudaMemcpyDeviceToDevice));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
       break;
   }
 }
@@ -143,14 +182,51 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tenso
       break; 
     }
     case Device::CUDA:
-      __throw_runtime_error("CUDA not implemented for slicing");
+      #ifdef __CUDA
+        // TODO: we can do streams here, that's why synchronize
+        tensorSize_t targetOffset = 0;
+        for(tensorDim_t idx: indices){
+          tensorSize_t thisOffset = idx * sizeOfDim;
+          copyValues(target, thisOffset, thisOffset+sizeOfDim, targetOffset);
+          targetOffset += sizeOfDim;
+        }
+        cudaErrchk(cudaDeviceSynchronize());
+      #else 
+        __throw_invalid_argument("Not compiled with CUDA");
+      #endif
       break;
   }
 }
 
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
-  __throw_runtime_error("Not implemented yet.");
-  device = d;
+  #ifndef __CUDA
+    cerr << "setDevice called when CUDA not enabled. Doing nothing." << endl;
+    return;
+  #else 
+    if(d==device){
+      return;
+    }
+
+    switch(device){
+      case Device::CPU:{
+        ftype* tmp;
+        cudaErrchk(cudaMalloc((void**) &tmp, this->size * sizeof(ftype)));
+        cudaErrchk(cudaMemcpy(tmp, values, this->size * sizeof(ftype), cudaMemcpyHostToDevice));
+        free(values);
+        values = tmp;
+        break;
+      }
+      case Device::CUDA:{
+        ftype* tmp = static_cast<ftype*>(std::malloc(this->size * sizeof(ftype)));
+        cudaErrchk(cudaMemcpy(tmp, values, this->size * sizeof(ftype), cudaMemcpyDeviceToHost));
+        cudaErrchk(cudaFree(values));
+        values = tmp;
+        break;
+      }
+    }
+
+    device = d;
+  #endif
 }
 
 Device Tensor::tensorValues_t::getDevice() const noexcept {
@@ -188,7 +264,11 @@ Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
       addOtherCpu(other);
       break;
     case Device::CUDA:
-      __throw_invalid_argument("CUDA not supported yet for += operation");
+      #ifdef __CUDA
+        cuda::elementwiseadd(values, values, other.values, size);
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+      #endif
       break;
   }
 
@@ -200,7 +280,7 @@ ftype& Tensor::tensorValues_t::operator[](const tensorSize_t idx) {
     throw std::out_of_range("Out of range for tensor");
 
   if(device!=Device::CPU){
-    __throw_invalid_argument("Operator [] only implemented for CPU");
+    __throw_invalid_argument("'ftype& operator[] const' only implemented for CPU");
   }
   return values[idx];
 }
@@ -209,10 +289,20 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 
-  if(device!=Device::CPU){
-    __throw_invalid_argument("Operator [] only implemented for CPU");
+  switch(device){
+    case Device::CPU:
+      return values[idx];
+    case Device::CUDA:
+      #ifdef __CUDA
+        return cuda::get(values, idx);
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+        break;
+      #endif
   }
-  return values[idx];
+
+  __throw_runtime_error("Should never reach here.");
+  return 0; // suppress warnings
 }
 
 void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
@@ -222,12 +312,15 @@ void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
   switch(device){
     case Device::CPU:
       values[idx] = v;
-      return;
+      break;
     case Device::CUDA:
-      __throw_runtime_error("Not implemented for CUDA yet");
+      #ifdef __CUDA
+        cuda::set(v, values, idx);
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+      #endif
+      break;
   }
-
-  __throw_runtime_error("Should never reach here.");
 }
 
 ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
@@ -238,7 +331,12 @@ ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
     case Device::CPU:
       return values[idx];
     case Device::CUDA:
-      __throw_runtime_error("Not implemented for CUDA yet");
+      #ifdef __CUDA
+        return cuda::get(values, idx);
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+        break;
+      #endif
   }
 
   __throw_runtime_error("Should never reach here.");
@@ -297,17 +395,12 @@ Tensor Tensor::createDeepCopy() const {
   return res;
 }
 
-
 /**
- * @brief Scalar multiplication, capable of broadcasting. First argument assumed
- * to be the scalar tensor.
+ * @brief For convenience. Needed for other classes to perform their CUDA operations.
+ * Avoids moving all CUDA code into tensor.
  */
-Tensor Tensor::multiplyScalar(const Tensor& scalar, const Tensor& right) noexcept {
-  Tensor res(right.dims, right.values->getDevice(), false);
-  for(int i=0; i<right.getSize(); ++i){
-    (*res.values)[i] = (*scalar.values)[0] * (*right.values)[i];
-  }
-  return res;
+ftype* Tensor::getData() const noexcept {
+  return values->getData();
 }
 
 /**
@@ -338,16 +431,29 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
   const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
   const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
 
-  tensorSize_t leftOffset = 0;
-  tensorSize_t rightOffset = 0;
-  tensorSize_t resOffset = 0;
+  switch(left.values->getDevice()){
+    case Device::CPU:
+    {
+      tensorSize_t leftOffset = 0;
+      tensorSize_t rightOffset = 0;
+      tensorSize_t resOffset = 0;
 
-  while(leftOffset < left.getSize()){
-    matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+      while(leftOffset < left.getSize()){
+        matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+        leftOffset += leftSize;
+        rightOffset += rightSize;
+        resOffset += resSize;
+      }
 
-    leftOffset += leftSize;
-    rightOffset += rightSize;
-    resOffset += resSize;
+      break;
+    }
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::matmul(res.getData(), left.values->getData(), right.values->getData());
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -390,14 +496,10 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
  */
 Tensor Tensor::matmul(const Tensor& other) const {
   assert(values->getDevice()==other.values->getDevice());
-  if(values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Multiplication not implemented on CUDA");
-  }
 
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
-
   return matMulImpl(*this, other);
 }
 
@@ -409,10 +511,6 @@ Tensor Tensor::matmul(const Tensor& other) const {
  * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
 Tensor Tensor::operator+(const Tensor& other) const {
-  if(values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Addition not implemented on CUDA");
-  }
-
   if(this->dims != other.dims && 
     !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
     __throw_invalid_argument("Tensors need matching dimensions");
@@ -422,23 +520,37 @@ Tensor Tensor::operator+(const Tensor& other) const {
   }
 
   Tensor res(dims, values->getDevice());
-
-  if(dims==other.dims){
-    // elementwise add
-    for(tensorSize_t i=0; i<values->getSize(); i++){
-      (*res.values)[i] = (*values)[i] + (*other.values)[i];
-    }
-  }
-  else { [[likely]]
-    // broadcasted add
-    const auto stride = static_cast<tensorSize_t>(other.dims.get(0));
-    for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
-      for(tensorSize_t i=0; i<stride; i++){
-        (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+  switch(values->getDevice()){
+    case Device::CPU:
+      if(dims==other.dims){
+        // elementwise add
+        for(tensorSize_t i=0; i<values->getSize(); i++){
+          (*res.values)[i] = (*values)[i] + (*other.values)[i];
+        }
       }
-    }
+      else [[likely]] { 
+        // broadcasted add
+        const auto stride = static_cast<tensorSize_t>(other.dims.get(0));
+        for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
+          for(tensorSize_t i=0; i<stride; i++){
+            (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+          }
+        }
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        if(dims==other.dims){
+          cuda::elementwiseadd(res.getData(), values->getData(), other.getData(), values->getSize());
+        }
+        else [[likely]] {
+          cuda::broadcastedadd(res.getData(), values->getData(), other.getData(), values->getSize());
+        }
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
-
   return res;
 }
 
@@ -453,19 +565,6 @@ Tensor Tensor::add(const Tensor& other) const {
  * @brief Elementwise multiplication.
  */
 Tensor Tensor::operator*(const Tensor& other) const {
-  assert(values->getDevice()==other.values->getDevice());
-  if(values->getDevice()==Device::CUDA){
-    __throw_invalid_argument("Multiplication not implemented on CUDA");
-  }
-
-  // TODO: check what to do about these two gradients and if you want broadcasting here at all
-/*   if(other.dims.getSize()==1){
-    return multiplyScalar(other, *this);
-  }
-  else if(dims.getSize()==1){
-    return multiplyScalar(*this, other);
-  } */
-
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
@@ -473,10 +572,21 @@ Tensor Tensor::operator*(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
-  assert(values->getSize()==other.values->getSize());
   Tensor res(dims, values->getDevice(), false);
-  for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*res.values)[i] = (*values)[i] * (*other.values)[i];
+  switch(values->getDevice()){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<values->getSize(); i++){
+        (*res.values)[i] = (*values)[i] * (*other.values)[i];
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::elementwisemul(res.getData(), values->getData(), 
+                             other.values->getData(), values->getSize());
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -491,8 +601,19 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
 
 Tensor Tensor::operator*(ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
-  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-    (*res.values)[i] = (*values)[i] * scalar;
+  switch(values->getDevice()){
+    case Device::CPU:
+      for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+        (*res.values)[i] = (*values)[i] * scalar;
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::scalarmul(res.getData(), values->getData(), scalar, values->getSize());
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -504,8 +625,19 @@ Tensor Tensor::operator/(ftype scalar) const {
   }
 
   Tensor res(dims, values->getDevice(), false);
-  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-    (*res.values)[i] = (*values)[i] / scalar;
+  switch(values->getDevice()){
+    case Device::CPU:
+      for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+        (*res.values)[i] = (*values)[i] / scalar;
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::scalarmul(res.getData(), values->getData(), 1 / scalar, values->getSize());
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -513,8 +645,19 @@ Tensor Tensor::operator/(ftype scalar) const {
 
 Tensor Tensor::operator+(ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
-  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-    (*res.values)[i] = (*values)[i] + scalar;
+  switch(values->getDevice()){
+    case Device::CPU:
+      for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+        (*res.values)[i] = (*values)[i] + scalar;
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::scalaradd(res.getData(), values->getData(), scalar, values->getSize());
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -522,8 +665,19 @@ Tensor Tensor::operator+(ftype scalar) const {
 
 Tensor Tensor::operator-(ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
-  for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-    (*res.values)[i] = (*values)[i] - scalar;
+  switch(values->getDevice()){
+    case Device::CPU:
+      for (tensorSize_t i = 0; i < values->getSize(); ++i) {
+        (*res.values)[i] = (*values)[i] - scalar;
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda::scalaradd(res.getData(), values->getData(), -scalar, values->getSize());
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -600,11 +754,8 @@ tensorDim_t Tensor::mapDim(const int dim, const Dimension& dims) {
   return dims.nDims() + dim;
 }
 
-void Tensor::transposeImpl(Tensor& target, const int dim1, const int dim2) const noexcept {
+void Tensor::transposeImplCpu(Tensor& target, const int dim1, const int dim2) const noexcept {
     assert(values->getSize() == target.values->getSize() && dims.nDims()==target.dims.nDims());
-    if(target.getDevice() == Device::CUDA) {
-        __throw_runtime_error("Transposition for CUDA not implemented yet");
-    }
     if(dim1 == dim2) {
         return;
     }
@@ -667,14 +818,11 @@ void Tensor::transposeImpl(Tensor& target, const int dim1, const int dim2) const
 }
 
 /**
- * @brief Transposes 2D tensor. A little sleeker than transposeImpl.
+ * @brief Transposes 2D tensor. A little sleeker than transposeImplCpu.
  */
-void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) const noexcept {
+void Tensor::transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) const noexcept {
   assert(values->getSize()==target.values->getSize() && target.dims.nDims()==2 && dims.nDims()==2);
-  if(target.getDevice()==Device::CUDA){
-    __throw_runtime_error("Transposition for CUDA not implemented yet");
-  }
-  else if(dim1==dim2){
+  if(dim1==dim2){
     return;
   }
 
@@ -709,10 +857,6 @@ void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) con
 
   target.values = std::move(transposedValues);
   target.dims.swap(dim1Mapped, dim2Mapped);
-
-  /* if(source.grads){
-    source.grads->transposeImpl(*target.grads, dim1, dim2); // TODO: do we need this?
-  } */
 }
 
 
@@ -722,11 +866,29 @@ void Tensor::transposeImpl2D(Tensor& target, const int dim1, const int dim2) con
  * Out of place operation.
  */
 void Tensor::transposeThis(int dim1, int dim2) noexcept {
-  if(dims.nDims()>2){
-    transposeImpl(*this, dim1, dim2);
-  }
-  else{
-    transposeImpl2D(*this, dim1, dim2);
+  switch(values->getDevice()){
+    case Device::CPU:
+      if(dims.nDims()>2){
+        transposeImplCpu(*this, dim1, dim2);
+      }
+      else{
+        transposeImpl2DCpu(*this, dim1, dim2);
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        if(dims.nDims()>2){
+          // TODO: can make this better inplace?
+          cuda::transpose(values->getData(), values->getData(), dims, dim1, dim2);
+        }
+        else{
+          // TODO: can make this better inplace?
+          cuda::transpose2D(values->getData(), values->getData(), dims, dim1, dim2);
+        }
+      #else 
+        __throw_runtime_error("Not implemented with CUDA");
+      #endif
+      break;
   }
 }
 
@@ -758,11 +920,27 @@ Tensor Tensor::transpose(int dim1, int dim2) const {
 Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
   Tensor res(dims, values->getDevice(), requiresGrad);
   
-  if(dims.nDims()>2){
-    transposeImpl(res, dim1, dim2);
-  }
-  else{
-    transposeImpl2D(res, dim1, dim2);
+  switch(values->getDevice()){
+    case Device::CPU:
+      if(dims.nDims()>2){
+        transposeImplCpu(res, dim1, dim2);
+      }
+      else{
+        transposeImpl2DCpu(res, dim1, dim2);
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        if(dims.nDims()>2){
+          cuda::transpose(res.values->getData(), values->getData(), res.dims, dim1, dim2);
+        }
+        else{
+          cuda::transpose2D(res.values->getData(), values->getData(), res.dims, dim1, dim2);
+        }
+      #else 
+        __throw_runtime_error("Not implemented with CUDA");
+      #endif
+      break;
   }
 
   return res;
@@ -794,8 +972,25 @@ void Tensor::reset(const ftype x) noexcept {
  * @brief Populates the tensor with values drawn according to initializer.
  */
 void Tensor::reset(const shared_ptr<utility::InitializerBase> init) noexcept {
-  for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*values)[i] = init->drawNumber();
+  switch(values->getDevice()){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<values->getSize(); i++){
+        (*values)[i] = init->drawNumber();
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        auto newValues = static_cast<ftype*>(std::malloc(values->getSize() * sizeof(ftype)));
+        for(tensorSize_t i=0; i<values->getSize(); i++){
+          newValues[i] = init->drawNumber();
+        }
+        cudaErrchk(cudaMemcpy(values->getData(), newValues, values->getSize() * sizeof(ftype), cudaMemcpyHostToDevice));
+        free(newValues);
+        // TODO: better initialize directly on GPU
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 }
 
@@ -892,6 +1087,35 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
   }
 }
 
+/**
+ * @brief Print out the first few values of the flattened array.
+ */
+#ifdef __CUDA
+void printValuesCuda(std::ostream& os, const Tensor& t) {
+  __throw_logic_error("printValuesCuda should not be reachable when not compiled with CUDA");
+  auto printVals = [&os](const Tensor& t){
+    constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
+
+    const auto maxIdx = min(MAX_IDX, t.values->getSize());
+    auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
+    cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx*sizeof(ftype), cudaMemcpyDeviceToHost));
+
+    for(tensorSize_t i=0; i<maxIdx; i++){
+      os << tmp[i];
+    }
+    os << "\n\n";
+
+    free(tmp);
+  };
+
+  printVals(t);
+  if(t.grads){
+    os << "\n\nGrads:\n";
+    printVals(*t.grads);
+  }
+}
+#endif
+
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << "\nDevice: " << DeviceToString(t.values->getDevice());
@@ -902,7 +1126,11 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
       printValuesCpu(os, t);
       break;
     case Device::CUDA:
-      __throw_invalid_argument("CUDA not supported yet in printing");
+      #ifdef __CUDA
+        printValuesCuda(os, t);
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
       break;
   }
 
@@ -1004,7 +1232,7 @@ ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDi
  * @brief No explanation needed.
  */
 void Tensor::set(ftype item, const std::vector<tensorDim_t>& idx) {
-  (*values)[computeLinearIdx(idx, dims)] = item;
+  values->set(item, computeLinearIdx(idx, dims));
 }
 
 /**
@@ -1012,7 +1240,7 @@ void Tensor::set(ftype item, const std::vector<tensorDim_t>& idx) {
  * Can lead to unexpected results in multidimensional tensors.
  */
 void Tensor::set(ftype item, tensorDim_t idx) { 
-  (*values)[idx] = item;
+  values->set(item, idx);
 }
 
 void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
