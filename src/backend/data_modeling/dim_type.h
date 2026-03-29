@@ -14,6 +14,7 @@
 #include "utility/global_params.h"
 
 #include <vector>
+#include <array>
 
 #include <iostream>
 #include <cassert>
@@ -21,15 +22,18 @@
 class Dimension final {
   private:
     std::vector<tensorDim_t> dims;
-    tensorSize_t size = 0;
+    std::array<tensorSize_t, MAX_NDIMS> strides;
 
+    tensorDim_t lastDimIdx; // look up end in strides/dims
+    tensorSize_t size = 0; // total size of tensor
+
+    void resetStrides() noexcept;
     tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
+    
+    Dimension(std::vector<tensorDim_t>&& dims, std::array<tensorSize_t, MAX_NDIMS>&& strides);
 
   public:
-    /**
-     * @brief Explicit default ctor, so that dims is zero initialized.
-     * Otherwise we will encounter undefined behavior.
-     */
+
     Dimension(const std::vector<tensorDim_t>& dims);
 
     Dimension(const Dimension& other);
@@ -55,17 +59,19 @@ class Dimension final {
     tensorDim_t operator[](int idx) const {
       assert(size>0);
       if(idx<0){
-        idx = dims.size() + idx; // -1 is last idx, -2 second last and so forth
+        return dims[lastDimIdx + idx + 1]; // -1 is last idx, -2 second last and so forth
       }
 
       return dims[idx];
     }
 
+    tensorSize_t getStride(int i) const noexcept;
+
     std::vector<tensorDim_t> toVector() const noexcept{
       return dims;
     }
 
-    void swap(const tensorDim_t dim1, const tensorDim_t dim2);
+    void swap(tensorDim_t dim1, tensorDim_t dim2);
 
     size_t nDims() const noexcept {
       return dims.size();
