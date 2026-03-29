@@ -100,12 +100,10 @@ namespace Py_DataModeling
   inline void    (Tensor::*reset1)(const ftype)                                                   = &Tensor::reset;
   inline void    (Tensor::*reset2)(const std::shared_ptr<utility::InitializerBase>)               = &Tensor::reset;
 
-  inline void    (Tensor::*transposeThis1)()                                                      = &Tensor::transposeThis;
-  inline void    (Tensor::*transposeThis2)(int, int)                                              = &Tensor::transposeThis;
-  inline Tensor  (Tensor::*transpose1)(int, int) const                                            = &Tensor::transpose;
-  inline Tensor  (Tensor::*transpose2)(int, int, bool) const                                      = &Tensor::transpose;
+  inline Tensor  (Tensor::*transpose1)()                                                          = &Tensor::transpose;
+  inline Tensor  (Tensor::*transpose2)(int, int)                                                  = &Tensor::transpose;
 
-  inline ftype   (Tensor::*getItemVector)(const std::vector<tensorDim_t>&) const                       = &Tensor::get;
+  inline ftype   (Tensor::*getItemVector)(const std::vector<tensorDim_t>&) const                  = &Tensor::get;
 
   /*********************************************************************************************************
   ***************************************** Graph creation *************************************************

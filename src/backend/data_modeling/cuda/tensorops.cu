@@ -21,34 +21,62 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "data_modeling/tensor.h"
 
 namespace{
-  __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
+  __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid>=size)
+      return;
+    
     res[gid] = left[gid] + right[gid];
   }
 
-  __global__ void elementwisemulKernel(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
+  __global__ void broadcastaddKernel(ftype* res, const ftype* const matrix, const ftype* const vec, 
+      const tensorSize_t vectorSize, const tensorSize_t matrixSize) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid>=matrixSize)
+        return;
+
+    const int vectorIdx = gid % vectorSize;
+    res[gid] = matrix[gid] + vec[vectorIdx];
+  }
+
+  __global__ void elementwisemulKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
+    int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid>=size)
+      return;
+    
     res[gid] = left[gid] * right[gid];
   }
 
   __global__ void scalaraddKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size){
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid>=size)
+      return;
+    
     res[gid] = left[gid] + scalar;
   }
 
   __global__ void scalarmulKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid>=size)
+      return;
+    
     res[gid] = left[gid] + scalar;
   }
 
-  __global__ void createLinearCopyKernel(
-      float* dst, const float* const src,
-      const tensorSize_t* const strides,       // original strides
-      const tensorSize_t* const contiguousStrides, // new linear strides
-      int ndim, tensorSize_t size)
+  /**
+   * @brief Create a contiguous copy of src and copy it into dst. Used for reshaping, transposing, etc.
+   * 
+   * @param strides The original strides of src. With these strides src would be contiguous.
+   * @param contiguousStrides The new, contiguous strides of dst. We rearrange to match those in memory.
+   * @param ndim Number of dimension of both src and dst.
+   * @param size Total size of both src and dst.
+   */
+  __global__ void createContiguousCopyKernel(float* dst, const float* const src, const tensorSize_t* const strides,
+                                             const tensorSize_t* const contiguousStrides, int ndim, tensorSize_t size)
   {
       tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
-      if (flatIdx >= size) return;
+      if (flatIdx >= size) 
+        return;
 
       tensorSize_t remainder = flatIdx;
       tensorSize_t srcOffset = 0;
@@ -74,6 +102,16 @@ namespace cuda {
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
     scalarmulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, scalar, size);
     cudaErrchk(cudaDeviceSynchronize());
+  }
+
+  void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec){
+    const auto nBytes = src.getSize();
+
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
+
+    broadcastaddKernel<<<blocksPerGrid, threadsPerBlock>>>(
+      res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
   }
 
   void elementwiseadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
@@ -104,7 +142,7 @@ namespace cuda {
     cudaErrchk(cudaMemcpy((void*)t+idx, &value, sizeof(ftype), cudaMemcpyHostToDevice));
   }
 
-  void createLinearCopy(Tensor& res, const Tensor& src) {
+  void createContiguousCopy(Tensor& res, const Tensor& src) {
     assert(res.getSize()==src.getSize());
 
     ftype* dst = res.getData()
@@ -113,10 +151,12 @@ namespace cuda {
     auto oldStrides = src.getDims().getCreationStrides().data();
     auto newStrides = src.getDims().getStrides().data();
 
+    const auto nBytes = src.getSize();
+
     int threadsPerBlock = 256;
     int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
 
-    cudaErrchk(createLinearCopyKernel<<<threadsPerBlock, blocksPerGrid>>>(
+    cudaErrchk(createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
       dst, srcData, oldStrides, newStrides, dims.nDims(), nBytes));
 
     cudaErrchk(cudaDeviceSynchronize());

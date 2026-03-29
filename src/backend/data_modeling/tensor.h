@@ -111,11 +111,10 @@ private:
                           const tensorSize_t resOffset, const tensorSize_t leftOffset,
                           const tensorSize_t rightOffset);
 
-  void transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) const noexcept;
-  void transposeImplCpu(Tensor& target, const int dim1, const int dim2) const noexcept;
+  void makeContiguous();
 
   // convenience functions that appear in multiple places
-  static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
+  static tensorSize_t computeLinearIdx(std::vector<tensorDim_t>&& idx, const Dimension& dims);
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
 
   static tensorDim_t mapDim(const int dim, const Dimension& dims);
@@ -178,7 +177,7 @@ public:
 
   Tensor createEmptyCopy() const;
   Tensor createShallowCopy() const;
-  Tensor createLinearCopy() const;
+  Tensor createContiguousCopy() const;
   Tensor createDeepCopy() const;
 
   /**
@@ -227,15 +226,11 @@ public:
   }
   bool hasGrads() const noexcept { return grads!=nullptr; }
 
-  void transposeThis() noexcept;
-  void transposeThis(int dim1, int dim2) noexcept;
+  Tensor transpose(int dim1=-1, int dim2=-2);
+  void permute(const std::vector<tensorDim_t>& newOrder) noexcept;
 
-  Tensor transpose(int dim1, int dim2) const;
-  Tensor transpose(int dim1, int dim2, const bool requiresGrad) const;
-
-  std::shared_ptr<Tensor> getLinear() const;
-
-  void permute(const std::vector<tensorDim_t>&& newOrder) noexcept;
+  bool isContiguous() const noexcept { return dims.inOriginalState(); }
+  Tensor getContiguous() const;
 
   friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
@@ -279,8 +274,8 @@ public:
     }
   }
 
-  Tensor getSlice(tensorSize_t low, tensorSize_t high) const;
-  Tensor getSlice(std::span<const tensorDim_t> indices) const;
+  Tensor getSlice(tensorSize_t low, tensorSize_t high);
+  Tensor getSlice(std::span<const tensorDim_t> indices);
 
   // these two should not be exposed to the python interface
   static void setDefaultDevice(const Device d) noexcept;

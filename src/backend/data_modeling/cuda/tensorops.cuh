@@ -27,7 +27,7 @@ namespace cuda {
 
   // matrix ops
   void elementwiseadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size);
-  void broadcastedadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size);
+  void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec);
   void elementwisemul(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size);
   void matmul(ftype* res, const ftype* const left, const ftype* const right);
 
@@ -38,5 +38,5 @@ namespace cuda {
   ftype get(const ftype* const t, tensorSize_t idx);
   ftype set(ftype value, const ftype* t, tensorSize_t idx);
 
-  void createLinearCopy(Tensor& res, const Tensor& src);
+  void createContiguousCopy(Tensor& res, const Tensor& src);
 }

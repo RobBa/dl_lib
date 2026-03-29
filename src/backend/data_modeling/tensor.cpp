@@ -403,7 +403,7 @@ Tensor Tensor::createShallowCopy() const {
  * values, and values will be copied so that the memory layout reflects the 
  * current shape of the tensor.
  */
-Tensor Tensor::createLinearCopy() const {
+Tensor Tensor::createContiguousCopy() const {
   auto res = createEmptyCopy();
   
   switch(values->getDevice()){
@@ -426,7 +426,7 @@ Tensor Tensor::createLinearCopy() const {
     case Device::CUDA:
     {
       #ifdef __CUDA
-        cuda::createLinearCopy(res, *this);
+        cuda::createContiguousCopy(res, *this);
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -434,8 +434,24 @@ Tensor Tensor::createLinearCopy() const {
     }
   }
 
-
   return res;
+}
+
+void Tensor::makeContiguous(){
+  if(isContiguous())
+    return;
+
+  auto tmp = createContiguousCopy();
+  values = std::move(tmp.values);
+  dims = std::move(tmp.dims);
+
+  // TODO: perhaps we do this one lazily too?
+  if(grads){
+    if(grads->hasGrads())
+      __throw_runtime_error("Grads should never have grads themselves");
+    
+    grads->makeContiguous();
+  }
 }
 
 /**
@@ -557,7 +573,7 @@ Tensor Tensor::matmul(const Tensor& other) const {
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
-  return matMulImpl(*this, other);
+  return matMulImpl(getContiguous(), other.getContiguous());
 }
 
 /**
@@ -577,6 +593,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
   }
 
   Tensor res(dims, values->getDevice());
+
   switch(values->getDevice()){
     case Device::CPU:
       if(dims==other.dims){
@@ -584,13 +601,15 @@ Tensor Tensor::operator+(const Tensor& other) const {
         for(tensorSize_t i=0; i<values->getSize(); i++){
           (*res.values)[i] = (*values)[i] + (*other.values)[i];
         }
+        return res;
       }
       else [[likely]] { 
         // broadcasted add
-        const auto stride = static_cast<tensorSize_t>(other.dims.get(0));
+        Tensor src = getContiguous();
+        const auto stride = static_cast<tensorSize_t>(other.dims.get(0)); // other is a vector
         for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
           for(tensorSize_t i=0; i<stride; i++){
-            (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+            (*res.values)[offset+i] = (*src.values)[offset+i] + (*other.values)[i];
           }
         }
       }
@@ -601,7 +620,8 @@ Tensor Tensor::operator+(const Tensor& other) const {
           cuda::elementwiseadd(res.getData(), values->getData(), other.getData(), values->getSize());
         }
         else [[likely]] {
-          cuda::broadcastedadd(res.getData(), values->getData(), other.getData(), values->getSize());
+          Tensor src = getContiguous();
+          cuda::broadcastadd(res, src, other);
         }
       #else
         __throw_runtime_error("Not compiled with CUDA");
@@ -809,204 +829,20 @@ tensorDim_t Tensor::mapDim(const int dim, const Dimension& dims) {
   return dims.nDims() + dim;
 }
 
-void Tensor::transposeImplCpu(Tensor& target, const int dim1, const int dim2) const noexcept {
-    assert(values->getSize() == target.values->getSize() && dims.nDims()==target.dims.nDims());
-    if(dim1 == dim2) {
-        return;
-    }
-
-    const auto& source = *this; // easier to read
-    
-    auto dim1Mapped = mapDim(dim1, source.dims);
-    auto dim2Mapped = mapDim(dim2, source.dims);
-    
-    const int numDims = source.dims.nDims();
-    std::vector<tensorSize_t> indices(numDims, 0);
-    std::vector<tensorSize_t> dimSizes(numDims);
-    std::vector<tensorSize_t> sourceStrides(numDims);
-    
-    // strides for source
-    tensorSize_t stride = 1;
-    for(int d = numDims - 1; d >= 0; d--) {
-        dimSizes[d] = source.dims.get(d);
-        sourceStrides[d] = stride;
-        stride *= dimSizes[d];
-    }
-    
-    // strides for target
-    std::vector<tensorSize_t> targetDimSizes = dimSizes;
-    std::swap(targetDimSizes[dim1Mapped], targetDimSizes[dim2Mapped]);
-    
-    std::vector<tensorSize_t> targetStrides(numDims);
-    stride = 1;
-    for(int d = numDims - 1; d >= 0; d--) {
-        targetStrides[d] = stride;
-        stride *= targetDimSizes[d];
-    }
-
-    auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
-    transposedValues->resize(source.values->getSize());
-
-    tensorSize_t totalSize = source.values->getSize();
-    for(tensorSize_t targetIdx = 0; targetIdx < totalSize; targetIdx++) {
-        // linear target index to multi-dimensional idx
-        tensorSize_t tmp = targetIdx;
-        for(int d = 0; d < numDims; d++) {
-            indices[d] = tmp / targetStrides[d];
-            tmp %= targetStrides[d];
-        }
-        
-        // Swap the transposed dimensions to get source indices
-        std::swap(indices[dim1Mapped], indices[dim2Mapped]);
-        
-        // Convert multi-dimensional source indices to linear index
-        tensorSize_t sourceIdx = 0;
-        for(int d = 0; d < numDims; d++) {
-            sourceIdx += indices[d] * sourceStrides[d];
-        }
-        
-        (*transposedValues)[targetIdx] = (*source.values)[sourceIdx];
-    }
-    
-    target.values = std::move(transposedValues);
-    target.dims.swap(dim1Mapped, dim2Mapped);
-}
-
-/**
- * @brief Transposes 2D tensor. A little sleeker than transposeImplCpu.
- */
-void Tensor::transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) const noexcept {
-  assert(values->getSize()==target.values->getSize() && target.dims.nDims()==2 && dims.nDims()==2);
-  if(dim1==dim2){
-    return;
-  }
-
-  const auto& source = *this; // easier to read
-
-  auto dim1Mapped = mapDim(dim1, source.dims);
-  auto dim2Mapped = mapDim(dim2, source.dims);
-
-  // large dim wraps small dim
-  const auto largeDim = dim1Mapped < dim2Mapped ? dim1Mapped : dim2Mapped;
-  const auto smallDim = dim1Mapped < dim2Mapped ? dim2Mapped : dim1Mapped;
-
-  // largeDimSize >= smallDimSize
-  const auto largeDimOffset = dims.getStride(largeDim);
-  const auto smallDimOffset = dims.getStride(smallDim);
-
-  auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
-  transposedValues->resize(source.values->getSize());
-
-  tensorSize_t resIdx = 0;
-  for(tensorSize_t smallDimCount=0; smallDimCount<source.dims.get(smallDim); smallDimCount++){
-    for(tensorSize_t largeDimCount=0; largeDimCount<source.dims.get(largeDim); largeDimCount++){
-      tensorSize_t offset = largeDimCount * largeDimOffset + smallDimCount * smallDimOffset;
-
-      for(tensorSize_t smallDimIdx=0; smallDimIdx<smallDimOffset; smallDimIdx++){
-        (*transposedValues)[resIdx] = (*source.values)[offset];
-        resIdx++;
-        offset++;
-      }
-    }
-  }
-
-  target.values = std::move(transposedValues);
-  target.dims.swap(dim1Mapped, dim2Mapped);
-}
-
 /**
  * @brief Get a tensor that is linear in memory. Useful for coalesced memory access patterns.
  */
-Tensor Tensor::getLinear() const {
+Tensor Tensor::getContiguous() const {
   if(dims.inOriginalState())
     return createShallowCopy();
-  return createLinearCopy();
+  return createContiguousCopy();
 }
 
 /**
- * @brief Swap dim1 and dim2, modify this tensor.
- * 
- * Out of place operation.
+ * @brief Quick transpose operation.
  */
-void Tensor::transposeThis(int dim1, int dim2) noexcept {
-  switch(values->getDevice()){
-    case Device::CPU:
-      if(dims.nDims()>2){
-        transposeImplCpu(*this, dim1, dim2);
-      }
-      else{
-        transposeImpl2DCpu(*this, dim1, dim2);
-      }
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        if(dims.nDims()>2){
-          // TODO: can make this better inplace?
-          cuda::transpose(values->getData(), values->getData(), dims, dim1, dim2);
-        }
-        else{
-          // TODO: can make this better inplace?
-          cuda::transpose2D(values->getData(), values->getData(), dims, dim1, dim2);
-        }
-      #else 
-        __throw_runtime_error("Not implemented with CUDA");
-      #endif
-      break;
-  }
-}
-
-/**
- * @brief Out of place transposition of last two axes.
- * 
- */
-void Tensor::transposeThis() noexcept {
-  if(dims.nDims()<2){
-    return;
-  }
-  transposeThis(-1, -2);
-}
-
-/**
- * @brief Like overloaded transpose with requiresGrad==false.
- */
-Tensor Tensor::transpose(int dim1, int dim2) const {
-  return transpose(dim1, dim2, false);
-}
-
-/**
- * @brief Like transposeThis, but returns a new tensor.
- * We give requiresGrad as an optional argument to give more control of 
- * what this tensor is intended to do. E.g. in backprop sometimes we do 
- * need to create transposed tensors to multiply with, and with 
- * requiresGrad==false we avoid unnecessary memory allocation overhead.
- */
-Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
-  Tensor res(dims, values->getDevice(), requiresGrad);
-  
-  switch(values->getDevice()){
-    case Device::CPU:
-      if(dims.nDims()>2){
-        transposeImplCpu(res, dim1, dim2);
-      }
-      else{
-        transposeImpl2DCpu(res, dim1, dim2);
-      }
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        if(dims.nDims()>2){
-          cuda::transpose(res.values->getData(), values->getData(), res.dims, dim1, dim2);
-        }
-        else{
-          cuda::transpose2D(res.values->getData(), values->getData(), res.dims, dim1, dim2);
-        }
-      #else 
-        __throw_runtime_error("Not implemented with CUDA");
-      #endif
-      break;
-  }
-
-  return res;
+Tensor Tensor::transpose(int dim1, int dim2) {
+  dims.swap(dim1, dim2);
 }
 
 /**
@@ -1014,11 +850,11 @@ Tensor Tensor::transpose(int dim1, int dim2, const bool requiresGrad) const {
  * 
  * New order aligns axes newly. E.g. (2, 3, 1, 0)
  */
-void Tensor::permute(const std::vector<tensorDim_t>&& newOrder) noexcept {
-  // TODO: highly inefficient -> refactor
-  assert(newOrder.size()<=std::numeric_limits<tensorDim_t>::max());
+void Tensor::permute(const std::vector<tensorDim_t>& newOrder) noexcept {
+  assert(newOrder.size()==dims.nDims());
+
   for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++){
-    transpose(i, newOrder[i]);
+    dims.swap(i, newOrder[i]);
   }
 }
 
@@ -1100,11 +936,13 @@ Device Tensor::getDevice() const noexcept {
  * @param high Upper idx, non-inclusive bound.
  * @return Tensor The slices tensor.
  */
-Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) const {
+Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) {
   if(high<=low){
     __throw_invalid_argument("Upper bound most be larger than lower bound.");
   }
 
+  makeContiguous();
+  
   auto resDims = dims.toVector();
   resDims[0] = high-low;
   Tensor res(std::move(resDims), values->getDevice(), false);
@@ -1119,8 +957,10 @@ Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) const {
  * @param indices A list of indices
  * @return Tensor The result.
  */
-Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
+Tensor Tensor::getSlice(span<const tensorDim_t> indices) {
   assert(indices.size()>0);
+
+  makeContiguous();
   
   auto resDims = dims.toVector();
   resDims[0] = indices.size();

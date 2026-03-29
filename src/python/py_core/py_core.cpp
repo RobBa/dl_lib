@@ -47,8 +47,13 @@ BOOST_PYTHON_MODULE(_core)
   }
 
   // different, since those are not methods anymore
+  #define WRAP_FREE_MEMBER_FUNC_0(fPtr) \
+  +[](const Tensor& self) -> std::shared_ptr<Tensor> { \
+    return std::make_shared<Tensor>((self.*fPtr)()); \
+  }
+
   #define WRAP_FREE_MEMBER_FUNC_1(fPtr, T1, T2) \
-  +[](const Tensor& self, int v1, int v2) -> std::shared_ptr<Tensor> { \
+  +[](const Tensor& self, T1 v1, T2 v2) -> std::shared_ptr<Tensor> { \
     return std::make_shared<Tensor>((self.*fPtr)(v1, v2)); \
   }
 
@@ -217,10 +222,8 @@ BOOST_PYTHON_MODULE(_core)
       return t->hasGrads();
       })
 
-    .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1, int, int))
-    .def("transpose", WRAP_FREE_MEMBER_FUNC_2(Py_DataModeling::transpose2, int, int, bool))
-    .def("transposeThis", Py_DataModeling::transposeThis1)
-    .def("transposeThis", Py_DataModeling::transposeThis2)
+    .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1))
+    .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose2, int, int))
         
     .def("backward", &Tensor::backward)
   ;
