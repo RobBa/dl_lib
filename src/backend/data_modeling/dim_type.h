@@ -21,13 +21,16 @@
 
 class Dimension final {
   private:
+    const std::vector<tensorDim_t> creationDims;
+    const std::array<tensorSize_t, MAX_NDIMS> creationStrides;
+
     std::vector<tensorDim_t> dims;
     std::array<tensorSize_t, MAX_NDIMS> strides;
 
     tensorDim_t lastDimIdx; // look up end in strides/dims
     tensorSize_t size = 0; // total size of tensor
 
-    void resetStrides() noexcept;
+    std::array<tensorSize_t, MAX_NDIMS> Dimension::createStrides(const std::vector<tensorDim_t>& dims) const noexcept;
     tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
     
     Dimension(std::vector<tensorDim_t>&& dims, std::array<tensorSize_t, MAX_NDIMS>&& strides);
@@ -37,10 +40,10 @@ class Dimension final {
     Dimension(const std::vector<tensorDim_t>& dims);
 
     Dimension(const Dimension& other);
-    Dimension& operator=(const Dimension& other);
+    Dimension& operator=(const Dimension& other) = delete;
 
     Dimension(Dimension&& other) noexcept;
-    Dimension& operator=(Dimension&& other) noexcept;
+    Dimension& operator=(Dimension&& other) noexcept = delete;
 
     ~Dimension() noexcept = default;
 
