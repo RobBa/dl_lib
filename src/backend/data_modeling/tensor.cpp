@@ -963,8 +963,17 @@ void Tensor::permute(const std::vector<tensorDim_t>&& newOrder) noexcept {
  * @brief Populates the tensor with value.
  */
 void Tensor::reset(const ftype x) noexcept {
-  for(tensorSize_t i=0; i<values->getSize(); i++){
-    (*values)[i] = x;
+  switch(values->getDevice()){
+    case Device::CPU:
+      memset(values->getData(), x, values->getSize());
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cudaErrchk(cudaMemset(values->getData(), x, values->getSize() * sizeof(ftype)));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
   }
 }
 
