@@ -369,6 +369,17 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
 }
 
 /**
+ * @brief Only createShallowCopy is supposed to access this ctor.
+ * Like a copy ctor, shares recourses (grad, cgNode, values) with 
+ * original (other) tensor.
+ */
+Tensor::Tensor(const Tensor& other, [[maybe_unused]] shallowCopyToken)
+  : dims(other.dims), cgNode{other.cgNode}, values{other.values}, 
+    grads{other.grads}, requiresGrad{other.requiresGrad} 
+{
+}
+
+/**
  * @brief Creates an empty copy of this tensor.
  * Metadata all filled, but gradients not initialized, and 
  * values are reserved in memory, but uninitialized.
@@ -377,6 +388,56 @@ Tensor Tensor::createEmptyCopy() const {
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
   return res;
 }
+
+/**
+ * @brief Creates a shallow copy. New tensor object, but all resources 
+ * (grads, cgNode, values) are shared with this tensor. Useful for optimization.
+ */
+Tensor Tensor::createShallowCopy() const {
+  auto res = Tensor(*this, shallowCopyToken{});
+  return res;
+}
+
+/**
+ * @brief Creates a linearized copy of this tensor. New memory allocations for 
+ * values, and values will be copied so that the memory layout reflects the 
+ * current shape of the tensor.
+ */
+Tensor Tensor::createLinearCopy() const {
+  auto res = createEmptyCopy();
+  
+  switch(values->getDevice()){
+    case Device::CPU:
+    {
+      for (tensorSize_t flatIdx = 0; flatIdx < values->getSize(); ++flatIdx) {
+        tensorSize_t remainder = flatIdx;
+        tensorSize_t srcOffset = 0;
+
+        for (int i=dims.nDims()-1; i>=0; i--) {
+          tensorSize_t coord = remainder % dims[i];
+          remainder /= dims[i];
+          srcOffset += coord * dims.getStride(i);
+        }
+
+        res.values->set((*values)[srcOffset], flatIdx);
+      }
+      break;
+    }
+    case Device::CUDA:
+    {
+      #ifdef __CUDA
+        cuda::createLinearCopy(res, *this);
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
+    }
+  }
+
+
+  return res;
+}
+
 /**
  * @brief Does a deep copy, but omits gradient and computational graph information.
  */
@@ -385,10 +446,6 @@ Tensor Tensor::createDeepCopy() const {
 
   auto res = Tensor(dims, values->getDevice(), requiresGrad);
   values->copyValues(*res.values);
-
-  /* if(grads){
-    res.grads = make_shared<Tensor>( grads->createDeepCopy() ); // TODO: do we want this?
-  } */
 
   assert(!res.grads); // TODO: check if this makes sense
   assert(!res.cgNode); // TODO: do we want to give it pointer of same node?
@@ -449,7 +506,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
     }
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::matmul(res.getData(), left.values->getData(), right.values->getData());
+        cuda::matmul(res, left, right);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -699,12 +756,10 @@ void Tensor::backward() {
     __throw_runtime_error("Invoking backward on Tensor not created by a differentiable operation");
   }
 
-  // check this one out for sure
+  // last node has no incoming gradients -> factor 1
   if (!grads) {
-    grads = make_unique<Tensor>(dims, values->getDevice(), false);
-    for(tensorSize_t i=0; i<values->getSize(); i++){
-      (*grads->values)[i] = 1;
-    }
+    grads = make_shared<Tensor>(dims, values->getDevice(), false);
+    grads->reset(1);
   }
 
   vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
@@ -836,8 +891,8 @@ void Tensor::transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) 
   const auto smallDim = dim1Mapped < dim2Mapped ? dim2Mapped : dim1Mapped;
 
   // largeDimSize >= smallDimSize
-  const auto largeDimOffset = getDimOffset(largeDim, dims);
-  const auto smallDimOffset = getDimOffset(smallDim, dims);
+  const auto largeDimOffset = dims.getStride(largeDim);
+  const auto smallDimOffset = dims.getStride(smallDim);
 
   auto transposedValues = make_unique<tensorValues_t>(source.values->getDevice());
   transposedValues->resize(source.values->getSize());
@@ -859,6 +914,14 @@ void Tensor::transposeImpl2DCpu(Tensor& target, const int dim1, const int dim2) 
   target.dims.swap(dim1Mapped, dim2Mapped);
 }
 
+/**
+ * @brief Get a tensor that is linear in memory. Useful for coalesced memory access patterns.
+ */
+Tensor Tensor::getLinear() const {
+  if(dims.inOriginalState())
+    return createShallowCopy();
+  return createLinearCopy();
+}
 
 /**
  * @brief Swap dim1 and dim2, modify this tensor.
@@ -1063,7 +1126,7 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
   resDims[0] = indices.size();
 
   Tensor res(std::move(resDims), values->getDevice(), false);
-  values->copyValues(*res.values, indices, getDimOffset(0, resDims));
+  values->copyValues(*res.values, indices, res.getDims().getStride(0));
   return res;
 }
 
@@ -1165,41 +1228,14 @@ tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const
     __throw_invalid_argument("Number of idxs must match number of dimensions.");
   }
   else if(idx.size()==0){
-    return 0; // TODO: this was 1. What is going on here?
+    return 0;
   }
 
-  const auto lastIdx = idx.size()-1;
-  tensorSize_t offsetFactor = dims.get(lastIdx);
-  
-  tensorSize_t res = idx[lastIdx];
-  for(int i=lastIdx-1; i>=0; i--){
-    res += idx[i] * offsetFactor;
-    offsetFactor *= dims.get(i);
+  tensorSize_t res = 0;
+  for(tensorDim_t i=0; i<idx.size(); i++){
+    res += idx[i] * dims.getStride(i);
   }
-
   return res;
-}
-
-/**
- * @brief Gets the total size of a dimension. E.g. if dims=(2, 3, 4),
- * the offset of dim1 is 3*4==12, and that of dim0 is 2*3*4==24.
- */
-tensorSize_t Tensor::getDimOffset(const tensorDim_t dim, const Dimension& dims) {
-  tensorSize_t res = 1; // minimum possible dimsize
-
-  for(size_t idx = dims.nDims()-1; idx>dim; idx--){
-    res *= dims.get(idx);
-  }
-
-  assert(res!=0);
-  return res;
-}
-
-/**
- * @brief Like overload, but accepts negative dims.
- */
-tensorSize_t Tensor::getDimOffset(const int dim, const Dimension& dims) {
-  return getDimOffset(mapDim(dim, dims), dims);
 }
 
 /**

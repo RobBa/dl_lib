@@ -13,6 +13,8 @@
 
 #include <cstdint>
 
+#include <array>
+
 using ftype = float; // TODO: make compiler flag?
 
 /** 

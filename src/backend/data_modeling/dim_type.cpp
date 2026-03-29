@@ -46,7 +46,7 @@ void Dimension::resize(const std::vector<tensorDim_t>& dims) {
  * @brief Swap along the two given dimensions.
  */
 void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
-  auto swapArr = [dim1, dim2](array<tensorSize_t, MAX_NDIMS>& arr){
+  auto swapArr = [dim1, dim2](dim_t& arr){
     auto tmp = arr[dim1];
     arr[dim1] = arr[dim2];
     arr[dim2] = tmp;
@@ -60,13 +60,13 @@ void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
 }
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) 
-  : creationDims{dims}, creationStrides{createStrides(dims)}, dims{dims}, strides{creationStrides} {
+  : creationDims{dims}, creationStrides{makeStrides(dims)}, dims{dims}, strides{creationStrides} {
   size = multVector(dims);
   lastDimIdx = dims.size()-1;
   assert(size>0);
 }
 
-Dimension::Dimension(vector<tensorDim_t>&& dims, array<tensorSize_t, MAX_NDIMS>&& strides)
+Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
   : creationDims{dims}, dims{creationDims}, creationStrides{strides}, strides{creationStrides} 
 {
   size = multVector(dims);
@@ -79,16 +79,39 @@ Dimension::Dimension(const Dimension& other)
     strides{other.strides}, size{other.size}, lastDimIdx{other.lastDimIdx}
 {}
 
+Dimension& Dimension::operator=(const Dimension& other) {
+  creationDims = other.creationDims;
+  creationStrides = other.creationStrides;
+
+  dims = other.dims;
+  strides = other.strides;
+
+  size = other.size;
+  lastDimIdx = other.lastDimIdx;
+}
+
 Dimension::Dimension(Dimension&& other) noexcept 
   : creationDims{std::move(other.creationDims)}, creationStrides{std::move(other.creationStrides)}, 
     dims{std::move(other.dims)}, strides{std::move(other.strides)}, size{other.size}, lastDimIdx{other.lastDimIdx} 
 {}
 
+Dimension& Dimension::operator=(Dimension&& other) noexcept {
+  creationDims = std::move(other.creationDims);
+  creationStrides = std::move(other.creationStrides);
+
+  dims = std::move(other.dims);
+  strides = std::move(other.strides);
+
+  size = other.size;
+  lastDimIdx = other.lastDimIdx;
+}
+
+
 /**
  * @brief Computes the strides as they are;
  */
-array<tensorSize_t, MAX_NDIMS> Dimension::createStrides(const vector<tensorDim_t>& dims) const noexcept {
-  array<tensorSize_t, MAX_NDIMS> res;
+dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const noexcept {
+  dim_t res;
   const auto lastDimIdx = dims.size()-1;
 
   tensorSize_t stride=1;
@@ -128,7 +151,7 @@ Dimension Dimension::collapseDimension(int idx) const {
   newDims.insert(newDims.end(), dims.begin(), dims.begin() + idx);
   newDims.insert(newDims.end(), dims.begin() + idx + 1, dims.end());
 
-  std::array<tensorSize_t, MAX_NDIMS> newStrides{};
+  dim_t newStrides{};
   tensorDim_t strideIdx = 0;
   for(tensorDim_t i=0; i<strides.size(); i++){
     if(i==mappedIdx)

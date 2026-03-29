@@ -20,34 +20,42 @@
 #include <cassert>
 
 class Dimension final {
+  using dim_t = std::array<tensorSize_t, MAX_NDIMS>;
+
   private:
-    const std::vector<tensorDim_t> creationDims;
-    const std::array<tensorSize_t, MAX_NDIMS> creationStrides;
+    // creationDims and creationStrides should only be set in constructors, otherwise
+    // bugs will emerge. Made non-const so we can use move-assignment operator
+    std::vector<tensorDim_t> creationDims;
+    dim_t creationStrides;
 
     std::vector<tensorDim_t> dims;
-    std::array<tensorSize_t, MAX_NDIMS> strides;
+    dim_t strides;
 
     tensorDim_t lastDimIdx; // look up end in strides/dims
     tensorSize_t size = 0; // total size of tensor
 
-    std::array<tensorSize_t, MAX_NDIMS> Dimension::createStrides(const std::vector<tensorDim_t>& dims) const noexcept;
+    dim_t Dimension::makeStrides(const std::vector<tensorDim_t>& dims) const noexcept;
     tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
     
-    Dimension(std::vector<tensorDim_t>&& dims, std::array<tensorSize_t, MAX_NDIMS>&& strides);
+    Dimension(std::vector<tensorDim_t>&& dims, dim_t&& strides);
 
   public:
 
     Dimension(const std::vector<tensorDim_t>& dims);
 
     Dimension(const Dimension& other);
-    Dimension& operator=(const Dimension& other) = delete;
+    Dimension& operator=(const Dimension& other);
 
     Dimension(Dimension&& other) noexcept;
-    Dimension& operator=(Dimension&& other) noexcept = delete;
+    Dimension& operator=(Dimension&& other) noexcept;
 
     ~Dimension() noexcept = default;
 
     Dimension collapseDimension(int idx) const;
+
+    bool inOriginalState() const noexcept { 
+      return creationDims == dims && creationStrides == strides; 
+    }
 
     void resize(const std::vector<tensorDim_t>& dims);
       
@@ -67,6 +75,9 @@ class Dimension final {
 
       return dims[idx];
     }
+
+    const auto getStrides() const noexcept { return strides; }
+    const auto getOriginalStrides() const noexcept { return creationStrides; }
 
     tensorSize_t getStride(int i) const noexcept;
 

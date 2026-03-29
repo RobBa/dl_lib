@@ -40,6 +40,8 @@ class Tensor final : public std::enable_shared_from_this<Tensor>
   friend class cgraph::TopologicalSort;
 
 private:
+  struct shallowCopyToken{}; // we only want createShallowCopy to do shallow copies
+
   /**
    * @brief Here we encapsulate the tensor's values.
    * Enables us to use a shared_ptr, as well as encapsulate all the
@@ -98,7 +100,7 @@ private:
   };
 
   Dimension dims;
-  std::unique_ptr<tensorValues_t> values = nullptr; // contained values of tensor
+  std::shared_ptr<tensorValues_t> values = nullptr; // contained values of tensor
 
   bool requiresGrad = false;
   std::shared_ptr<Tensor> grads = nullptr; // gradients
@@ -116,8 +118,6 @@ private:
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
 
-  static tensorSize_t getDimOffset(const tensorDim_t dim, const Dimension& dims);
-  static tensorSize_t getDimOffset(const int dim, const Dimension& dims);
   static tensorDim_t mapDim(const int dim, const Dimension& dims);
 
   friend void printValuesCpu(std::ostream& os, const Tensor& t);
@@ -125,11 +125,14 @@ private:
   friend void printValuesCuda(std::ostream& os, const Tensor& t);
   #endif
 
+  Tensor(const Tensor& other, shallowCopyToken);
+
 public:
   template <typename T>
     requires(std::is_same_v<std::remove_cvref_t<T>, Dimension>)
   explicit Tensor(T&& dims, Device d, bool requiresGrad = false)
       : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
+      // !!!needs dims.toVector() to not trigger the copy ctors!!!
   { }
 
   explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad = false) 
@@ -174,6 +177,8 @@ public:
   Tensor& operator=(const Tensor& other) = delete;
 
   Tensor createEmptyCopy() const;
+  Tensor createShallowCopy() const;
+  Tensor createLinearCopy() const;
   Tensor createDeepCopy() const;
 
   /**
@@ -227,6 +232,8 @@ public:
 
   Tensor transpose(int dim1, int dim2) const;
   Tensor transpose(int dim1, int dim2, const bool requiresGrad) const;
+
+  std::shared_ptr<Tensor> getLinear() const;
 
   void permute(const std::vector<tensorDim_t>&& newOrder) noexcept;
 

@@ -19,6 +19,8 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "data_modeling/dim_type.h"
 
 namespace cuda {
+  class Tensor; 
+
   // scalar ops
   void scalaradd(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size);
   void scalarmul(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size);
@@ -35,4 +37,6 @@ namespace cuda {
   // other
   ftype get(const ftype* const t, tensorSize_t idx);
   ftype set(ftype value, const ftype* t, tensorSize_t idx);
+
+  void createLinearCopy(Tensor& res, const Tensor& src);
 }
