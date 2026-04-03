@@ -34,6 +34,20 @@ namespace {
 
     res[gid] = fmaxf(input[gid], eps*input[gid]); // eps < 1
   }
+
+  __device__ __forceinline__ ftype sigmoid(ftype x) {
+      ftype z = expf(-fabsf(x));
+      ftype s = 1.0f / (1.0f + z);
+      return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
+  }
+
+  __global__ void sigmoidKernel(ftype* res, const ftype* const input, const tensorSize_t size) {
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid>=size)
+      return;
+
+    res[gid] = sigmoid(input[gid]);
+  }
 }
 
 
@@ -55,8 +69,12 @@ namespace cuda {
   }
 
   void sigmoid(Tensor& res, const Tensor& in) {
-    static_assert(false);
-  }
+    constexpr int threadsPerBlock = 256;
+    const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+
+    sigmoidKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
+    cudaErrchk(cudaDeviceSynchronize());
+}
 
   void softmax(Tensor& res, const Tensor& in) {
     static_assert(false);
