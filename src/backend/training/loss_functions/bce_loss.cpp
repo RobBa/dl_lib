@@ -34,7 +34,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   }
 
   auto bce = [](ftype y, ftype ypred){
-    return y*log(std::max(ypred, epsBce)) + (1-y)*log(std::max(1-ypred, epsBce));
+    return y*log(std::max(ypred, EPS_BCE)) + (1-y)*log(std::max(1-ypred, EPS_BCE));
   };
 
   const auto nBatches = y->getDims()[0];

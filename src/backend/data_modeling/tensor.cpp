@@ -210,15 +210,15 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
     switch(device){
       case Device::CPU:{
         ftype* tmp;
-        cudaErrchk(cudaMalloc((void**) &tmp, this->size * sizeof(ftype)));
-        cudaErrchk(cudaMemcpy(tmp, values, this->size * sizeof(ftype), cudaMemcpyHostToDevice));
+        cudaErrchk(cudaMalloc((void**) &tmp, size * sizeof(ftype)));
+        cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyHostToDevice));
         free(values);
         values = tmp;
         break;
       }
       case Device::CUDA:{
-        ftype* tmp = static_cast<ftype*>(std::malloc(this->size * sizeof(ftype)));
-        cudaErrchk(cudaMemcpy(tmp, values, this->size * sizeof(ftype), cudaMemcpyDeviceToHost));
+        ftype* tmp = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
+        cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
         cudaErrchk(cudaFree(values));
         values = tmp;
         break;
@@ -227,6 +227,44 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
 
     device = d;
   #endif
+}
+
+void Tensor::tensorValues_t::reset(const ftype x) noexcept {
+  switch(device){
+    case Device::CPU:
+      memset(values, x, size);
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cudaErrchk(cudaMemset(values, x, size * sizeof(ftype)));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
+  }
+}
+
+void Tensor::tensorValues_t::reset(const std::shared_ptr<utility::InitializerBase> init) noexcept {
+  switch(device){
+    case Device::CPU:
+      for(tensorSize_t i=0; i<size; i++){
+        values[i] = init->drawNumber();
+      }
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        auto newValues = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
+        for(tensorSize_t i=0; i<size; i++){
+          newValues[i] = init->drawNumber();
+        }
+        cudaErrchk(cudaMemcpy(values, newValues, size * sizeof(ftype), cudaMemcpyHostToDevice));
+        free(newValues);
+        // TODO: better initialize directly on GPU
+      #else 
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
+  }
 }
 
 Device Tensor::tensorValues_t::getDevice() const noexcept {
@@ -676,7 +714,7 @@ Tensor Tensor::elementwiseMul(const Tensor& other) const {
   return *this * other;
 }
 
-Tensor Tensor::operator*(ftype scalar) const {
+Tensor Tensor::operator*(const ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
   switch(values->getDevice()){
     case Device::CPU:
@@ -696,7 +734,7 @@ Tensor Tensor::operator*(ftype scalar) const {
   return res;
 }
 
-Tensor Tensor::operator/(ftype scalar) const {
+Tensor Tensor::operator/(const ftype scalar) const {
   if(scalar==0.0){
     __throw_runtime_error("Cannot divide by zero.");
   }
@@ -720,7 +758,7 @@ Tensor Tensor::operator/(ftype scalar) const {
   return res;
 }
 
-Tensor Tensor::operator+(ftype scalar) const {
+Tensor Tensor::operator+(const ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
   switch(values->getDevice()){
     case Device::CPU:
@@ -740,7 +778,7 @@ Tensor Tensor::operator+(ftype scalar) const {
   return res;
 }
 
-Tensor Tensor::operator-(ftype scalar) const {
+Tensor Tensor::operator-(const ftype scalar) const {
   Tensor res(dims, values->getDevice(), false);
   switch(values->getDevice()){
     case Device::CPU:
@@ -760,11 +798,11 @@ Tensor Tensor::operator-(ftype scalar) const {
   return res;
 }
 
-Tensor operator*(ftype scalar, const Tensor& tensor) {
+Tensor operator*(const ftype scalar, const Tensor& tensor) {
   return tensor * scalar;
 }
 
-Tensor operator+(ftype scalar, const Tensor& tensor) {
+Tensor operator+(const ftype scalar, const Tensor& tensor) {
   return tensor + scalar;
 }
 
@@ -862,44 +900,14 @@ void Tensor::permute(const std::vector<tensorDim_t>& newOrder) noexcept {
  * @brief Populates the tensor with value.
  */
 void Tensor::reset(const ftype x) noexcept {
-  switch(values->getDevice()){
-    case Device::CPU:
-      memset(values->getData(), x, values->getSize());
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        cudaErrchk(cudaMemset(values->getData(), x, values->getSize() * sizeof(ftype)));
-      #else
-        __throw_runtime_error("Not compiled with CUDA");
-      #endif
-      break;
-  }
+  values->reset(x);
 }
 
 /**
  * @brief Populates the tensor with values drawn according to initializer.
  */
-void Tensor::reset(const shared_ptr<utility::InitializerBase> init) noexcept {
-  switch(values->getDevice()){
-    case Device::CPU:
-      for(tensorSize_t i=0; i<values->getSize(); i++){
-        (*values)[i] = init->drawNumber();
-      }
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        auto newValues = static_cast<ftype*>(std::malloc(values->getSize() * sizeof(ftype)));
-        for(tensorSize_t i=0; i<values->getSize(); i++){
-          newValues[i] = init->drawNumber();
-        }
-        cudaErrchk(cudaMemcpy(values->getData(), newValues, values->getSize() * sizeof(ftype), cudaMemcpyHostToDevice));
-        free(newValues);
-        // TODO: better initialize directly on GPU
-      #else 
-        __throw_runtime_error("Not compiled with CUDA");
-      #endif
-      break;
-  }
+void Tensor::reset(shared_ptr<utility::InitializerBase> init) noexcept {
+  values->reset(std::move(init));
 }
 
 const Dimension& Tensor::getDims() const noexcept {
@@ -936,7 +944,7 @@ Device Tensor::getDevice() const noexcept {
  * @param high Upper idx, non-inclusive bound.
  * @return Tensor The slices tensor.
  */
-Tensor Tensor::getSlice(tensorSize_t low, tensorSize_t high) {
+Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) {
   if(high<=low){
     __throw_invalid_argument("Upper bound most be larger than lower bound.");
   }

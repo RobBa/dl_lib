@@ -27,7 +27,7 @@ vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
     auto yi = (*yTrue)[i];
     auto yiHat = (*yPred)[i];
 
-    auto g = -yi/std::max(yiHat, epsBce) + (1-yi)/std::max(1-yiHat, epsBce);
+    auto g = -yi/std::max(yiHat, EPS_BCE) + (1-yi)/std::max(1-yiHat, EPS_BCE);
     res->set(g/bSize, i);
   }
   

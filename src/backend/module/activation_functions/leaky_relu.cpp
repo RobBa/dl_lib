@@ -19,10 +19,7 @@ Tensor LeakyReLu::operator()(const Tensor& t) const {
   auto res = t.createDeepCopy();
 
   for(tensorSize_t i=0; i<t.getSize(); i++){
-    constexpr ftype zero = 0;
-    if(t[i] < zero){
-      res.set(eps, i);
-    }
+    res.set(std::max(t[i], t[i]*eps), i);
   }
 
   return res;

@@ -28,7 +28,7 @@ vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGr
       auto yij = yTrue->get(i, j);
       auto yijHat = yPred->get(i, j);
 
-      auto g = -yij/std::max(yijHat, epsCrossentropy);
+      auto g = -yij/std::max(yijHat, EPS_CROSSENTROPY);
       res->set(g/bSize, i, j);
     }
   }

@@ -75,8 +75,8 @@ private:
 
     ftype* getData() const noexcept;
     explicit operator bool() const noexcept;
-    ftype& operator[](const tensorSize_t idx);
-    ftype operator[](const tensorSize_t idx) const;
+    ftype& operator[](tensorSize_t idx);
+    ftype operator[](tensorSize_t idx) const;
 
     void set(ftype v, tensorSize_t idx);
     ftype get(tensorSize_t idx);
@@ -86,16 +86,19 @@ private:
     // needed for gradient descent
     tensorValues_t& operator+=(const tensorValues_t& other);
 
-    void resize(const tensorSize_t size);
+    void resize(tensorSize_t size);
 
-    void setDevice(const Device d) noexcept;
+    void setDevice(Device d) noexcept;
     Device getDevice() const noexcept;
+
+    void reset(ftype x) noexcept;
+    void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
 
     void copyValues(tensorValues_t& target) const;
     void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
-    void copyValues(tensorValues_t& target, std::span<const tensorDim_t> indices, const tensorSize_t sizeOfDim) const;
+    void copyValues(tensorValues_t& target, std::span<const tensorDim_t> indices, tensorSize_t sizeOfDim) const;
 
-    static void setDefaultDevice(const Device d) noexcept;
+    static void setDefaultDevice(Device d) noexcept;
     static Device getDefaultDevice() noexcept;
   };
 
@@ -108,8 +111,8 @@ private:
 
   static Tensor matMulImpl(const Tensor& left, const Tensor& right);
   static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right,
-                          const tensorSize_t resOffset, const tensorSize_t leftOffset,
-                          const tensorSize_t rightOffset);
+                          tensorSize_t resOffset, tensorSize_t leftOffset,
+                          tensorSize_t rightOffset);
 
   void makeContiguous();
 
@@ -117,7 +120,7 @@ private:
   static tensorSize_t computeLinearIdx(std::vector<tensorDim_t>&& idx, const Dimension& dims);
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
 
-  static tensorDim_t mapDim(const int dim, const Dimension& dims);
+  static tensorDim_t mapDim(int dim, const Dimension& dims);
 
   friend void printValuesCpu(std::ostream& os, const Tensor& t);
   #ifdef __CUDA
@@ -189,8 +192,8 @@ public:
 
   ftype* getData() const noexcept;
 
-  void reset(const ftype x) noexcept;
-  void reset(const std::shared_ptr<utility::InitializerBase> init) noexcept;
+  void reset(ftype x) noexcept;
+  void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
 
   const Dimension& getDims() const noexcept;
   tensorSize_t getSize() const noexcept;

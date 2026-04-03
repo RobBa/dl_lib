@@ -39,5 +39,9 @@ static_assert(sizeof(tensorDim_t)<=sizeof(tensorSize_t));
 
 // ----------------- Numerical stability -------------------
 
-constexpr ftype epsCrossentropy = 1e-5;
-constexpr ftype epsBce = 1e-5;
+constexpr ftype EPS_CROSSENTROPY = 1e-5;
+constexpr ftype EPS_BCE = 1e-5;
+
+// ----------------- Default values ------------------------
+
+constexpr ftype EPS_LEAKY_RELU = 0.01;

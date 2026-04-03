@@ -10,7 +10,7 @@
  */
 
 #ifndef __CUDA
-static_assert(false, "File should not be included without CUDA enabled");
+static_assert(false, "File should not be compiled without CUDA enabled");
 #endif // __CUDA
 
 #include "tensorops.cuh"
@@ -91,15 +91,17 @@ namespace{
 
 namespace cuda {
   void scalaradd(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+
     scalaraddKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, scalar, size);
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void scalarmul(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+
     scalarmulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, scalar, size);
     cudaErrchk(cudaDeviceSynchronize());
   }
@@ -107,29 +109,31 @@ namespace cuda {
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec){
     const auto nBytes = src.getSize();
 
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
 
     broadcastaddKernel<<<blocksPerGrid, threadsPerBlock>>>(
       res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
+    cudaErrchk(cudaDeviceSynchronize());
   }
 
   void elementwiseadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
-    int threadsPerBlock = 256;
+    constexpr int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
     elementwiseaddKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void elementwisemul(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    
     elementwisemulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void matmul(ftype* res, const ftype* const left, const ftype* const right) {
-    // TODO
+    static_assert(false);
   }
 
   ftype get(const ftype* const t, tensorSize_t idx) {
@@ -148,17 +152,16 @@ namespace cuda {
     ftype* dst = res.getData()
     const ftype* const srcData = src.getData();
 
-    auto oldStrides = src.getDims().getCreationStrides().data();
-    auto newStrides = src.getDims().getStrides().data();
+    const auto oldStrides = src.getDims().getCreationStrides().data();
+    const auto newStrides = src.getDims().getStrides().data();
 
     const auto nBytes = src.getSize();
 
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
 
     cudaErrchk(createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
       dst, srcData, oldStrides, newStrides, dims.nDims(), nBytes));
-
     cudaErrchk(cudaDeviceSynchronize());
   }
 }
