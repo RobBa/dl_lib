@@ -444,7 +444,7 @@ Tensor Tensor::createShallowCopy() const {
 Tensor Tensor::createContiguousCopy() const {
   auto res = createEmptyCopy();
   
-  switch(values->getDevice()){
+  switch(values->getDevice()) {
     case Device::CPU:
     {
       for (tensorSize_t flatIdx = 0; flatIdx < values->getSize(); ++flatIdx) {
@@ -475,7 +475,7 @@ Tensor Tensor::createContiguousCopy() const {
   return res;
 }
 
-void Tensor::makeContiguous(){
+void Tensor::makeContiguous() {
   if(isContiguous())
     return;
 
@@ -605,8 +605,11 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
 /**
  * @brief Matrix multiplication.
  */
-Tensor Tensor::matmul(const Tensor& other) const {
+Tensor Tensor::matmul(Tensor& other) {
   assert(values->getDevice()==other.values->getDevice());
+
+  makeContiguous();
+  other.makeContiguous();
 
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
@@ -621,7 +624,7 @@ Tensor Tensor::matmul(const Tensor& other) const {
  * 2. The second tensor is a vector. In this case broadcast it. We assume 
  * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
-Tensor Tensor::operator+(const Tensor& other) const {
+Tensor Tensor::operator+(Tensor& other) {
   if(this->dims != other.dims && 
     !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
     __throw_invalid_argument("Tensors need matching dimensions");
@@ -630,11 +633,13 @@ Tensor Tensor::operator+(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
+  makeContiguous();
+  other.makeContiguous();
   Tensor res(dims, values->getDevice());
 
   switch(values->getDevice()){
     case Device::CPU:
-      if(dims==other.dims){
+      if(dims==other.dims) [[unlikely]] {
         // elementwise add
         for(tensorSize_t i=0; i<values->getSize(); i++){
           (*res.values)[i] = (*values)[i] + (*other.values)[i];
@@ -643,23 +648,21 @@ Tensor Tensor::operator+(const Tensor& other) const {
       }
       else [[likely]] { 
         // broadcasted add
-        Tensor src = getContiguous();
         const auto stride = static_cast<tensorSize_t>(other.dims.get(0)); // other is a vector
         for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
           for(tensorSize_t i=0; i<stride; i++){
-            (*res.values)[offset+i] = (*src.values)[offset+i] + (*other.values)[i];
+            (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
           }
         }
       }
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        if(dims==other.dims){
+        if(dims==other.dims) [[unlikely]] {
           cuda::elementwiseadd(res.getData(), values->getData(), other.getData(), values->getSize());
         }
         else [[likely]] {
-          Tensor src = getContiguous();
-          cuda::broadcastadd(res, src, other);
+          cuda::broadcastadd(res, *this, other);
         }
       #else
         __throw_runtime_error("Not compiled with CUDA");
@@ -672,14 +675,14 @@ Tensor Tensor::operator+(const Tensor& other) const {
 /**
  * @brief Named version of operator +.
  */
-Tensor Tensor::add(const Tensor& other) const {
+Tensor Tensor::add(Tensor& other) {
   return *this + other;
 }
 
 /**
  * @brief Elementwise multiplication.
  */
-Tensor Tensor::operator*(const Tensor& other) const {
+Tensor Tensor::operator*(Tensor& other) {
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
@@ -687,7 +690,10 @@ Tensor Tensor::operator*(const Tensor& other) const {
     __throw_runtime_error("Tensors on different devices.");
   }
 
+  makeContiguous();
+  other.makeContiguous();
   Tensor res(dims, values->getDevice(), false);
+
   switch(values->getDevice()){
     case Device::CPU:
       for(tensorSize_t i=0; i<values->getSize(); i++){
@@ -710,7 +716,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
 /**
  * @brief Named version of operator *.
  */
-Tensor Tensor::elementwiseMul(const Tensor& other) const {
+Tensor Tensor::elementwiseMul(Tensor& other) {
   return *this * other;
 }
 
@@ -823,6 +829,7 @@ void Tensor::backward() {
   vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
   for(auto tPtr: sortedTensors){
     auto& tensor = *tPtr;
+    tensor.makeContiguous();
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
 
     auto incomingGrads = tensor.cgNode->backward(*tensor.grads);

@@ -199,15 +199,15 @@ public:
   tensorSize_t getSize() const noexcept;
 
   // Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
-  Tensor matmul(const Tensor& other) const;
+  Tensor matmul(Tensor& other);
 
-  Tensor operator+(const Tensor& other) const;
-  Tensor add(const Tensor& other) const;
+  Tensor operator+(Tensor& other);
+  Tensor add(Tensor& other);
 
   // TODO: Tensor operator-(const Tensor& other) const;
 
-  Tensor operator*(const Tensor& t) const;
-  Tensor elementwiseMul(const Tensor& other) const;
+  Tensor operator*(Tensor& t);
+  Tensor elementwiseMul(Tensor& other);
 
   // TODO: Tensor operator/(const Tensor& other) const;
 
