@@ -48,6 +48,17 @@ namespace {
 
     res[gid] = sigmoid(input[gid]);
   }
+
+  __global__ void softmaxKernel(ftype* res, const ftype* const input, const tensorSize_t size, const tensorSize_t stride) {
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid>=size)
+      return;
+
+    res[gid] = expf(input[gid]);
+
+    
+    res[gid] = sigmoid(input[gid]);
+  }
 }
 
 
@@ -77,6 +88,10 @@ namespace cuda {
 }
 
   void softmax(Tensor& res, const Tensor& in) {
-    static_assert(false);
+    constexpr int threadsPerBlock = 256;
+    const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+
+    //sigmoidKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
+    cudaErrchk(cudaDeviceSynchronize());
   }
 }
