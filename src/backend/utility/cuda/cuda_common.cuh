@@ -17,9 +17,12 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 #include "cuda_runtime.h"
 
-namespace utility {  
+namespace utility {
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);
 }
+
+template <class... T>
+constexpr bool always_false = false;
 
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
