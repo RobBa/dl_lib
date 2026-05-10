@@ -10,8 +10,11 @@
  */
 
 #include "bce_loss.h"
-
 #include "computational_graph/loss_functions/bce_node.h"
+
+#ifdef CUDA
+#include "training/loss_functions/cuda/loss_functions.cuh"
+#endif
 
 #include <cmath>
 
@@ -33,20 +36,36 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
     __throw_invalid_argument("Tensors must be of same shape");
   }
 
-  auto bce = [](ftype y, ftype ypred){
-    return y*log(std::max(ypred, EPS_BCE)) + (1-y)*log(std::max(1-ypred, EPS_BCE));
-  };
+  shared_ptr<Tensor> res = nullptr; 
 
-  const auto nBatches = y->getDims()[0];
+  switch(y->getDevice()) {
+    case Device::CUDA:
+    #ifdef CUDA
+      res = cuda::bceLoss(*y, *ypred);
+      break;
+    #else 
+      __throw_runtime_error("Should not reach this line");
+    #endif
+    case Device::CPU:
+    {
+      auto bce = [](ftype y, ftype ypred){
+        return y * log(std::max(ypred, EPS_BCE)) + (1 - y) * log(std::max(1-ypred, EPS_BCE));
+      };
 
-  ftype loss = 0;
-  for(tensorSize_t i=0; i<nBatches; i++){
-    loss += bce((*y)[i], (*ypred)[i]);
+      const auto nBatches = y->getDims()[0];
+      ftype loss = 0;
+      for(tensorSize_t i = 0; i < nBatches; i++){
+        loss += bce((*y)[i], (*ypred)[i]);
+      }
+      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, Device::CPU, true);
+
+      break;
+    }
+    default:
+      __throw_invalid_argument("Unexpected device encountered");
   }
 
-  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
   res->setCgNode(make_shared<cgraph::BceNode>(y, ypred));
   assert(res->getRequiresGrad());
-
-  return res; 
+  return res;
 }
