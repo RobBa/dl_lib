@@ -16,6 +16,10 @@
 
 #include <stdexcept>
 
+#include <iostream>
+
+using namespace std;
+
 TEST(TensorOpsTest, TestCtor) {
   auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CPU, false);
 
@@ -206,9 +210,11 @@ TEST(TensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
 }
 
 TEST(TensorOpsTest, TransposeWorksAsIntended1) {
-  auto t = TensorFunctions::Gaussian({3, 2}, false);
-  auto transposed = t.transpose(-1, -2);
-  
+  auto t = TensorFunctions::Gaussian({3, 2}, 1.0, false);
+
+  auto transposed = t.createDeepCopy();
+  transposed = transposed.transpose(-1, -2);
+
   ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-2));
   ASSERT_EQ(t.getDims().get(-2), transposed.getDims().get(-1));
   ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
@@ -224,8 +230,8 @@ TEST(TensorOpsTest, TransposeWorksAsIntended1) {
  * @brief Swap first two dimensions.
  */
 TEST(TensorOpsTest, TransposeWorksAsIntended2) {
-  auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
-  auto transposed = t.transpose(0, 1);
+  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0, false);
+  auto transposed = t.createDeepCopy().transpose(0, 1);
 
   ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(1));
   ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(0));
@@ -246,8 +252,8 @@ TEST(TensorOpsTest, TransposeWorksAsIntended2) {
  * @brief Swap first and last dimension.
  */
 TEST(TensorOpsTest, TransposeWorksAsIntended3) {
-  auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
-  auto transposed = t.transpose(0, -1);
+  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0, false);
+  auto transposed = t.createDeepCopy().transpose(0, -1);
 
   ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(-1));
   ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(0));
@@ -259,44 +265,6 @@ TEST(TensorOpsTest, TransposeWorksAsIntended3) {
       for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
         // we transposed dim1 and dim3
         ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), transposed.get(dim3, dim2, dim1));
-      }
-    }
-  }
-}
-
-TEST(TensorOpsTest, TransposeThisWorksAsIntended1) {
-  auto t = TensorFunctions::Gaussian({3, 2}, false);
-  auto tCopy = t.createDeepCopy();
-
-  t.transposeThis();
-
-  ASSERT_EQ(t.getDims().get(-1), tCopy.getDims().get(-2));
-  ASSERT_EQ(t.getDims().get(-2), tCopy.getDims().get(-1));
-  ASSERT_EQ(t.getDims().nDims(), tCopy.getDims().nDims());
-  
-  for(auto row=0; row<t.getDims().get(-2); row++) {
-    for(auto col=0; col<t.getDims().get(-2); col++) {
-      ASSERT_DOUBLE_EQ(t.get(row, col), tCopy.get(col, row));
-    }
-  }
-}
-
-TEST(TensorOpsTest, TransposeThisWorksAsIntended2) {
-  auto t = TensorFunctions::Gaussian({3, 2, 5}, false);
-  auto tCopy = t.createDeepCopy();
-  
-  t.transposeThis(0, -1);
-
-  ASSERT_EQ(t.getDims().get(0), tCopy.getDims().get(-1));
-  ASSERT_EQ(t.getDims().get(-1), tCopy.getDims().get(0));
-  ASSERT_EQ(t.getDims().get(1), tCopy.getDims().get(1));
-  ASSERT_EQ(t.getDims().nDims(), tCopy.getDims().nDims());
-  
-  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
-    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
-      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
-        // we transposed dim1 and dim3
-        ASSERT_DOUBLE_EQ(t.get(dim1, dim2, dim3), tCopy.get(dim3, dim2, dim1));
       }
     }
   }

@@ -75,14 +75,15 @@ TEST(ActivationTest, LeakyReluForward) {
 }
 
 TEST(ActivationTest, LeakyReluInputNegative) {
-  auto t1 = TensorFunctions::Ones({3, 2}, false) * -1;
+  constexpr ftype factor = -1;
+  auto t1 = TensorFunctions::Ones({3, 2}, false) * factor;
   
   constexpr ftype eps = 0.3;
   auto f = module::LeakyReLu(eps);
   auto res = f(t1);
 
   for(size_t i=0; i<t1.getSize(); i++){
-    ASSERT_DOUBLE_EQ(res[i], eps);
+    ASSERT_DOUBLE_EQ(res[i], factor * eps);
   }
 }
 

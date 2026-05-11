@@ -217,10 +217,10 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
     auto net = makeMulticlassNet2();
     auto loss = make_shared<train::CrossEntropySoftmaxLoss>();
     auto optim = make_shared<train::RmsPropOptimizer>(
-        net->parameters(), /*lr=*/0.0003, /*decay=*/0.95);
+        net->parameters(), /*lr=*/0.0001, /*decay=*/0.95);
 
     auto trainLoop = train::BaseTrainLoop(
-        net, loss, optim, /*epochs=*/10000, /*bsize=*/6);
+        net, loss, optim, /*epochs=*/2000, /*bsize=*/6);
 
     trainLoop.run(x, y, /*shuffle=*/false, /*verbose=*/false);
 

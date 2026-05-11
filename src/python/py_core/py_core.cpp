@@ -222,8 +222,12 @@ BOOST_PYTHON_MODULE(_core)
       return t->hasGrads();
       })
 
-    .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose1))
-    .def("transpose", WRAP_FREE_MEMBER_FUNC_1(Py_DataModeling::transpose2, int, int))
+    .def("transpose", +[](Tensor& self) -> std::shared_ptr<Tensor> {
+        return std::make_shared<Tensor>(self.transpose());
+      })
+    .def("transpose", +[](Tensor& self, int dim1, int dim2) -> std::shared_ptr<Tensor> {
+        return std::make_shared<Tensor>(self.transpose(dim1, dim2));
+      })
         
     .def("backward", &Tensor::backward)
   ;

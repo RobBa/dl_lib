@@ -34,20 +34,28 @@ class Dimension final {
     tensorDim_t lastDimIdx; // look up end in strides/dims
     tensorSize_t size = 0; // total size of tensor
 
-    dim_t Dimension::makeStrides(const std::vector<tensorDim_t>& dims) const noexcept;
+    dim_t makeStrides(const std::vector<tensorDim_t>& dims) const noexcept;
     tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
     
     Dimension(std::vector<tensorDim_t>&& dims, dim_t&& strides);
+
+    tensorDim_t mapSignedIdx(int idx) const {
+      if(idx < 0) {
+        // -1 is last idx, -2 second last and so forth
+        return lastDimIdx + idx + 1;
+      }
+      return idx;
+    }
 
   public:
 
     Dimension(const std::vector<tensorDim_t>& dims);
 
-    Dimension(const Dimension& other);
-    Dimension& operator=(const Dimension& other);
+    Dimension(const Dimension& other) = default;
+    Dimension& operator=(const Dimension& other) = default;
 
-    Dimension(Dimension&& other) noexcept;
-    Dimension& operator=(Dimension&& other) noexcept;
+    Dimension(Dimension&& other) noexcept = default;
+    Dimension& operator=(Dimension&& other) noexcept = default;
 
     ~Dimension() noexcept = default;
 
@@ -69,11 +77,7 @@ class Dimension final {
 
     tensorDim_t operator[](int idx) const {
       assert(size>0);
-      if(idx<0){
-        return dims[lastDimIdx + idx + 1]; // -1 is last idx, -2 second last and so forth
-      }
-
-      return dims[idx];
+      return dims[mapSignedIdx(idx)];
     }
 
     const auto getStrides() const noexcept { return strides; }
@@ -85,7 +89,7 @@ class Dimension final {
       return dims;
     }
 
-    void swap(tensorDim_t dim1, tensorDim_t dim2);
+    void swap(int dim1, int dim2);
 
     size_t nDims() const noexcept {
       return dims.size();

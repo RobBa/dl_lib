@@ -102,8 +102,8 @@ private:
     static Device getDefaultDevice() noexcept;
   };
 
-  Dimension dims;
-  std::shared_ptr<tensorValues_t> values = nullptr; // contained values of tensor
+  mutable Dimension dims;
+  mutable std::shared_ptr<tensorValues_t> values = nullptr; // contained values of tensor
 
   bool requiresGrad = false;
   std::shared_ptr<Tensor> grads = nullptr; // gradients
@@ -114,10 +114,10 @@ private:
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
 
-  void makeContiguous();
+  void makeContiguous() const;
 
   // convenience functions that appear in multiple places
-  static tensorSize_t computeLinearIdx(std::vector<tensorDim_t>&& idx, const Dimension& dims);
+  static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
 
   static tensorDim_t mapDim(int dim, const Dimension& dims);
@@ -199,15 +199,15 @@ public:
   tensorSize_t getSize() const noexcept;
 
   // Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
-  Tensor matmul(Tensor& other);
+  Tensor matmul(const Tensor& other) const;
 
-  Tensor operator+(Tensor& other);
-  Tensor add(Tensor& other);
+  Tensor operator+(const Tensor& other) const;
+  Tensor add(const Tensor& other) const;
 
   // TODO: Tensor operator-(const Tensor& other) const;
 
-  Tensor operator*(Tensor& t);
-  Tensor elementwiseMul(Tensor& other);
+  Tensor operator*(const Tensor& t) const;
+  Tensor elementwiseMul(const Tensor& other) const;
 
   // TODO: Tensor operator/(const Tensor& other) const;
 

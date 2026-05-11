@@ -14,6 +14,8 @@
 #include "computational_graph/graph_node.h"
 #include "computational_graph/topological_sort.h"
 
+#include "utility/macros.h"
+
 #include <utility>
 #include <limits>
 #include <cstring>
@@ -85,7 +87,7 @@ void Tensor::tensorValues_t::resize(const tensorSize_t size) {
 
 ftype* Tensor::tensorValues_t::getData() const noexcept {
 #ifndef __CUDA
-  static_assert(false, "Should only be callable with CUDA enabled");
+  assert_debug(false, "Should only be called with CUDA enabled");
 #endif
 
   if(device==Device::CPU){
@@ -232,11 +234,14 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
 void Tensor::tensorValues_t::reset(const ftype x) noexcept {
   switch(device){
     case Device::CPU:
-      memset(values, x, size);
+      std::fill(values, values + size, x);
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cudaErrchk(cudaMemset(values, x, size * sizeof(ftype)));
+        cudaErrchk(
+            thrust::fill(thrust::device_pointer_cast(values), 
+            thrust::device_pointer_cast(values + size), x)
+          );
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -247,14 +252,14 @@ void Tensor::tensorValues_t::reset(const ftype x) noexcept {
 void Tensor::tensorValues_t::reset(const std::shared_ptr<utility::InitializerBase> init) noexcept {
   switch(device){
     case Device::CPU:
-      for(tensorSize_t i=0; i<size; i++){
+      for(tensorSize_t i = 0; i < size; i++){
         values[i] = init->drawNumber();
       }
       break;
     case Device::CUDA:
       #ifdef __CUDA
         auto newValues = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
-        for(tensorSize_t i=0; i<size; i++){
+        for(tensorSize_t i = 0; i < size; i++){
           newValues[i] = init->drawNumber();
         }
         cudaErrchk(cudaMemcpy(values, newValues, size * sizeof(ftype), cudaMemcpyHostToDevice));
@@ -475,7 +480,7 @@ Tensor Tensor::createContiguousCopy() const {
   return res;
 }
 
-void Tensor::makeContiguous() {
+void Tensor::makeContiguous() const {
   if(isContiguous())
     return;
 
@@ -605,7 +610,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
 /**
  * @brief Matrix multiplication.
  */
-Tensor Tensor::matmul(Tensor& other) {
+Tensor Tensor::matmul(const Tensor& other) const {
   assert(values->getDevice()==other.values->getDevice());
 
   makeContiguous();
@@ -624,7 +629,7 @@ Tensor Tensor::matmul(Tensor& other) {
  * 2. The second tensor is a vector. In this case broadcast it. We assume 
  * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
-Tensor Tensor::operator+(Tensor& other) {
+Tensor Tensor::operator+(const Tensor& other) const {
   if(this->dims != other.dims && 
     !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
     __throw_invalid_argument("Tensors need matching dimensions");
@@ -675,14 +680,14 @@ Tensor Tensor::operator+(Tensor& other) {
 /**
  * @brief Named version of operator +.
  */
-Tensor Tensor::add(Tensor& other) {
+Tensor Tensor::add(const Tensor& other) const {
   return *this + other;
 }
 
 /**
  * @brief Elementwise multiplication.
  */
-Tensor Tensor::operator*(Tensor& other) {
+Tensor Tensor::operator*(const Tensor& other) const {
   if(this->dims != other.dims){
     __throw_invalid_argument("Tensors need same dimensions");
   }
@@ -716,7 +721,7 @@ Tensor Tensor::operator*(Tensor& other) {
 /**
  * @brief Named version of operator *.
  */
-Tensor Tensor::elementwiseMul(Tensor& other) {
+Tensor Tensor::elementwiseMul(const Tensor& other) const {
   return *this * other;
 }
 
@@ -887,7 +892,9 @@ Tensor Tensor::getContiguous() const {
  * @brief Quick transpose operation.
  */
 Tensor Tensor::transpose(int dim1, int dim2) {
-  dims.swap(dim1, dim2);
+  Tensor result = createShallowCopy();
+  result.dims.swap(dim1, dim2);
+  return result;
 }
 
 /**
@@ -1048,6 +1055,7 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "\nDevice: " << DeviceToString(t.values->getDevice());
   os << "\nrequiresGrad: " << t.requiresGrad << "\n\n";
 
+  t.makeContiguous();
   switch(t.values->getDevice()){
     case Device::CPU:
       printValuesCpu(os, t);
@@ -1097,6 +1105,7 @@ tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const
  * @brief No explanation needed.
  */
 ftype Tensor::get(const std::vector<tensorDim_t>& idx) const {
+  makeContiguous();
   return (*values)[computeLinearIdx(idx, dims)]; 
 }
 
@@ -1132,6 +1141,7 @@ ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDi
  * @brief No explanation needed.
  */
 void Tensor::set(ftype item, const std::vector<tensorDim_t>& idx) {
+  makeContiguous();
   values->set(item, computeLinearIdx(idx, dims));
 }
 

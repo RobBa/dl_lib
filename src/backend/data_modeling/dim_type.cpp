@@ -45,21 +45,15 @@ void Dimension::resize(const std::vector<tensorDim_t>& dims) {
 /**
  * @brief Swap along the two given dimensions.
  */
-void Dimension::swap(const tensorDim_t dim1, const tensorDim_t dim2) {
+void Dimension::swap(int dim1, int dim2) {
   if(dim1==dim2)
     return;
-    
-  auto swapArr = [dim1, dim2](dim_t& arr){
-    auto tmp = arr[dim1];
-    arr[dim1] = arr[dim2];
-    arr[dim2] = tmp;
-  };
   
-  auto tmp = dims[dim1];
-  dims[dim1] = dims[dim2];
-  dims[dim2] = tmp;
-
-  swapArr(strides);
+  auto d1 = mapSignedIdx(dim1);
+  auto d2 = mapSignedIdx(dim2);
+  
+  std::swap(dims[d1], dims[d2]);
+  std::swap(strides[d1], strides[d2]);
 }
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) 
@@ -77,51 +71,18 @@ Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
   assert(size>0);
 }
 
-Dimension::Dimension(const Dimension& other) 
-  : creationDims{other.creationDims}, creationStrides{other.creationStrides}, dims{other.dims}, 
-    strides{other.strides}, size{other.size}, lastDimIdx{other.lastDimIdx}
-{}
-
-Dimension& Dimension::operator=(const Dimension& other) {
-  creationDims = other.creationDims;
-  creationStrides = other.creationStrides;
-
-  dims = other.dims;
-  strides = other.strides;
-
-  size = other.size;
-  lastDimIdx = other.lastDimIdx;
-}
-
-Dimension::Dimension(Dimension&& other) noexcept 
-  : creationDims{std::move(other.creationDims)}, creationStrides{std::move(other.creationStrides)}, 
-    dims{std::move(other.dims)}, strides{std::move(other.strides)}, size{other.size}, lastDimIdx{other.lastDimIdx} 
-{}
-
-Dimension& Dimension::operator=(Dimension&& other) noexcept {
-  creationDims = std::move(other.creationDims);
-  creationStrides = std::move(other.creationStrides);
-
-  dims = std::move(other.dims);
-  strides = std::move(other.strides);
-
-  size = other.size;
-  lastDimIdx = other.lastDimIdx;
-}
-
-
 /**
  * @brief Computes the strides as they are;
  */
-dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const noexcept {
+Dimension::dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const noexcept {
   dim_t res;
-  const auto lastDimIdx = dims.size()-1;
+  const int lastDimIdx = dims.size() - 1;
 
-  tensorSize_t stride=1;
+  tensorSize_t stride = 1;
   res[lastDimIdx] = stride;
   stride *= dims[lastDimIdx];
 
-  for(tensorDim_t i=lastDimIdx-1; i>=0; i++){
+  for(int i = lastDimIdx - 1; i >= 0; i--){
     res[i] = stride;
     stride *= dims[i];
   }
