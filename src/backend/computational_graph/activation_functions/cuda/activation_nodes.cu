@@ -15,4 +15,4 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 #include "activation_nodes.cuh"
 
-using namespace cuda;
+using namespace cuda_impl;

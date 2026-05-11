@@ -303,7 +303,7 @@ Tensor::tensorValues_t::operator+=(const Tensor::tensorValues_t& other) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::elementwiseadd(values, values, other.values, size);
+        cuda_impl::elementwiseadd(values, values, other.values, size);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -332,7 +332,7 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
       return values[idx];
     case Device::CUDA:
       #ifdef __CUDA
-        return cuda::get(values, idx);
+        return cuda_impl::get(values, idx);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
         break;
@@ -353,7 +353,7 @@ void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::set(v, values, idx);
+        cuda_impl::set(v, values, idx);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -370,7 +370,7 @@ ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
       return values[idx];
     case Device::CUDA:
       #ifdef __CUDA
-        return cuda::get(values, idx);
+        return cuda_impl::get(values, idx);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
         break;
@@ -464,7 +464,7 @@ Tensor Tensor::createContiguousCopy() const {
     case Device::CUDA:
     {
       #ifdef __CUDA
-        cuda::createContiguousCopy(res, *this);
+        cuda_impl::createContiguousCopy(res, *this);
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -560,7 +560,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
     }
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::matmul(res, left, right);
+        cuda_impl::matmul(res, left, right);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -659,10 +659,10 @@ Tensor Tensor::operator+(Tensor& other) {
     case Device::CUDA:
       #ifdef __CUDA
         if(dims==other.dims) [[unlikely]] {
-          cuda::elementwiseadd(res.getData(), values->getData(), other.getData(), values->getSize());
+          cuda_impl::elementwiseadd(res.getData(), values->getData(), other.getData(), values->getSize());
         }
         else [[likely]] {
-          cuda::broadcastadd(res, *this, other);
+          cuda_impl::broadcastadd(res, *this, other);
         }
       #else
         __throw_runtime_error("Not compiled with CUDA");
@@ -702,7 +702,7 @@ Tensor Tensor::operator*(Tensor& other) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::elementwisemul(res.getData(), values->getData(), 
+        cuda_impl::elementwisemul(res.getData(), values->getData(), 
                              other.values->getData(), values->getSize());
       #else
         __throw_runtime_error("Not compiled with CUDA");
@@ -730,7 +730,7 @@ Tensor Tensor::operator*(const ftype scalar) const {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::scalarmul(res.getData(), values->getData(), scalar, values->getSize());
+        cuda_impl::scalarmul(res.getData(), values->getData(), scalar, values->getSize());
       #else 
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -754,7 +754,7 @@ Tensor Tensor::operator/(const ftype scalar) const {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::scalarmul(res.getData(), values->getData(), 1 / scalar, values->getSize());
+        cuda_impl::scalarmul(res.getData(), values->getData(), 1 / scalar, values->getSize());
       #else 
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -774,7 +774,7 @@ Tensor Tensor::operator+(const ftype scalar) const {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::scalaradd(res.getData(), values->getData(), scalar, values->getSize());
+        cuda_impl::scalaradd(res.getData(), values->getData(), scalar, values->getSize());
       #else 
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -794,7 +794,7 @@ Tensor Tensor::operator-(const ftype scalar) const {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda::scalaradd(res.getData(), values->getData(), -scalar, values->getSize());
+        cuda_impl::scalaradd(res.getData(), values->getData(), -scalar, values->getSize());
       #else 
         __throw_runtime_error("Not compiled with CUDA");
       #endif

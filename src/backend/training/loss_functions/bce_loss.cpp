@@ -41,7 +41,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   switch(y->getDevice()) {
     case Device::CUDA:
     #ifdef CUDA
-      res = cuda::bceLoss(*y, *ypred);
+      res = cuda_impl::bceLoss(*y, *ypred);
       break;
     #else 
       __throw_runtime_error("Should not reach this line");

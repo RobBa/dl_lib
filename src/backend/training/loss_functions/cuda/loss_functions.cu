@@ -53,22 +53,45 @@ namespace {
       if(tid < i) {
         sdata[tid] += sdata[tid + i];
       }
-      __syncthreads;
+      __syncthreads();
     }
 
-    if(tid > 16) {
-
+    if(tid < 32 && gid + 32 < size) {
+      sdata[tid] += sdata[tid + 32];
     }
+    __syncthreads();
+    
+    if(tid < 16 && gid + 16 < size) {
+      sdata[tid] += sdata[tid + 16];
+    }
+    __syncthreads();
+    
+    if(tid < 8 && gid + 8 < size) {
+      sdata[tid] += sdata[tid + 8];
+    }
+    __syncthreads();
+    
+    if(tid < 4 && gid + 4 < size) {
+      sdata[tid] += sdata[tid + 4];
+    }
+    __syncthreads();
+    
+    if(tid < 2 && gid + 2 < size) {
+      sdata[tid] += sdata[tid + 2];
+    }
+    __syncthreads();
 
-    // TODO: divide by size    
+    if(tid == 0 && gid + 1 < size) {
+      sdata[0] = (sdata[0] + sdata[1]) / size;
+    }
   }
 }
 
-namespace cuda {
+namespace cuda_impl {
   Tensor&& bceLoss(const Tensor& y, const Tensor& yPred) {
 
     constexpr int threadsPerBlock = 256;
-    const int blocks = (in.getSize() + threadsPerBlock - 1) / (threadsPerBlock * 2);
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / (threadsPerBlock * 2);
 
     auto res = Tensor(vector<tensorDim_t>{1}, Device::CUDA, true);
 

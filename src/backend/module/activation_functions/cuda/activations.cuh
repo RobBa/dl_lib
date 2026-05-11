@@ -18,7 +18,7 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "utility/global_params.h"
 #include "data_modeling/tensor.h"
 
-namespace cuda {
+namespace cuda_impl {
   void relu(Tensor& res, const Tensor& in);
   void leakyRelu(Tensor& res, const Tensor& in, ftype eps);
 
