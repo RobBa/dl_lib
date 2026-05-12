@@ -21,7 +21,7 @@
 using namespace std;
 
 TEST(TensorOpsTest, TestCtor) {
-  auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CPU, false);
+  auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CPU);
 
   ASSERT_EQ(t.getDims(), Dimension({2, 2}));
   ASSERT_EQ(t.getDevice(), Device::CPU);
@@ -34,7 +34,7 @@ TEST(TensorOpsTest, TestCtor) {
 }
 
 TEST(TensorOpsTest, ScalarAddWorks) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
+  auto t1 = TensorFunctions::Ones({2, 2});
 
   auto res = t1 + 1.5;
 
@@ -47,7 +47,7 @@ TEST(TensorOpsTest, ScalarAddWorks) {
 }
 
 TEST(TensorOpsTest, ScalarMulWorks) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
+  auto t1 = TensorFunctions::Ones({2, 2});
 
   constexpr ftype f = 2.5;
   auto res = t1 * f;
@@ -60,8 +60,8 @@ TEST(TensorOpsTest, ScalarMulWorks) {
 }
 
 TEST(TensorOpsTest, TensorAddWorks) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 2}, false) * 4;
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 2}) * 4;
 
   auto res = t1 + t2;
 
@@ -74,8 +74,8 @@ TEST(TensorOpsTest, TensorAddWorks) {
 }
 
 TEST(TensorOpsTest, TensorAddCanBroadCast) {
-  auto t1 = TensorFunctions::Ones({3, 2, 2}, false);
-  auto t2 = Tensor({2}, {2, 3}, false);
+  auto t1 = TensorFunctions::Ones({3, 2, 2});
+  auto t2 = Tensor({2}, {2, 3});
 
   auto res = t1 + t2;
 
@@ -92,8 +92,8 @@ TEST(TensorOpsTest, TensorAddCanBroadCast) {
 TEST(TensorOpsTest, BroadcastAdd_2D) {
     // (2,3) + (3) 
     auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
-                               4.0, 5.0, 6.0}, false);
-    auto t2 = Tensor({3}, {10.0, 20.0, 30.0}, false);
+                              4.0, 5.0, 6.0});
+    auto t2 = Tensor({3}, {10.0, 20.0, 30.0});
     auto res = t1 + t2;
 
     // expected: each row of t1 gets t2 added elementwise
@@ -106,22 +106,22 @@ TEST(TensorOpsTest, BroadcastAdd_2D) {
 }
 
 TEST(TensorOpsTest, TensorAddBroadcastNotCommutative) {
-  auto t1 = TensorFunctions::Ones({3, 2, 2}, false);
-  auto t2 = Tensor({2}, {2, 3}, false);
+  auto t1 = TensorFunctions::Ones({3, 2, 2});
+  auto t2 = Tensor({2}, {2, 3});
 
   EXPECT_THROW(t2 + t1, std::invalid_argument);
 }
 
 TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 3}, false) * 4;
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 3}) * 4;
 
   EXPECT_THROW(t1 + t2, std::invalid_argument);
 }
 
 TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 2}, false);
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 2});
     
   auto res = t1 + t2;
     
@@ -136,8 +136,8 @@ TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
 
 TEST(TensorOpsTest, ElementwiseMulGivesCorrectResults) {
   constexpr ftype factor = 0.5;
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 2}, false) * 0.5;
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 2}) * 0.5;
     
   auto res = t1 * t2;
     
@@ -150,15 +150,15 @@ TEST(TensorOpsTest, ElementwiseMulGivesCorrectResults) {
 
 TEST(TensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
   constexpr ftype factor = 0.5;
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 3}, false) * 0.5;
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 3}) * 0.5;
     
   EXPECT_THROW(t1 * t2, std::invalid_argument);
 }
 
 TEST(TensorOpsTest, MatMulGivesCorrectValues1) {
-  auto t1 = TensorFunctions::Ones({3, 2}, false);
-  auto t2 = TensorFunctions::Ones({2, 6}, false) * 1.5;
+  auto t1 = TensorFunctions::Ones({3, 2});
+  auto t2 = TensorFunctions::Ones({2, 6}) * 1.5;
     
   auto res = t1.matmul(t2);
   auto expectedDims = std::vector<tensorDim_t>{3, 6};
@@ -173,10 +173,10 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues1) {
 }
 
 TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
-  auto t1 = Tensor({2, 2}, false);
-  auto t2 = Tensor({2, 2}, false);
+  auto t1 = Tensor({2, 2});
+  auto t2 = Tensor({2, 2});
 
-  auto cmpRes = Tensor({2, 2}, false);
+  auto cmpRes = Tensor({2, 2});
 
   auto populateTensor = [](Tensor& t, ftype v1, ftype v2, ftype v3, ftype v4) {
     t.set(v1, {0, 0});
@@ -203,14 +203,14 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
 }
 
 TEST(TensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-  auto t2 = TensorFunctions::Ones({3, 2}, false);
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({3, 2});
 
   EXPECT_THROW(t1.matmul(t2), std::runtime_error);
 }
 
 TEST(TensorOpsTest, TransposeWorksAsIntended1) {
-  auto t = TensorFunctions::Gaussian({3, 2}, 1.0, false);
+  auto t = TensorFunctions::Gaussian({3, 2}, 1.0);
 
   auto transposed = t.createDeepCopy();
   transposed = transposed.transpose(-1, -2);
@@ -230,7 +230,7 @@ TEST(TensorOpsTest, TransposeWorksAsIntended1) {
  * @brief Swap first two dimensions.
  */
 TEST(TensorOpsTest, TransposeWorksAsIntended2) {
-  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0, false);
+  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0);
   auto transposed = t.createDeepCopy().transpose(0, 1);
 
   ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(1));
@@ -252,7 +252,7 @@ TEST(TensorOpsTest, TransposeWorksAsIntended2) {
  * @brief Swap first and last dimension.
  */
 TEST(TensorOpsTest, TransposeWorksAsIntended3) {
-  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0, false);
+  auto t = TensorFunctions::Gaussian({3, 2, 5}, 1.0);
   auto transposed = t.createDeepCopy().transpose(0, -1);
 
   ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(-1));
