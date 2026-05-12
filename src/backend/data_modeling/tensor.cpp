@@ -25,6 +25,7 @@
 #ifdef __CUDA
 #include "utility/cuda/cuda_common.cuh"
 #include "data_modeling/cuda/tensorops.cuh"
+
 #endif
 
 using namespace std;
@@ -238,10 +239,7 @@ void Tensor::tensorValues_t::reset(const ftype x) noexcept {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cudaErrchk(
-            thrust::fill(thrust::device_pointer_cast(values), 
-            thrust::device_pointer_cast(values + size), x)
-          );
+        cuda_impl::scalarFill(values, x, size);
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -1021,35 +1019,6 @@ void printValuesCpu(std::ostream& os, const Tensor& t) {
   }
 }
 
-/**
- * @brief Print out the first few values of the flattened array.
- */
-#ifdef __CUDA
-void printValuesCuda(std::ostream& os, const Tensor& t) {
-  __throw_logic_error("printValuesCuda should not be reachable when not compiled with CUDA");
-  auto printVals = [&os](const Tensor& t){
-    constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
-
-    const auto maxIdx = min(MAX_IDX, t.values->getSize());
-    auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
-    cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx*sizeof(ftype), cudaMemcpyDeviceToHost));
-
-    for(tensorSize_t i=0; i<maxIdx; i++){
-      os << tmp[i];
-    }
-    os << "\n\n";
-
-    free(tmp);
-  };
-
-  printVals(t);
-  if(t.grads){
-    os << "\n\nGrads:\n";
-    printVals(*t.grads);
-  }
-}
-#endif
-
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << "\nDevice: " << DeviceToString(t.values->getDevice());
@@ -1062,7 +1031,7 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        printValuesCuda(os, t);
+        cuda_impl::printValues(os, t);
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif

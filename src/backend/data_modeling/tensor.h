@@ -123,9 +123,6 @@ private:
   static tensorDim_t mapDim(int dim, const Dimension& dims);
 
   friend void printValuesCpu(std::ostream& os, const Tensor& t);
-  #ifdef __CUDA
-  friend void printValuesCuda(std::ostream& os, const Tensor& t);
-  #endif
 
   Tensor(const Tensor& other, shallowCopyToken);
 
