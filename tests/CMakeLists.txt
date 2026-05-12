@@ -27,8 +27,10 @@ if(CMAKE_CUDA_COMPILER)
     file(GLOB_RECURSE CUDA_TEST_SOURCES backend/cuda/*.cu)
     add_executable(unit_tests_cuda ${CUDA_TEST_SOURCES})
 
+    find_package(Threads REQUIRED)
     target_link_libraries(unit_tests_cuda PRIVATE
-        gtest_main
+        gtest
+        Threads::Threads # platform agnostic
         BackendCore
         CUDA::cudart
     )

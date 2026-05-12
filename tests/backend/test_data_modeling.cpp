@@ -46,6 +46,19 @@ TEST(TensorOpsTest, ScalarAddWorks) {
   }
 }
 
+TEST(TensorOpsTest, ScalarMulWorks) {
+  auto t1 = TensorFunctions::Ones({2, 2}, false);
+
+  constexpr ftype f = 2.5;
+  auto res = t1 * f;
+    
+  for(auto i=0; i<t1.getDims().get(0); i++) {
+    for(auto j=0; j<t1.getDims().get(1); j++) {
+      ASSERT_DOUBLE_EQ(res.get(i, j), f);
+    }
+  }
+}
+
 TEST(TensorOpsTest, TensorAddWorks) {
   auto t1 = TensorFunctions::Ones({2, 2}, false);
   auto t2 = TensorFunctions::Ones({2, 2}, false) * 4;
@@ -104,19 +117,6 @@ TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
   auto t2 = TensorFunctions::Ones({2, 3}, false) * 4;
 
   EXPECT_THROW(t1 + t2, std::invalid_argument);
-}
-
-TEST(TensorOpsTest, ScalarMulWorks) {
-  auto t1 = TensorFunctions::Ones({2, 2}, false);
-
-  constexpr ftype f = 2.5;
-  auto res = t1 * f;
-    
-  for(auto i=0; i<t1.getDims().get(0); i++) {
-    for(auto j=0; j<t1.getDims().get(1); j++) {
-      ASSERT_DOUBLE_EQ(res.get(i, j), f);
-    }
-  }
 }
 
 TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {

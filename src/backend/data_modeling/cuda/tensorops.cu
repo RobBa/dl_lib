@@ -62,7 +62,7 @@ namespace{
     if(gid>=size)
       return;
     
-    res[gid] = left[gid] + scalar;
+    res[gid] = left[gid] * scalar;
   }
 
   __global__ void matMulKernel(ftype* res, const ftype* const left, const ftype* const right, 

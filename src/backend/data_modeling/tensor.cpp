@@ -200,23 +200,30 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
     }
 
     switch(device){
-      case Device::CPU:{
-        ftype* tmp;
-        cudaErrchk(cudaMalloc((void**) &tmp, size * sizeof(ftype)));
-        cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyHostToDevice));
-        free(values);
-        values = tmp;
+      case Device::CPU:
+        if(d == Device::CUDA) {
+          ftype* tmp;
+          cudaErrchk(cudaMalloc((void**) &tmp, size * sizeof(ftype)));
+          cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyHostToDevice));
+          free(values);
+          values = tmp;
+        }
+        else {
+          __throw_runtime_error((string("Requested unexpected device ") + DeviceToString(d)).c_str());
+        }
         break;
-      }
-      case Device::CUDA:{
-        ftype* tmp = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
-        cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
-        cudaErrchk(cudaFree(values));
-        values = tmp;
+      case Device::CUDA:
+        if(d == Device::CPU) {
+          ftype* tmp = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
+          cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
+          cudaErrchk(cudaFree(values));
+          values = tmp;
+        }
+        else {
+          __throw_runtime_error((string("Requested unexpected device ") + DeviceToString(d)).c_str());
+        }
         break;
-      }
     }
-
     device = d;
   #endif
 }
