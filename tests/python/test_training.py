@@ -97,9 +97,9 @@ class TestOverfitBinary:
     x, y = make_multiclass_data()
     net = make_multiclass_net()
     loss_fn = CrossEntropyWithSoftmax()
-    optim = RmsProp(net.parameters(), 0.0003, 0.95)
+    optim = RmsProp(net.parameters(), 0.0001, 0.95)
 
-    final_loss = train(net, loss_fn, optim, x, y, epochs=10000)
+    final_loss = train(net, loss_fn, optim, x, y, epochs=2000)
 
     assert final_loss.getitem(0) < 0.05, \
         f"RmsProp failed to overfit multiclass, loss={final_loss.getitem(0)}"
