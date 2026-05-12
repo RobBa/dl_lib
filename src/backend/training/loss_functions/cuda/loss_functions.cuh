@@ -18,11 +18,11 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "data_modeling/tensor.h"
 
 namespace cuda_impl {
-  Tensor&& bceLoss(const Tensor& y, const Tensor& yPred);
-  Tensor&& bceSigmoidLoss(const Tensor& y, const Tensor& yPred);
+  [[nodiscard]] Tensor&& bceLoss(const Tensor& y, const Tensor& yPred);
+  [[nodiscard]] Tensor&& bceSigmoidLoss(const Tensor& y, const Tensor& yPred);
 
-  Tensor&& crossEntropyLoss(const Tensor& y, const Tensor& yPred);
-  Tensor&& crossEntropySoftmaxLoss(const Tensor& y, const Tensor& yPred);
+  [[nodiscard]] Tensor&& crossEntropyLoss(const Tensor& y, const Tensor& yPred);
+  [[nodiscard]] Tensor&& crossEntropySoftmaxLoss(const Tensor& y, const Tensor& yPred);
 
-  Tensor&& rmseLoss(const Tensor& y, const Tensor& yPred);
+  [[nodiscard]] Tensor&& rmseLoss(const Tensor& y, const Tensor& yPred);
 }

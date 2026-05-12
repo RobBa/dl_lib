@@ -25,25 +25,25 @@ class Tensor;
 namespace cuda_impl {
 
   // scalar ops
-  void scalaradd(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size);
-  void scalarmul(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size);
+  void scalaradd(Tensor& res, const Tensor& src, ftype scalar);
+  void scalarmul(Tensor& res, const Tensor& src, ftype scalar);
 
   // matrix ops
-  void elementwiseadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size);
+  void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right);
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec);
-  void elementwisemul(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size);
+  void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right);
   void matmul(Tensor& res, const Tensor& left, const Tensor& right);
 
   void transpose2D(ftype* res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
   void transpose(ftype* res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
 
-  void scalarFill(ftype* ptr, ftype value, tensorSize_t size);
+  void scalarFill(Tensor& t, ftype value);
 
   void printValues(std::ostream& os, const Tensor& t);
 
   // other
-  ftype get(const ftype* const t, tensorSize_t idx);
-  ftype set(ftype value, const ftype* t, tensorSize_t idx);
+  [[nodiscard]] ftype get(const ftype* const t, tensorSize_t idx);
+  void set(ftype value, const ftype* t, tensorSize_t idx);
 
   void createContiguousCopy(Tensor& res, const Tensor& src);
 }

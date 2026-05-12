@@ -68,7 +68,7 @@ namespace{
   __global__ void matMulKernel(ftype* res, const ftype* const left, const ftype* const right, 
                                const tensorDim_t leftRows, const tensorDim_t leftCols, tensorDim_t rightRows, tensorDim_t rightCols) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if()
+    //if()
   }
 
   /**
@@ -98,19 +98,19 @@ namespace{
 }
 
 namespace cuda_impl {
-  void scalaradd(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
+  void scalaradd(Tensor& res, const Tensor& src, ftype scalar) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocksPerGrid = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalaraddKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, scalar, size);
+    scalaraddKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void scalarmul(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
+  void scalarmul(Tensor& res, const Tensor& src, ftype scalar) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocksPerGrid = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalarmulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, scalar, size);
+    scalarmulKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
@@ -126,23 +126,22 @@ namespace cuda_impl {
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void elementwiseadd(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
+  void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
-    elementwiseaddKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
+    const int blocksPerGrid = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    elementwiseaddKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void elementwisemul(ftype* res, const ftype* const left, const ftype* const right, tensorSize_t size) {
+  void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
-    
-    elementwisemulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
+    const int blocksPerGrid = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+
+    elementwisemulKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void matmul(ftype* res, const ftype* const left, const ftype* const right, 
-              const tensorDim_t resRows, const tensorDim_t resCols, const tensorSize_t resSize) {
+  void matmul(Tensor& res, const Tensor& left, const Tensor& right) {
 /*     constexpr int threadsPerBlock = 256;
     const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
     
@@ -150,9 +149,10 @@ namespace cuda_impl {
     cudaErrchk(cudaDeviceSynchronize()); */
   }
 
-  void scalarFill(ftype* ptr, ftype value, tensorSize_t size) {
+  void scalarFill(Tensor& t, ftype value) {
+    ftype* ptr = t.getData();
     thrust::fill(thrust::device_pointer_cast(ptr),
-                 thrust::device_pointer_cast(ptr + size), value);
+                 thrust::device_pointer_cast(ptr + t.getSize()), value);
     cudaErrchk(cudaDeviceSynchronize());
   }
 
@@ -184,8 +184,8 @@ namespace cuda_impl {
     return res;
   }
 
-  ftype set(ftype value, const ftype* t, tensorSize_t idx) {
-    cudaErrchk(cudaMemcpy((void*)t+idx, &value, sizeof(ftype), cudaMemcpyHostToDevice));
+  void set(ftype value, const ftype* t, tensorSize_t idx) {
+    cudaErrchk(cudaMemcpy((void*)(t + idx), &value, sizeof(ftype), cudaMemcpyHostToDevice));
   }
 
   void createContiguousCopy(Tensor& res, const Tensor& src) {

@@ -58,8 +58,6 @@ private:
     Device device;
     inline static Device defaultDevice = Device::CPU;
 
-    void addOtherCpu(const tensorValues_t& other) noexcept;
-
   public:
     explicit tensorValues_t();
     explicit tensorValues_t(Device d);
@@ -73,7 +71,8 @@ private:
 
     void copyFromRaw(const ftype* src, tensorSize_t n);
 
-    ftype* getData() const noexcept;
+    ftype* data() noexcept { return values; }
+    const ftype* data() const noexcept { return values; }
     explicit operator bool() const noexcept;
     ftype& operator[](tensorSize_t idx);
     ftype operator[](tensorSize_t idx) const;
@@ -83,16 +82,11 @@ private:
 
     tensorSize_t getSize() const noexcept;
 
-    // needed for gradient descent
-    tensorValues_t& operator+=(const tensorValues_t& other);
-
     void resize(tensorSize_t size);
 
     void setDevice(Device d) noexcept;
     Device getDevice() const noexcept;
 
-    void reset(ftype x) noexcept;
-    void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
 
     void copyValues(tensorValues_t& target) const;
     void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
@@ -205,6 +199,8 @@ public:
 
   Tensor operator*(const Tensor& t) const;
   Tensor elementwiseMul(const Tensor& other) const;
+
+  Tensor& operator+=(const Tensor& other);
 
   // TODO: Tensor operator/(const Tensor& other) const;
 
