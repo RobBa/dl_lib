@@ -259,7 +259,11 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
       return values[idx];
     case Device::CUDA:
       #ifdef __CUDA
-        return cuda_impl::get(values, idx);
+      {
+        ftype res;
+        cudaErrchk(cudaMemcpy(&res, values + idx, sizeof(ftype), cudaMemcpyDeviceToHost));
+        return res;
+      }
       #else
         __throw_invalid_argument("Not compiled with CUDA");
         break;
@@ -280,7 +284,7 @@ void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda_impl::set(v, values, idx);
+        cudaErrchk(cudaMemcpy(values + idx, &v, sizeof(ftype), cudaMemcpyHostToDevice));
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -291,13 +295,17 @@ void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
 ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
-  
+
   switch(device){
     case Device::CPU:
       return values[idx];
     case Device::CUDA:
       #ifdef __CUDA
-        return cuda_impl::get(values, idx);
+      {
+        ftype res;
+        cudaErrchk(cudaMemcpy(&res, values + idx, sizeof(ftype), cudaMemcpyDeviceToHost));
+        return res;
+      }
       #else
         __throw_invalid_argument("Not compiled with CUDA");
         break;
@@ -1009,7 +1017,23 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cuda_impl::printValues(os, t);
+      {
+        auto printVals = [&os](const Tensor& t) {
+          constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
+          const auto maxIdx = min(MAX_IDX, t.getSize());
+          auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
+          cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx * sizeof(ftype), cudaMemcpyDeviceToHost));
+          for(tensorSize_t i = 0; i < maxIdx; i++)
+            os << tmp[i];
+          os << "\n\n";
+          free(tmp);
+        };
+        printVals(t);
+        if(t.hasGrads()) {
+          os << "\n\nGrads:\n";
+          printVals(*t.getGrads());
+        }
+      }
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif

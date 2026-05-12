@@ -13,14 +13,13 @@
 static_assert(false, "File should not be compiled without CUDA enabled");
 #endif // __CUDA
 
+#include "data_modeling/tensor.h"
+
 #include "tensorops.cuh"
 #include "utility/cuda/cuda_common.cuh"
 
-#include "cuda_runtime.h"
 #include <thrust/fill.h>
 #include <thrust/device_ptr.h>
-
-#include "data_modeling/tensor.h"
 
 namespace{
   __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
@@ -129,6 +128,7 @@ namespace cuda_impl {
   void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
     const int blocksPerGrid = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+
     elementwiseaddKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
@@ -154,38 +154,6 @@ namespace cuda_impl {
     thrust::fill(thrust::device_pointer_cast(ptr),
                  thrust::device_pointer_cast(ptr + t.getSize()), value);
     cudaErrchk(cudaDeviceSynchronize());
-  }
-
-  void printValues(std::ostream& os, const Tensor& t) {
-    auto printVals = [&os](const Tensor& t) {
-      constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
-      const auto maxIdx = min(MAX_IDX, t.getSize());
-
-      auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
-      cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx * sizeof(ftype), cudaMemcpyDeviceToHost));
-
-      for(tensorSize_t i = 0; i < maxIdx; i++)
-        os << tmp[i];
-      os << "\n\n";
-
-      free(tmp);
-    };
-
-    printVals(t);
-    if(t.hasGrads()) {
-      os << "\n\nGrads:\n";
-      printVals(*t.getGrads());
-    }
-  }
-
-  ftype get(const ftype* const t, tensorSize_t idx) {
-    ftype res;
-    cudaErrchk(cudaMemcpy((void*)&res, t + idx, sizeof(ftype), cudaMemcpyDeviceToHost));
-    return res;
-  }
-
-  void set(ftype value, const ftype* t, tensorSize_t idx) {
-    cudaErrchk(cudaMemcpy((void*)(t + idx), &value, sizeof(ftype), cudaMemcpyHostToDevice));
   }
 
   void createContiguousCopy(Tensor& res, const Tensor& src) {
