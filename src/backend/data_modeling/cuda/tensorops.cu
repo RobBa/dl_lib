@@ -180,7 +180,7 @@ namespace cuda_impl {
 
   ftype get(const ftype* const t, tensorSize_t idx) {
     ftype res;
-    cudaErrchk(cudaMemcpy(&res, t+idx, sizeof(ftype), cudaMemcpyDeviceToHost));
+    cudaErrchk(cudaMemcpy((void*)&res, t + idx, sizeof(ftype), cudaMemcpyDeviceToHost));
     return res;
   }
 

@@ -1,4 +1,5 @@
 include(FetchContent)
+
 FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -21,6 +22,29 @@ target_link_libraries(unit_tests_backend PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(unit_tests_backend)
+
+if(CMAKE_CUDA_COMPILER)
+    file(GLOB_RECURSE CUDA_TEST_SOURCES backend/cuda/*.cu)
+    add_executable(unit_tests_cuda ${CUDA_TEST_SOURCES})
+
+    target_link_libraries(unit_tests_cuda PRIVATE
+        gtest_main
+        BackendCore
+        CUDA::cudart
+    )
+
+    set_target_properties(unit_tests_cuda PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CMAKE_CUDA_ARCHITECTURES native
+    )
+
+    find_package(CUDAToolkit REQUIRED)
+    target_include_directories(unit_tests_cuda PRIVATE
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+
+    gtest_discover_tests(unit_tests_cuda)
+endif()
 
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)

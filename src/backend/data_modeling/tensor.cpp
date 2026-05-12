@@ -25,7 +25,6 @@
 #ifdef __CUDA
 #include "utility/cuda/cuda_common.cuh"
 #include "data_modeling/cuda/tensorops.cuh"
-
 #endif
 
 using namespace std;
@@ -243,15 +242,6 @@ Tensor::tensorValues_t::operator bool() const noexcept {
   return values != nullptr;
 }
 
-ftype& Tensor::tensorValues_t::operator[](const tensorSize_t idx) {
-  if(idx >= size)
-    throw std::out_of_range("Out of range for tensor");
-
-  if(device!=Device::CPU){
-    __throw_invalid_argument("'ftype& operator[] const' only implemented for CPU");
-  }
-  return values[idx];
-}
 
 ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   if(idx >= size)
@@ -513,21 +503,21 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
 
-  for(tensorSize_t lrow=0; lrow<nRowsLeft; lrow++){
+  for(tensorSize_t lrow = 0; lrow < nRowsLeft; lrow++){
     const tensorSize_t resRowOffset = resOffset + lrow * nColsRight;
     const tensorSize_t leftRowOffset = leftOffset + lrow * nColsLeft;
 
     tensorSize_t rightIdx = rightOffset;
     // res likely has undefined memory content
-    for(tensorSize_t rrow=0; rrow<nColsRight; rrow++){
-      (*res.values)[resRowOffset+rrow] = (*left.values)[leftRowOffset] * (*right.values)[rightIdx];
+    for(tensorSize_t rrow = 0; rrow < nColsRight; rrow++){
+      res.values->data()[resRowOffset + rrow] = left.values->data()[leftRowOffset] * right.values->data()[rightIdx];
       rightIdx++;
     }
 
     for(tensorSize_t lcol=1; lcol<nColsLeft; lcol++){
       const auto leftIdx = leftRowOffset + lcol;
-      for(tensorSize_t rrow=0; rrow<nColsRight; rrow++){
-        (*res.values)[resRowOffset+rrow] += (*left.values)[leftIdx] * (*right.values)[rightIdx];
+      for(tensorSize_t rrow = 0; rrow < nColsRight; rrow++){
+        res.values->data()[resRowOffset + rrow] += left.values->data()[leftIdx] * right.values->data()[rightIdx];
         rightIdx++;
       }
     }
@@ -573,17 +563,17 @@ Tensor Tensor::operator+(const Tensor& other) const {
     case Device::CPU:
       if(dims==other.dims) [[unlikely]] {
         // elementwise add
-        for(tensorSize_t i=0; i<values->getSize(); i++){
-          (*res.values)[i] = (*values)[i] + (*other.values)[i];
+        for(tensorSize_t i = 0; i < values->getSize(); i++){
+          res.values->data()[i] = values->data()[i] + other.values->data()[i];
         }
         return res;
       }
-      else [[likely]] { 
+      else [[likely]] {
         // broadcasted add
         const auto stride = static_cast<tensorSize_t>(other.dims.get(0)); // other is a vector
-        for(tensorSize_t offset=0; offset<values->getSize(); offset+=stride){
-          for(tensorSize_t i=0; i<stride; i++){
-            (*res.values)[offset+i] = (*values)[offset+i] + (*other.values)[i];
+        for(tensorSize_t offset=0; offset<values->getSize(); offset += stride){
+          for(tensorSize_t i = 0; i < stride; i++){
+            res.values->data()[offset + i] = values->data()[offset + i] + other.values->data()[i];
           }
         }
       }
@@ -628,8 +618,8 @@ Tensor Tensor::operator*(const Tensor& other) const {
 
   switch(values->getDevice()){
     case Device::CPU:
-      for(tensorSize_t i=0; i<values->getSize(); i++){
-        (*res.values)[i] = (*values)[i] * (*other.values)[i];
+      for(tensorSize_t i = 0; i < values->getSize(); i++){
+        res.values->data()[i] = values->data()[i] * other.values->data()[i];
       }
       break;
     case Device::CUDA:
@@ -675,7 +665,7 @@ Tensor Tensor::operator*(const ftype scalar) const {
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-        (*res.values)[i] = (*values)[i] * scalar;
+        res.values->data()[i] = values->data()[i] * scalar;
       }
       break;
     case Device::CUDA:
@@ -699,7 +689,7 @@ Tensor Tensor::operator/(const ftype scalar) const {
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-        (*res.values)[i] = (*values)[i] / scalar;
+        res.values->data()[i] = values->data()[i] / scalar;
       }
       break;
     case Device::CUDA:
@@ -719,7 +709,7 @@ Tensor Tensor::operator+(const ftype scalar) const {
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-        (*res.values)[i] = (*values)[i] + scalar;
+        res.values->data()[i] = values->data()[i] + scalar;
       }
       break;
     case Device::CUDA:
@@ -739,7 +729,7 @@ Tensor Tensor::operator-(const ftype scalar) const {
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
-        (*res.values)[i] = (*values)[i] - scalar;
+        res.values->data()[i] = values->data()[i] - scalar;
       }
       break;
     case Device::CUDA:
@@ -1072,7 +1062,6 @@ ftype Tensor::get(tensorSize_t idx) const {
 ftype Tensor::operator[](tensorSize_t idx) const {
   return (*values)[idx];
 }
-
 
 ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1) const {
   return get({idx0, idx1});

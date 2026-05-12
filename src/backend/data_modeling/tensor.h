@@ -73,10 +73,10 @@ private:
 
     ftype* data() noexcept { return values; }
     const ftype* data() const noexcept { return values; }
+    
     explicit operator bool() const noexcept;
-    ftype& operator[](tensorSize_t idx);
-    ftype operator[](tensorSize_t idx) const;
 
+    ftype operator[](tensorSize_t idx) const;
     void set(ftype v, tensorSize_t idx);
     ftype get(tensorSize_t idx);
 
@@ -124,7 +124,7 @@ public:
   template <typename T>
     requires(std::is_same_v<std::remove_cvref_t<T>, Dimension>)
   explicit Tensor(T&& dims, Device d, bool requiresGrad = false)
-      : Tensor{dims.toVector(), tensorValues_t::getDefaultDevice(), requiresGrad}
+      : Tensor{dims.toVector(), d, requiresGrad}
       // !!!needs dims.toVector() to not trigger the copy ctors!!!
   { }
 

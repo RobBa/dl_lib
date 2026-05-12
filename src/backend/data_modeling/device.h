@@ -11,9 +11,15 @@
 
 #pragma once
 
+#include <ostream>
+
 enum class Device {
     CPU,
     CUDA
 };
 
 const char* DeviceToString(Device d);
+
+inline std::ostream& operator<<(std::ostream& os, Device d) {
+  return os << DeviceToString(d);
+}
