@@ -916,6 +916,7 @@ Device Tensor::getDefaultDevice() noexcept {
 }
 
 void Tensor::setDevice(const Device d) noexcept {
+  makeContiguous();
   values->setDevice(d);
 }
 

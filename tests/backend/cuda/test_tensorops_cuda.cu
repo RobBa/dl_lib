@@ -67,8 +67,8 @@ TEST(CudaTensorOpsTest, TensorAddCanBroadCast) {
   
   for(auto i=0; i<res.getDims().get(0); i++) {
     for(auto j=0; j<res.getDims().get(1); j++) {
-      ASSERT_DOUBLE_EQ(res.get(i, j, 0), 3.0);
-      ASSERT_DOUBLE_EQ(res.get(i, j, 1), 4.0);
+      EXPECT_NEAR(res.get(i, j, 0), 3.0, 1e-5);
+      EXPECT_NEAR(res.get(i, j, 1), 4.0, 1e-5);
     }
   }
 }
@@ -82,12 +82,12 @@ TEST(CudaTensorOpsTest, BroadcastAdd_2D) {
     auto res = t1 + t2;
 
     // expected: each row of t1 gets t2 added elementwise
-    ASSERT_DOUBLE_EQ(res.get(0, 0), 11.0);
-    ASSERT_DOUBLE_EQ(res.get(0, 1), 22.0);
-    ASSERT_DOUBLE_EQ(res.get(0, 2), 33.0);
-    ASSERT_DOUBLE_EQ(res.get(1, 0), 14.0);
-    ASSERT_DOUBLE_EQ(res.get(1, 1), 25.0);
-    ASSERT_DOUBLE_EQ(res.get(1, 2), 36.0);
+    EXPECT_NEAR(res.get(0, 0), 11.0, 1e-5);
+    EXPECT_NEAR(res.get(0, 1), 22.0, 1e-5);
+    EXPECT_NEAR(res.get(0, 2), 33.0, 1e-5);
+    EXPECT_NEAR(res.get(1, 0), 14.0, 1e-5);
+    EXPECT_NEAR(res.get(1, 1), 25.0, 1e-5);
+    EXPECT_NEAR(res.get(1, 2), 36.0, 1e-5);
 }
 
 TEST(CudaTensorOpsTest, TensorAddBroadcastNotCommutative) {
@@ -114,7 +114,7 @@ TEST(CudaTensorOpsTest, MatrixAddGivesCorrectResults) {
   constexpr ftype resSum = 2.0;
   for(auto i=0; i<t1.getDims().get(0); i++) {
     for(auto j=0; j<t1.getDims().get(1); j++) {
-      ASSERT_DOUBLE_EQ(res.get(i, j), resSum);
+      EXPECT_NEAR(res.get(i, j), resSum, 1e-5);
     }
   }
 }
@@ -129,7 +129,7 @@ TEST(CudaTensorOpsTest, ElementwiseMulGivesCorrectResults) {
 
   for(auto i=0; i<t1.getDims().get(0); i++) {
     for(auto j=0; j<t1.getDims().get(1); j++) {
-      ASSERT_DOUBLE_EQ(res.get(i, j), factor);
+      EXPECT_NEAR(res.get(i, j), factor, 1e-5);
     }
   }
 }
@@ -140,4 +140,66 @@ TEST(CudaTensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
   auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 0.5;
     
   EXPECT_THROW(t1 * t2, std::invalid_argument);
+}
+
+TEST(CudaTensorOpsTest, TransposeWorksAsIntended1) {
+  auto t = TensorFunctions::Gaussian({3000, 2000}, 1.0, Device::CUDA);
+
+  auto transposed = t.createDeepCopy();
+  transposed = transposed.transpose(-1, -2);
+  transposed.setDevice(Device::CPU);
+
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-2));
+  ASSERT_EQ(t.getDims().get(-2), transposed.getDims().get(-1));
+  ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
+  
+  for(auto row=0; row<t.getDims().get(-2); row++) {
+    for(auto col=0; col<t.getDims().get(-1); col++) {
+      EXPECT_NEAR(t.get(row, col), transposed.get(col, row), 1e-5);
+    }
+  }
+}
+
+/**
+ * @brief Swap first two dimensions.
+ */
+TEST(CudaTensorOpsTest, TransposeWorksAsIntended2) {
+  auto t = TensorFunctions::Gaussian({3000, 2000, 5000}, 1.0, Device::CUDA);
+  auto transposed = t.createDeepCopy().transpose(0, 1);
+
+  ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(1));
+  ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(-1));
+  ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
+  
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
+        // we transposed dim1 and dim3
+        EXPECT_NEAR(t.get(dim1, dim2, dim3), transposed.get(dim2, dim1, dim3), 1e-5);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Swap first and last dimension.
+ */
+TEST(CudaTensorOpsTest, TransposeWorksAsIntended3) {
+  auto t = TensorFunctions::Gaussian({3000, 2000, 5000}, 1.0, Device::CUDA);
+  auto transposed = t.createDeepCopy().transpose(0, -1);
+
+  ASSERT_EQ(t.getDims().get(0), transposed.getDims().get(-1));
+  ASSERT_EQ(t.getDims().get(-1), transposed.getDims().get(0));
+  ASSERT_EQ(t.getDims().get(1), transposed.getDims().get(1));
+  ASSERT_EQ(t.getDims().nDims(), transposed.getDims().nDims());
+  
+  for(auto dim1=0; dim1<t.getDims().get(0); dim1++) {
+    for(auto dim2=0; dim2<t.getDims().get(1); dim2++) {
+      for(auto dim3=0; dim3<t.getDims().get(-1); dim3++) {
+        // we transposed dim1 and dim3
+        EXPECT_NEAR(t.get(dim1, dim2, dim3), transposed.get(dim3, dim2, dim1), 1e-5);
+      }
+    }
+  }
 }

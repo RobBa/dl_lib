@@ -32,7 +32,7 @@ namespace TensorFunctions { // class name acts as namespace for us
   Tensor Ones(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
   Tensor Ones(std::vector<tensorDim_t> dims, bool requiresGrad=false);
 
-  Tensor Gaussian(std::vector<tensorDim_t> dims, Device d, ftype stddev, bool requiresGrad=false);
+  Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev, Device d, bool requiresGrad=false);
   Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev=1, bool requiresGrad=false);
 
   std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false);

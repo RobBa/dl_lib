@@ -33,8 +33,8 @@ Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, const bool requiresGrad) 
   return Ones(std::move(dims), Tensor::getDefaultDevice(), requiresGrad);
 }
 
-Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const Device d, 
-                                 const ftype stddev, const bool requiresGrad) {
+Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype stddev,  
+                                 const Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
   res.reset(std::make_shared<utility::GaussianInitializer>(stddev));
   return res;
@@ -42,7 +42,7 @@ Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const Device d,
     
 Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype stddev, 
                                  const bool requiresGrad) {
-  return Gaussian(std::move(dims), Tensor::getDefaultDevice(), stddev, requiresGrad);
+  return Gaussian(std::move(dims), stddev, Tensor::getDefaultDevice(), requiresGrad);
 }
 
 // Tensor manipulation

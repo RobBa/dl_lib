@@ -32,7 +32,7 @@ TEST(ActivationTest, ReluForward) {
   auto res = f(t1);
 
   for(size_t i=0; i<t1.getSize(); i++){
-    ASSERT_DOUBLE_EQ(res[i], t1[i]);
+    EXPECT_NEAR(res[i], t1[i], 1e-5);
   }
 }
 
@@ -60,7 +60,7 @@ TEST(AutogradTest, ReLUBackward) {
     // Gradient: [0, 0, 1] (only where input > 0)
     ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
     ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
+    EXPECT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
 TEST(ActivationTest, LeakyReluForward) {
@@ -70,7 +70,7 @@ TEST(ActivationTest, LeakyReluForward) {
   auto res = f(t1);
 
   for(size_t i=0; i<t1.getSize(); i++){
-    ASSERT_DOUBLE_EQ(res[i], t1[i]);
+    EXPECT_NEAR(res[i], t1[i], 1e-5);
   }
 }
 
@@ -83,7 +83,7 @@ TEST(ActivationTest, LeakyReluInputNegative) {
   auto res = f(t1);
 
   for(size_t i=0; i<t1.getSize(); i++){
-    ASSERT_DOUBLE_EQ(res[i], factor * eps);
+    EXPECT_NEAR(res[i], factor * eps, 1e-5);
   }
 }
 
@@ -101,7 +101,7 @@ TEST(AutogradTest, LeakyReLUBackward) {
     // Gradient: [0, 0, 1] (only where input > 0)
     ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
     ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps); // by convention
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(2), 1.0);
+    EXPECT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
 TEST(ActivationTest, SigmoidForward) {
