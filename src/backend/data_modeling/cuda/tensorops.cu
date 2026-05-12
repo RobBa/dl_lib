@@ -17,6 +17,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "utility/cuda/cuda_common.cuh"
 
 #include "cuda_runtime.h"
+#include <thrust/fill.h>
+#include <thrust/device_ptr.h>
 
 #include "data_modeling/tensor.h"
 
@@ -63,6 +65,12 @@ namespace{
     res[gid] = left[gid] + scalar;
   }
 
+  __global__ void matMulKernel(ftype* res, const ftype* const left, const ftype* const right, 
+                               const tensorDim_t leftRows, const tensorDim_t leftCols, tensorDim_t rightRows, tensorDim_t rightCols) {
+    int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if()
+  }
+
   /**
    * @brief Create a contiguous copy of src and copy it into dst. Used for reshaping, transposing, etc.
    * 
@@ -89,7 +97,7 @@ namespace{
   }
 }
 
-namespace cuda {
+namespace cuda_impl {
   void scalaradd(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
     constexpr int threadsPerBlock = 256;
     const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
@@ -106,11 +114,12 @@ namespace cuda {
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec){
-    const auto nBytes = src.getSize();
+  // TODO: fix this one
+  void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec) {
+    const auto size = res.getSize();
 
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
     broadcastaddKernel<<<blocksPerGrid, threadsPerBlock>>>(
       res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
@@ -132,8 +141,41 @@ namespace cuda {
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void matmul(ftype* res, const ftype* const left, const ftype* const right) {
-    static_assert(false);
+  void matmul(ftype* res, const ftype* const left, const ftype* const right, 
+              const tensorDim_t resRows, const tensorDim_t resCols, const tensorSize_t resSize) {
+/*     constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    
+    matMulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
+    cudaErrchk(cudaDeviceSynchronize()); */
+  }
+
+  void scalarFill(ftype* ptr, ftype value, tensorSize_t size) {
+    thrust::fill(thrust::device_pointer_cast(ptr),
+                 thrust::device_pointer_cast(ptr + size), value);
+    cudaErrchk(cudaDeviceSynchronize());
+  }
+
+  void printValues(std::ostream& os, const Tensor& t) {
+    auto printVals = [&os](const Tensor& t) {
+      constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
+      const auto maxIdx = min(MAX_IDX, t.getSize());
+
+      auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
+      cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx * sizeof(ftype), cudaMemcpyDeviceToHost));
+
+      for(tensorSize_t i = 0; i < maxIdx; i++)
+        os << tmp[i];
+      os << "\n\n";
+
+      free(tmp);
+    };
+
+    printVals(t);
+    if(t.hasGrads()) {
+      os << "\n\nGrads:\n";
+      printVals(*t.getGrads());
+    }
   }
 
   ftype get(const ftype* const t, tensorSize_t idx) {
@@ -149,10 +191,10 @@ namespace cuda {
   void createContiguousCopy(Tensor& res, const Tensor& src) {
     assert(res.getSize()==src.getSize());
 
-    ftype* dst = res.getData()
+    ftype* dst = res.getData();
     const ftype* const srcData = src.getData();
 
-    const auto oldStrides = src.getDims().getCreationStrides().data();
+    const auto oldStrides = src.getDims().getOriginalStrides().data();
     const auto newStrides = src.getDims().getStrides().data();
 
     const auto nBytes = src.getSize();
@@ -160,8 +202,8 @@ namespace cuda {
     constexpr int threadsPerBlock = 256;
     const int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
 
-    cudaErrchk(createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
-      dst, srcData, oldStrides, newStrides, dims.nDims(), nBytes));
+    createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
+      dst, srcData, oldStrides, newStrides, src.getDims().nDims(), nBytes);
     cudaErrchk(cudaDeviceSynchronize());
   }
 }

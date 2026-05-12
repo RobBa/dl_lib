@@ -22,15 +22,16 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
-  __forceinline__ __device__ ftype bce(ftype y, ftype ypred) {
-    if constexpr (std::is_same_v<ftype, float>) {
+  template<typename T>
+  __forceinline__ __device__ T bce(T y, T ypred) {
+    if constexpr (std::is_same_v<T, float>) {
       return y * __logf(max(ypred, EPS_BCE)) + (1 - y) * __logf(max(1-ypred, EPS_BCE));
     }
-    else if constexpr (std::is_same_v<ftype, double>) {
+    else if constexpr (std::is_same_v<T, double>) {
       return y * log(max(ypred, EPS_BCE)) + (1 - y) * log(max(1-ypred, EPS_BCE));
     }
     else {
-      static_assert(always_false<ftype>, "Unexpected value for ftype");
+      static_assert(always_false<T>, "Unexpected value for ftype");
     }
   }
 
@@ -45,7 +46,7 @@ namespace {
     // pre-load first round
     {
       int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-      sdata[tid] = bce(y[i], ypred[i]) + bce(y[i + blockDim.x], ypred[i + blockDim.x]);
+      sdata[tid] = bce<ftype>(y[i], ypred[i]) + bce<ftype>(y[i + blockDim.x], ypred[i + blockDim.x]);
       __syncthreads();
     }
 

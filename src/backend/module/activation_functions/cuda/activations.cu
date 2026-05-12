@@ -97,7 +97,8 @@ namespace {
   }
 
   // TODO: use shared memory
-  __global__ void expAndSumKernel(ftype* res, ftype* const tmp, const ftype* const input, const ftype* const maxValues, 
+  template<typename T>
+  __global__ void expAndSumKernel(T* res, T* const tmp, const T* const input, const T* const maxValues,
                                   const tensorSize_t stride, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
@@ -105,14 +106,14 @@ namespace {
 
     const auto strideOffset = gid / stride;
     const auto maxValue = maxValues[strideOffset];
-    if constexpr (std::is_same_v<ftype, float>) {
+    if constexpr (std::is_same_v<T, float>) {
       res[gid] = expf(input[gid] - maxValue);
     }
-    else if constexpr (std::is_same_v<ftype, double>) {
+    else if constexpr (std::is_same_v<T, double>) {
       res[gid] = exp(input[gid] - maxValue);
     }
     else {
-      static_assert(always_false<ftype>, "ftype encountered unexpected type");
+      static_assert(always_false<T>, "ftype encountered unexpected type");
     }
 
     __syncthreads();
@@ -160,7 +161,7 @@ namespace {
 }
 
 
-namespace cuda {
+namespace cuda_impl {
   void relu(Tensor& res, const Tensor& in) {
     constexpr int threadsPerBlock = 256;
     const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
@@ -204,10 +205,10 @@ namespace cuda {
       findMaxKernel<<<blocks, threadsPerBlock>>>(maxValues, tmp, stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
-      expAndSumKernel<<<blocks, threadsPerBlock>>>(res.getData(), tmp, in.getData(), maxValues, stride, in.getSize());
+      expAndSumKernel<ftype><<<blocks, threadsPerBlock>>>(res.getData(), tmp, in.getData(), maxValues, stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
-      softmaxDivisionKernel(res.getData(), tmp, stride, in.getSize());
+      softmaxDivisionKernel<<<blocks, threadsPerBlock>>>(res.getData(), tmp, stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
       cudaErrchk(cudaFree(tmp));

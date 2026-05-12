@@ -17,7 +17,7 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 #include "utility/global_params.h"
 
-namespace cuda {
+namespace cuda_impl {
   __global__ void bceBackward(ftype* res, const ftype* const upstreamGrad, tensorSize_t size);
   __global__ void bceWithSigmoidBackward(ftype* res, const ftype* const upstreamGrad, ftype eps, tensorSize_t size);
 

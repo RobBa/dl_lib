@@ -15,7 +15,9 @@
 
 using namespace std;
 
-ostream& module::operator<<(ostream& os, const module::ModuleBase& l) noexcept {
-  l.print(os); // calling vtable
-  return os;
+namespace module {
+  ostream& operator<<(ostream& os, const ModuleBase& l) noexcept {
+    l.print(os); // calling vtable
+    return os;
+  }
 }

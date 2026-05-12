@@ -37,7 +37,7 @@ if (CUDA)
     add_definitions(-D__CUDA)
     enable_language(CUDA)
     
-    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   else()
     message(WARNING "Could not find CUDA on system. Exiting.")
