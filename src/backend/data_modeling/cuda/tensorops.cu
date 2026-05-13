@@ -92,20 +92,22 @@ namespace{
     const int tid = threadIdx.x;
 
     // 48KB of shared mem -> ~12K floats of 4 bytes -> ~10 blocks per SM of shared memory is limit
-    extern __shared__ ftype smem[];
-    smem[tid] = 0.0f;
-    __syncthreads();
+    //extern __shared__ ftype smem[];
+    //smem[tid] = 0.0f;
+    //__syncthreads();
 
     const int resCol = gid % rightCols;
     const int resRow = gid / rightCols;
     const int leftBase = resRow * leftCols;
 
     // C[i, j] = sum_{k=0}^{leftCols} A[i, k] * B[k, j]
+    ftype cij = 0;
     for(int k = 0; k < leftCols; k++) {
-      smem[tid] += left[leftBase + k] * right[k * rightCols + resCol];
+      //smem[tid] += left[leftBase + k] * right[k * rightCols + resCol];
+      cij += left[leftBase + k] * right[k * rightCols + resCol];
     }
 
-    res[gid] = smem[tid];
+    res[gid] = cij; // smem[tid];
   }
 
   /**
@@ -192,8 +194,9 @@ namespace cuda_impl {
     tensorSize_t resOffset = 0;
 
     while(leftOffset < left.getSize()){
-      const auto smemSize = min(resSize, DeviceProperties::getThreadsPerBlock()) * sizeof(ftype);
-      matMul2DKernel<<<blocksPerGrid, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+      //const auto smemSize = min(resSize, DeviceProperties::getThreadsPerBlock()) * sizeof(ftype);
+      //matMul2DKernel<<<blocksPerGrid, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+      matMul2DKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
                                                          left.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
 
       leftOffset += leftSize;
