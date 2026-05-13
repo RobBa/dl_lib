@@ -12,18 +12,37 @@
 #include "relu.h"
 #include "computational_graph/activation_functions/relu_node.h"
 
+#ifdef __CUDA
+#include "module/activation_functions/cuda/activations.cuh"
+#else
+#include <stdexcept>
+#endif
+
 using namespace std;
 using namespace module;
 
 Tensor ReLu::operator()(const Tensor& t) const {
   auto res = t.createDeepCopy();
 
-  for(tensorSize_t i=0; i<t.getSize(); i++){
-    constexpr ftype zero = 0;
-    if(t[i] < zero){
-      res.set(0, i);
-    }
+  switch(t.getDevice()) {
+    case Device::CPU:
+      for(tensorSize_t i=0; i<t.getSize(); i++){
+        constexpr ftype zero = 0;
+        if(t[i] < zero){
+          res.set(zero, i);
+        }
+      }
+      break;
+    case Device::CUDA:
+    #ifdef __CUDA
+      cuda_impl::relu(res, t);
+    #else 
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
+      break;
   }
+
+
 
   return res;
 }

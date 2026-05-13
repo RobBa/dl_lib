@@ -10,10 +10,15 @@
  */
 
 #include "sigmoid.h"
-
 #include "computational_graph/activation_functions/sigmoid_node.h"
 
 #include <cmath>
+
+#ifdef __CUDA
+#include "module/activation_functions/cuda/activations.cuh"
+#else
+#include <stdexcept>
+#endif
 
 using namespace std;
 using namespace module;
@@ -24,17 +29,29 @@ using namespace module;
 Tensor Sigmoid::operator()(const Tensor& t) const {
   auto res = t.createEmptyCopy();
 
-  constexpr ftype one = 1.0;
-  auto compute = [](ftype x){
-    if(x>=0){
-      return one / (one + exp(-x));
-    }
-    auto e = exp(x);
-    return e / (one + e);
-  };
+  switch(t.getDevice()) {
+    case Device::CPU: {
+      constexpr ftype one = 1.0;
+      auto compute = [](ftype x){
+        if(x>=0){
+          return one / (one + exp(-x));
+        }
+        auto e = exp(x);
+        return e / (one + e);
+      };
 
-  for(tensorSize_t i=0; i<t.getSize(); i++){
-    res.set(compute(t[i]), i);
+      for(tensorSize_t i=0; i<t.getSize(); i++){
+        res.set(compute(t[i]), i);
+      }
+      break;
+    }
+    case Device::CUDA:
+    #ifdef __CUDA
+      cuda_impl::sigmoid(res, t);
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
+      break;
   }
 
   return res;

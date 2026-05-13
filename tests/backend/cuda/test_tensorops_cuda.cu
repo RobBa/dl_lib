@@ -9,6 +9,10 @@
  * 
  */
 
+#ifndef __CUDA
+static_assert(false, "File should not be compiled without CUDA enabled");
+#endif // __CUDA
+
 #include <gtest/gtest.h>
 
 #include "data_modeling/tensor.h"

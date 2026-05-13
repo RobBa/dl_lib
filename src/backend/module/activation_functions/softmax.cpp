@@ -10,10 +10,15 @@
  */
 
 #include "softmax.h"
-
 #include "computational_graph/activation_functions/softmax_node.h"
 
 #include <cmath>
+
+#ifdef __CUDA
+#include "module/activation_functions/cuda/activations.cuh"
+#else
+#include <stdexcept>
+#endif
 
 using namespace std;
 using namespace module;
@@ -28,42 +33,55 @@ Tensor Softmax::operator()(const Tensor& t) const {
     __throw_invalid_argument("Softmax expects input shape of minimum two dimensions");
   }
 
-  const auto nRows = t.getDims()[-2];
-  const auto nCols = t.getDims()[-1];
+  auto res = t.createEmptyCopy();
 
-  // pre-compute exponents
-  Tensor tmp(t.getDims(), t.getDevice(), false);
-  for(tensorDim_t i=0; i<nRows; i++){
-    // for numerical stability, avoid large values
-    // by centering around maxValue for each sample
-    ftype maxValue = -std::numeric_limits<ftype>::infinity();
-    for(tensorDim_t j=0; j<nCols; j++){
-      maxValue = std::max(maxValue, t.get(i, j));
-    }
+  switch(t.getDevice()) {
+    case Device::CPU: {
+      const auto nRows = t.getDims()[-2];
+      const auto nCols = t.getDims()[-1];
 
-    for(tensorDim_t j=0; j<nCols; j++){
-      ftype e = t.get(i, j)-maxValue;
-      tmp.set(exp(e), i, j);
-    }
-  }
+      // pre-compute exponents
+      Tensor tmp(t.getDims(), t.getDevice(), false);
+      for(tensorDim_t i=0; i<nRows; i++){
+        // for numerical stability, avoid large values
+        // by centering around maxValue for each sample
+        ftype maxValue = -std::numeric_limits<ftype>::infinity();
+        for(tensorDim_t j=0; j<nCols; j++){
+          maxValue = std::max(maxValue, t.get(i, j));
+        }
 
-  const tensorSize_t stride = t.getDims()[-1];
-  Tensor res(t.getDims(), t.getDevice());
-  auto compute = [&res, &tmp, stride](tensorSize_t start){
-    ftype sum = 0;
-    for(tensorSize_t i=start; i<start+stride; i++){
-      sum += tmp[i];
-    }
+        for(tensorDim_t j=0; j<nCols; j++){
+          ftype e = t.get(i, j)-maxValue;
+          tmp.set(exp(e), i, j);
+        }
+      }
 
-    for(tensorSize_t i=start; i<start+stride; i++){
-      res.set(tmp[i] / sum, i);
+      const tensorSize_t stride = t.getDims()[-1];
+      auto compute = [&res, &tmp, stride](tensorSize_t start){
+        ftype sum = 0;
+        for(tensorSize_t i=start; i<start+stride; i++){
+          sum += tmp[i];
+        }
+
+        for(tensorSize_t i=start; i<start+stride; i++){
+          res.set(tmp[i] / sum, i);
+        }
+      };
+
+      tensorSize_t offset=0;
+      while(offset<res.getSize()) {
+        compute(offset);
+        offset += stride;
+      }
+      break;
     }
-  };
-  
-  tensorSize_t offset=0;
-  while(offset<res.getSize()) {
-    compute(offset);
-    offset += stride;
+    case Device::CUDA:
+    #ifdef __CUDA
+      cuda_impl::softmax(res, t);
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
+      break;
   }
 
   return res;

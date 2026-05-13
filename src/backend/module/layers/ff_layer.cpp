@@ -17,6 +17,12 @@
 #include <cstdlib>
 #include <utility>
 
+#ifdef __CUDA
+#include "module/layers/cuda/layers.cuh"
+#else
+#include <stdexcept>
+#endif
+
 using namespace std;
 using namespace module;
 using namespace utility;
@@ -55,13 +61,29 @@ FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d,
  * Assumption for input: (b-size, ..., dim1, in-size)
  */
 Tensor FfLayer::operator()(const Tensor& input) const {
-  auto res = input.matmul(*weights);
-
-  if(useBias){
-    res = res + *bias;
+  switch(input.getDevice()) {
+    case Device::CPU: {
+      auto res = input.matmul(*weights);
+      if(useBias) res = res + *bias;
+      return res;
+    }
+    case Device::CUDA:
+    #ifdef __CUDA
+      {
+        auto resDims = input.getDims().toVector();
+        resDims.back() = static_cast<tensorDim_t>(weights->getDims().get(-1));
+        Tensor res(resDims, input.getDevice(), false);
+        if(useBias) {
+          cuda_impl::forwardBias(res, input, *weights, *bias);
+        } else {
+          cuda_impl::forward(res, input, *weights);
+        }
+        return res;
+      }
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
   }
-
-  return res;
 }
 
 /**
