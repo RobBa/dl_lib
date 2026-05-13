@@ -26,3 +26,32 @@ constexpr bool always_false = false;
 
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
+namespace cuda_impl {
+struct DeviceProperties final {
+  private:
+    int threadsPerBlock;
+
+    static const DeviceProperties& get() {
+      static DeviceProperties instance;
+      return instance;
+    }
+
+    DeviceProperties() {
+      cudaDeviceProp prop;
+      cudaGetDeviceProperties(&prop, 0);
+
+      threadsPerBlock = prop.maxThreadsPerBlock;
+    }
+
+  public:
+    DeviceProperties(const DeviceProperties&) = delete;
+    DeviceProperties& operator=(const DeviceProperties&) = delete;
+    
+    DeviceProperties(DeviceProperties&&) = delete;
+    DeviceProperties& operator=(DeviceProperties&&) = delete;
+    
+    ~DeviceProperties() = default;
+
+    static int getThreadsPerBlock() { return get().threadsPerBlock; }
+};
+}

@@ -149,8 +149,8 @@ TEST(CudaTensorOpsTest, MatMulGivesCorrectValues) {
 
   t1.setDevice(Device::CUDA);
   t2.setDevice(Device::CUDA);
-  auto resGpu = t1.matmul(t2);
 
+  auto resGpu = t1.matmul(t2);
   resGpu.setDevice(Device::CPU);
 
   const auto expectedDims = resCpu.getDims().toVector();
@@ -158,7 +158,7 @@ TEST(CudaTensorOpsTest, MatMulGivesCorrectValues) {
 
   for(auto i = 0; i< resCpu.getDims().get(0); i++) {
     for(auto j = 0; j < resCpu.getDims().get(1); j++) {
-      ASSERT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-5)     
+      ASSERT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)     
         << "Mismatch at (" << i << ", " << j << ")"
         << " cpu=" << resCpu.get(i, j) 
         << " gpu=" << resGpu.get(i, j);

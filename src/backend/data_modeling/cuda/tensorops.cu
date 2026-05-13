@@ -192,7 +192,8 @@ namespace cuda_impl {
     tensorSize_t resOffset = 0;
 
     while(leftOffset < left.getSize()){
-      matMul2DKernel<<<blocksPerGrid, threadsPerBlock, resSize * sizeof(ftype)>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+      const auto smemSize = min(resSize, DeviceProperties::getThreadsPerBlock()) * sizeof(ftype);
+      matMul2DKernel<<<blocksPerGrid, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
                                                          left.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
 
       leftOffset += leftSize;

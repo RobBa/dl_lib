@@ -28,8 +28,22 @@ using ftype = float; // TODO: make compiler flag?
  * FOR OVERFLOWS. Similarly, we assume that all dimensions you
  * request fit into datatype tensorDim_t.
  */ 
-using tensorDim_t = std::uint16_t;
+using tensorDim_t = std::uint32_t;
 using tensorSize_t = std::uint32_t;
+
+/**
+ * Note: If we want to narrow down tensorDim_t, say for embedded
+ * devices, we can easily run into subtle bugs, as overflows of 
+ * integers are not detected. A quick way out could be the 
+ * following struct, which is currently not implemented yet.
+ * 
+ * struct tensorDim_t {
+ *   uint16_t value;
+ *   tensorSize_t operator*(const tensorDim_t& other) const {
+ *     return static_cast<tensorSize_t>(value) * other.value;
+ *   }
+ * };
+ */
 
 constexpr tensorDim_t MAX_NDIMS = 6;
 
