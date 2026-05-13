@@ -1,19 +1,24 @@
 /**
  * @file crossentropy_loss.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2026-03-17
- * 
+ *
  * @copyright Copyright (c) 2026
- * 
+ *
  */
 
 #include "crossentropy_loss.h"
-
 #include "computational_graph/loss_functions/crossentropy_node.h"
 
 #include <cmath>
+
+#ifdef __CUDA
+#include "training/loss_functions/cuda/loss_functions.cuh"
+#else
+#include <stdexcept>
+#endif
 
 using namespace std;
 using namespace train;
@@ -33,23 +38,36 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
     __throw_invalid_argument("Tensors must be of same shape");
   }
 
-  auto ce = [&y, &ypred](const tensorDim_t b){
-    ftype res = 0;
-    for(tensorDim_t i=0; i<y->getDims()[-1]; i++){
-      res += y->get(b, i) * log(std::max(ypred->get(b, i), EPS_CROSSENTROPY));
-    }
-    return res;
-  };
+  shared_ptr<Tensor> res = nullptr;
 
-  const auto nBatches = y->getDims()[0];
-  ftype loss = 0;
-  for(tensorSize_t b=0; b<nBatches; b++){
-    loss += ce(b);
+  switch(y->getDevice()) {
+    case Device::CPU: {
+      auto ce = [&y, &ypred](const tensorDim_t b){
+        ftype r = 0;
+        for(tensorDim_t i=0; i<y->getDims()[-1]; i++){
+          r += y->get(b, i) * log(std::max(ypred->get(b, i), EPS_CROSSENTROPY));
+        }
+        return r;
+      };
+
+      const auto nBatches = y->getDims()[0];
+      ftype loss = 0;
+      for(tensorSize_t b=0; b<nBatches; b++){
+        loss += ce(b);
+      }
+      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
+      break;
+    }
+    case Device::CUDA:
+    #ifdef __CUDA
+      res = make_shared<Tensor>(cuda_impl::crossEntropyLoss(*y, *ypred));
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
+      break;
   }
 
-  auto res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
   res->setCgNode(std::make_shared<cgraph::CrossEntropyNode>(y, ypred));
   assert(res->getRequiresGrad());
-
   return res;
 }

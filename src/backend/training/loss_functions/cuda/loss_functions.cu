@@ -1,14 +1,13 @@
 /**
  * @file loss_functions.cu
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2026-05-10
- * 
+ *
  * @copyright Copyright (c) 2026
- * 
+ *
  */
-
 
 #ifndef __CUDA
 static_assert(false, "File should not be compiled without CUDA enabled");
@@ -16,8 +15,6 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "loss_functions.cuh"
 #include "utility/cuda/cuda_common.cuh"
-
-#include <stdexcept>
 
 using namespace std;
 
@@ -61,22 +58,22 @@ namespace {
       sdata[tid] += sdata[tid + 32];
     }
     __syncthreads();
-    
+
     if(tid < 16 && gid + 16 < size) {
       sdata[tid] += sdata[tid + 16];
     }
     __syncthreads();
-    
+
     if(tid < 8 && gid + 8 < size) {
       sdata[tid] += sdata[tid + 8];
     }
     __syncthreads();
-    
+
     if(tid < 4 && gid + 4 < size) {
       sdata[tid] += sdata[tid + 4];
     }
     __syncthreads();
-    
+
     if(tid < 2 && gid + 2 < size) {
       sdata[tid] += sdata[tid + 2];
     }
@@ -86,35 +83,70 @@ namespace {
       sdata[0] = (sdata[0] + sdata[1]) / size;
     }
   }
+
+  // TODO: bceSigmoidLoss kernel
+
+  // TODO: crossEntropyLoss kernel
+
+  // TODO: crossEntropySoftmaxLoss kernel
+
+  // TODO: rmseLoss kernel
 }
 
 namespace cuda_impl {
-  Tensor&& bceLoss(const Tensor& y, const Tensor& yPred) {
-
+  Tensor bceLoss(const Tensor& y, const Tensor& yPred) {
     constexpr int threadsPerBlock = 256;
     const int blocks = (y.getSize() + threadsPerBlock - 1) / (threadsPerBlock * 2);
 
-    auto res = Tensor(vector<tensorDim_t>{1}, Device::CUDA, true);
-
-    bceKernel<<<blocks, threadsPerBlock>>>(res.getData(), y.getData(), yPred.getData(), y.getDims()[0]);
+    Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
+    bceKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
+        res.getData(), y.getData(), yPred.getData(), y.getDims()[0]);
     cudaErrchk(cudaDeviceSynchronize());
 
-    return std::move(res);
+    return res;
   }
 
-  Tensor&& bceSigmoidLoss(const Tensor& y, const Tensor& yPred) {
+  Tensor bceSigmoidLoss(const Tensor& y, const Tensor& yPred) {
+    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
+    Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
+    // TODO: launch kernel
+    cudaErrchk(cudaDeviceSynchronize());
+
+    return res;
   }
 
-  Tensor&& crossEntropyLoss(const Tensor& y, const Tensor& yPred) {
+  Tensor crossEntropyLoss(const Tensor& y, const Tensor& yPred) {
+    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
+    Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
+    // TODO: launch kernel
+    cudaErrchk(cudaDeviceSynchronize());
+
+    return res;
   }
 
-  Tensor&& crossEntropySoftmaxLoss(const Tensor& y, const Tensor& yPred) {
+  Tensor crossEntropySoftmaxLoss(const Tensor& y, const Tensor& yPred) {
+    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
+    Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
+    // TODO: launch kernel
+    cudaErrchk(cudaDeviceSynchronize());
+
+    return res;
   }
 
-  Tensor&& rmseLoss(const Tensor& y, const Tensor& yPred) {
+  Tensor rmseLoss(const Tensor& y, const Tensor& yPred) {
+    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
+    Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
+    // TODO: launch kernel
+    cudaErrchk(cudaDeviceSynchronize());
+
+    return res;
   }
 }

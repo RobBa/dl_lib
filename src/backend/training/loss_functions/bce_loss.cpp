@@ -1,22 +1,24 @@
 /**
  * @file bce_loss.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2026-03-07
- * 
+ *
  * @copyright Copyright (c) 2026
- * 
+ *
  */
 
 #include "bce_loss.h"
 #include "computational_graph/loss_functions/bce_node.h"
 
-#ifdef CUDA
-#include "training/loss_functions/cuda/loss_functions.cuh"
-#endif
-
 #include <cmath>
+
+#ifdef __CUDA
+#include "training/loss_functions/cuda/loss_functions.cuh"
+#else
+#include <stdexcept>
+#endif
 
 using namespace std;
 using namespace train;
@@ -28,7 +30,7 @@ using namespace train;
 shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
-  }  
+  }
   else if(y->getDevice() != ypred->getDevice()){
     __throw_invalid_argument("y and ypred must be on same device");
   }
@@ -36,18 +38,17 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
     __throw_invalid_argument("Tensors must be of same shape");
   }
 
-  shared_ptr<Tensor> res = nullptr; 
+  shared_ptr<Tensor> res = nullptr;
 
   switch(y->getDevice()) {
     case Device::CUDA:
-    #ifdef CUDA
-      res = cuda_impl::bceLoss(*y, *ypred);
-      break;
-    #else 
-      __throw_runtime_error("Should not reach this line");
+    #ifdef __CUDA
+      res = make_shared<Tensor>(cuda_impl::bceLoss(*y, *ypred));
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif
-    case Device::CPU:
-    {
+      break;
+    case Device::CPU: {
       auto bce = [](ftype y, ftype ypred){
         return y * log(std::max(ypred, EPS_BCE)) + (1 - y) * log(std::max(1-ypred, EPS_BCE));
       };
@@ -58,11 +59,8 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
         loss += bce((*y)[i], (*ypred)[i]);
       }
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, Device::CPU, true);
-
       break;
     }
-    default:
-      __throw_invalid_argument("Unexpected device encountered");
   }
 
   res->setCgNode(make_shared<cgraph::BceNode>(y, ypred));
