@@ -382,14 +382,14 @@ Tensor Tensor::createContiguousCopy() const {
   switch(values->getDevice()) {
     case Device::CPU:
     {
-      for (tensorSize_t flatIdx = 0; flatIdx < values->getSize(); flatIdx++) {
+      for(tensorSize_t flatIdx = 0; flatIdx < values->getSize(); flatIdx++) {
         tensorSize_t remainder = flatIdx;
         tensorSize_t srcOffset = 0;
 
-        for (int i=dims.nDims()-1; i>=0; i--) {
+        for(int i = dims.nDims() - 1; i >= 0; i--) {
           tensorSize_t coord = remainder % dims[i];
-          remainder /= dims[i];
           srcOffset += coord * dims.getStride(i);
+          remainder /= dims[i];
         }
 
         res.values->data()[flatIdx] = (*values)[srcOffset];
@@ -469,19 +469,19 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
 
   // broadcasting
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
-  resDims[resDims.size()-2] = left.dims.get(-2); // rows
-  resDims[resDims.size()-1] = right.dims.get(-1); // cols
+  resDims[resDims.size() - 2] = left.dims.get(-2); // rows
+  resDims[resDims.size() - 1] = right.dims.get(-1); // cols
 
   Tensor res(resDims, left.values->getDevice(), false);
-
-  // sizes of the 2D matrices respectively
-  const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
-  const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
-  const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
 
   switch(left.values->getDevice()){
     case Device::CPU:
     {
+      // sizes of the 2D matrices respectively
+      const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
+      const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
+      const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
+
       tensorSize_t leftOffset = 0;
       tensorSize_t rightOffset = 0;
       tensorSize_t resOffset = 0;
@@ -543,14 +543,10 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
  * @brief Matrix multiplication.
  */
 Tensor Tensor::matmul(const Tensor& other) const {
-  assert(values->getDevice()==other.values->getDevice());
-
-  makeContiguous();
-  other.makeContiguous();
-
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
+  
   return matMulImpl(getContiguous(), other.getContiguous());
 }
 
@@ -782,7 +778,7 @@ void Tensor::backward() {
   }
 
   vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
-  for(auto tPtr: sortedTensors){
+  for(auto tPtr : sortedTensors){
     auto& tensor = *tPtr;
     tensor.makeContiguous();
     assert(tensor.grads && !tensor.grads->requiresGrad); // gradient should not require grad
@@ -791,7 +787,7 @@ void Tensor::backward() {
 
     const auto& parents = tensor.cgNode->getParents();
 
-    for(size_t i=0; i<parents.size(); i++){
+    for(size_t i = 0; i < parents.size(); i++){
       auto parent = parents[i];
       if(!parent->requiresGrad){
         continue;
@@ -818,7 +814,7 @@ shared_ptr<Tensor> Tensor::getGrads() const {
  * NumPy we map from the end to the beginning in that case. 
  */
 tensorDim_t Tensor::mapDim(const int dim, const Dimension& dims) {
-  if(dim>=0){
+  if(dim >= 0){
     return dim;
   }
   else if(dim + dims.nDims() < 0){
@@ -967,7 +963,6 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) {
   assert(indices.size()>0);
 
   makeContiguous();
-  
   auto resDims = dims.toVector();
   resDims[0] = indices.size();
 

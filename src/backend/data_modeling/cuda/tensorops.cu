@@ -69,11 +69,43 @@ namespace{
     res[gid] = left[gid] * scalar;
   }
 
-  __global__ void matMulKernel(ftype* res, const ftype* const left, const ftype* const right, 
-                               const tensorDim_t leftRows, const tensorDim_t leftCols, tensorDim_t rightRows, tensorDim_t rightCols)
+  /**
+   * @brief 2D matMul operation. Assumes that res is where result is written to, and res is zero-indexed.
+   * For higher dimensionalities the caller is responsible for proper offset computation!!! The same goes
+   * for left and right, which are also assumed to be 2D matrices, and offsets have to be computed by caller.
+   * 
+   * @param res The result matrix
+   * @param left Left matrix to be multiplied
+   * @param right Right matrix to multiply with
+   * @param leftRows n rows of 
+   * @param leftCols n columns of left matrix; leftCols == rightRows => rightRows not handed as param
+   * @param rightCols n columns of right matrix.
+   * @param resSize Size of the resulting 2D matrix.
+   */
+  __global__ void matMul2DKernel(ftype* res, const ftype* const left, const ftype* const right,
+                               const tensorDim_t leftRows, const tensorDim_t leftCols,
+                               const tensorDim_t rightCols, const tensorSize_t resSize)
   {
-    int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    //if()
+    const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    if(gid >= resSize) 
+      return;
+    const int tid = threadIdx.x;
+
+    // 48KB of shared mem -> ~12K floats of 4 bytes -> ~10 blocks per SM of shared memory is limit
+    extern __shared__ ftype smem[];
+    smem[tid] = 0.0f;
+    __syncthreads();
+
+    const int resCol = gid % rightCols;
+    const int resRow = gid / rightCols;
+    const int leftBase = resRow * leftCols;
+
+    // C[i, j] = sum_{k=0}^{leftCols} A[i, k] * B[k, j]
+    for(int k = 0; k < leftCols; k++) {
+      smem[tid] += left[leftBase + k] * right[k * rightCols + resCol];
+    }
+
+    res[gid] = smem[tid];
   }
 
   /**
@@ -87,7 +119,7 @@ namespace{
   __global__ void createContiguousCopyKernel(ftype* dst, const ftype* const src, const tensorSize_t* const strides,
                                              const tensorDim_t* const dims, const int ndims, const tensorSize_t size)
   {
-    tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    const tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if(flatIdx >= size) 
       return;
 
@@ -95,8 +127,8 @@ namespace{
     tensorSize_t srcOffset = 0;
     for (int i = ndims - 1; i >= 0; i--) {
       tensorSize_t coord = remainder % dims[i];
-      remainder /= dims[i];
       srcOffset += coord * strides[i];
+      remainder /= dims[i];
     }
     dst[flatIdx] = src[srcOffset];
   }
@@ -119,7 +151,6 @@ namespace cuda_impl {
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  // TODO: fix this one
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec) {
     const auto size = res.getSize();
 
@@ -148,11 +179,28 @@ namespace cuda_impl {
   }
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right) {
-/*     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int threadsPerBlock = 256;
+    const int blocksPerGrid = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
     
-    matMulKernel<<<blocksPerGrid, threadsPerBlock>>>(res, left, right, size);
-    cudaErrchk(cudaDeviceSynchronize()); */
+    // sizes of the 2D matrices respectively
+    const tensorSize_t leftSize = left.getDims().get(-1) * left.getDims().get(-2); 
+    const tensorSize_t rightSize = right.getDims().get(-1) * right.getDims().get(-2);
+    const tensorSize_t resSize = left.getDims().get(-2) * right.getDims().get(-1);
+
+    tensorSize_t leftOffset = 0;
+    tensorSize_t rightOffset = 0;
+    tensorSize_t resOffset = 0;
+
+    while(leftOffset < left.getSize()){
+      matMul2DKernel<<<blocksPerGrid, threadsPerBlock, resSize * sizeof(ftype)>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+                                                         left.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
+
+      leftOffset += leftSize;
+      rightOffset += rightSize;
+      resOffset += resSize;
+    }
+    
+    cudaErrchk(cudaDeviceSynchronize());
   }
 
   void scalarFill(Tensor& t, ftype value) {
