@@ -976,13 +976,6 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) {
   return res;
 }
 
-/**
- * @brief Prints only sample of up to 2D tensors.
- */
-void printValuesCpu(std::ostream& os, const Tensor& t) {
-
-}
-
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << "\nDevice: " << DeviceToString(t.values->getDevice());

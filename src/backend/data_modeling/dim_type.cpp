@@ -57,14 +57,14 @@ void Dimension::swap(int dim1, int dim2) {
 }
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) 
-  : creationDims{dims}, creationStrides{makeStrides(dims)}, dims{dims}, strides{creationStrides} {
+  : contiguousDims{dims}, contiguousStrides{makeStrides(dims)}, dims{dims}, strides{contiguousStrides} {
   size = multVector(dims);
   lastDimIdx = dims.size()-1;
   assert(size>0);
 }
 
 Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
-  : creationDims{dims}, dims{creationDims}, creationStrides{strides}, strides{creationStrides} 
+  : contiguousDims{dims}, dims{contiguousDims}, contiguousStrides{strides}, strides{contiguousStrides} 
 {
   size = multVector(dims);
   lastDimIdx = dims.size()-1;

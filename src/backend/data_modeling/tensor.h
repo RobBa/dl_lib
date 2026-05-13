@@ -116,8 +116,6 @@ private:
 
   static tensorDim_t mapDim(int dim, const Dimension& dims);
 
-  friend void printValuesCpu(std::ostream& os, const Tensor& t);
-
   Tensor(const Tensor& other, shallowCopyToken);
 
 public:

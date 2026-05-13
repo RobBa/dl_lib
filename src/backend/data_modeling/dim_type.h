@@ -23,10 +23,10 @@ class Dimension final {
   using dim_t = std::array<tensorSize_t, MAX_NDIMS>;
 
   private:
-    // creationDims and creationStrides should only be set in constructors, otherwise
-    // bugs will emerge. Made non-const so we can use move-assignment operator
-    std::vector<tensorDim_t> creationDims;
-    dim_t creationStrides;
+    // those two indicate the structure of the contiguous data that lies underneath
+    // WARNING: Should only be set in ctor. We did not make them constant, so that we can use copy c'tor
+    std::vector<tensorDim_t> contiguousDims;
+    dim_t contiguousStrides;
 
     std::vector<tensorDim_t> dims;
     dim_t strides;
@@ -48,7 +48,6 @@ class Dimension final {
     }
 
   public:
-
     Dimension(const std::vector<tensorDim_t>& dims);
 
     Dimension(const Dimension& other) = default;
@@ -62,7 +61,7 @@ class Dimension final {
     Dimension collapseDimension(int idx) const;
 
     bool inOriginalState() const noexcept { 
-      return creationDims == dims && creationStrides == strides; 
+      return contiguousDims == dims && contiguousStrides == strides; 
     }
 
     void resize(const std::vector<tensorDim_t>& dims);
@@ -80,8 +79,9 @@ class Dimension final {
       return dims[mapSignedIdx(idx)];
     }
 
+    const tensorDim_t* data() const noexcept { return dims.data(); }
     const auto getStrides() const noexcept { return strides; }
-    const auto getOriginalStrides() const noexcept { return creationStrides; }
+    const auto getContiguousStrides() const noexcept { return contiguousStrides; }
 
     tensorSize_t getStride(int i) const noexcept;
 

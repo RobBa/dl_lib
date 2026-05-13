@@ -22,7 +22,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include <thrust/device_ptr.h>
 
 namespace{
-  __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
+  __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -31,7 +32,8 @@ namespace{
   }
 
   __global__ void broadcastaddKernel(ftype* res, const ftype* const matrix, const ftype* const vec, 
-      const tensorSize_t vectorSize, const tensorSize_t matrixSize) {
+                                     const tensorSize_t vectorSize, const tensorSize_t matrixSize)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=matrixSize)
         return;
@@ -40,7 +42,8 @@ namespace{
     res[gid] = matrix[gid] + vec[vectorIdx];
   }
 
-  __global__ void elementwisemulKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
+  __global__ void elementwisemulKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -48,7 +51,8 @@ namespace{
     res[gid] = left[gid] * right[gid];
   }
 
-  __global__ void scalaraddKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size){
+  __global__ void scalaraddKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -56,7 +60,8 @@ namespace{
     res[gid] = left[gid] + scalar;
   }
 
-  __global__ void scalarmulKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size) {
+  __global__ void scalarmulKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -65,7 +70,8 @@ namespace{
   }
 
   __global__ void matMulKernel(ftype* res, const ftype* const left, const ftype* const right, 
-                               const tensorDim_t leftRows, const tensorDim_t leftCols, tensorDim_t rightRows, tensorDim_t rightCols) {
+                               const tensorDim_t leftRows, const tensorDim_t leftCols, tensorDim_t rightRows, tensorDim_t rightCols)
+  {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     //if()
   }
@@ -78,21 +84,21 @@ namespace{
    * @param ndim Number of dimension of both src and dst.
    * @param size Total size of both src and dst.
    */
-  __global__ void createContiguousCopyKernel(float* dst, const float* const src, const tensorSize_t* const strides,
-                                             const tensorSize_t* const contiguousStrides, const int ndims, const tensorSize_t size)
+  __global__ void createContiguousCopyKernel(ftype* dst, const ftype* const src, const tensorSize_t* const strides,
+                                             const tensorDim_t* const dims, const int ndims, const tensorSize_t size)
   {
-      tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
-      if (flatIdx >= size) 
-        return;
+    tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(flatIdx >= size) 
+      return;
 
-      tensorSize_t remainder = flatIdx;
-      tensorSize_t srcOffset = 0;
-      for (int i = ndims - 1; i >= 0; i--) {
-          tensorSize_t coord = remainder % contiguousStrides[i];
-          remainder /= contiguousStrides[i];
-          srcOffset += coord * strides[i];
-      }
-      dst[flatIdx] = src[srcOffset];
+    tensorSize_t remainder = flatIdx;
+    tensorSize_t srcOffset = 0;
+    for (int i = ndims - 1; i >= 0; i--) {
+      tensorSize_t coord = remainder % dims[i];
+      remainder /= dims[i];
+      srcOffset += coord * strides[i];
+    }
+    dst[flatIdx] = src[srcOffset];
   }
 }
 
@@ -159,19 +165,12 @@ namespace cuda_impl {
   void createContiguousCopy(Tensor& res, const Tensor& src) {
     assert(res.getSize()==src.getSize());
 
-    ftype* dst = res.getData();
-    const ftype* const srcData = src.getData();
-
-    const auto oldStrides = src.getDims().getOriginalStrides().data();
-    const auto newStrides = src.getDims().getStrides().data();
-
-    const auto nBytes = src.getSize();
-
+    const auto size = src.getSize();
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (nBytes + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
     createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
-      dst, srcData, oldStrides, newStrides, src.getDims().nDims(), nBytes);
+      res.getData(), src.getData(), src.getDims().getStrides().data(), src.getDims().data(), src.getDims().nDims(), size);
     cudaErrchk(cudaDeviceSynchronize());
   }
 }
