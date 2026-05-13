@@ -382,7 +382,7 @@ Tensor Tensor::createContiguousCopy() const {
   switch(values->getDevice()) {
     case Device::CPU:
     {
-      for (tensorSize_t flatIdx = 0; flatIdx < values->getSize(); ++flatIdx) {
+      for (tensorSize_t flatIdx = 0; flatIdx < values->getSize(); flatIdx++) {
         tensorSize_t remainder = flatIdx;
         tensorSize_t srcOffset = 0;
 
@@ -392,7 +392,7 @@ Tensor Tensor::createContiguousCopy() const {
           srcOffset += coord * dims.getStride(i);
         }
 
-        res.values->set((*values)[srcOffset], flatIdx);
+        res.values->data()[flatIdx] = (*values)[srcOffset];
       }
       break;
     }
@@ -980,66 +980,38 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) {
  * @brief Prints only sample of up to 2D tensors.
  */
 void printValuesCpu(std::ostream& os, const Tensor& t) {
-  auto printVals = [&os](const Tensor& t){
-    constexpr auto MAX_IDX = static_cast<tensorDim_t>(10);
 
-    if(t.dims.nDims()==2){
-      for(tensorDim_t i=0; i<min(MAX_IDX, t.dims.get(0)); i++){
-        for(tensorDim_t j=0; j<min(MAX_IDX, t.dims.get(1)); j++){
-          os << t.get({i, j}) << " ";
-        }
-        os << "\n";
-      }
-    }
-    else{
-      for(tensorDim_t i=0; i<min(MAX_IDX, static_cast<tensorDim_t>(t.values->getSize())); i++){
-        os << (*t.values)[i] << " ";
-      }
-    }
-  };
-
-  printVals(t);
-  if(t.grads){
-    os << "\n\nGrads:\n";
-    printVals(*t.grads);
-  }
 }
 
 ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << "\nDevice: " << DeviceToString(t.values->getDevice());
   os << "\nrequiresGrad: " << t.requiresGrad << "\n\n";
+  
+  auto printVals = [&os](const Tensor& t){
+    constexpr auto MAX_IDX = static_cast<tensorDim_t>(10);
+
+    if(t.dims.nDims() == 2){
+      for(tensorDim_t i = 0; i < min(MAX_IDX, t.dims.get(0)); i++){
+        for(tensorDim_t j = 0; j < min(MAX_IDX, t.dims.get(1)); j++){
+          os << t.get({i, j}) << " ";
+        }
+        os << "\n";
+      }
+    }
+    else{
+      for(tensorDim_t i = 0; i < min(MAX_IDX, static_cast<tensorDim_t>(t.values->getSize())); i++){
+        os << (*t.values)[i] << " ";
+      }
+    }
+  };
 
   t.makeContiguous();
-  switch(t.values->getDevice()){
-    case Device::CPU:
-      printValuesCpu(os, t);
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-      {
-        auto printVals = [&os](const Tensor& t) {
-          constexpr auto MAX_IDX = static_cast<tensorSize_t>(10);
-          const auto maxIdx = min(MAX_IDX, t.getSize());
-          auto tmp = static_cast<ftype*>(std::malloc(t.getSize() * sizeof(ftype)));
-          cudaErrchk(cudaMemcpy(tmp, t.getData(), maxIdx * sizeof(ftype), cudaMemcpyDeviceToHost));
-          for(tensorSize_t i = 0; i < maxIdx; i++)
-            os << tmp[i];
-          os << "\n\n";
-          free(tmp);
-        };
-        printVals(t);
-        if(t.hasGrads()) {
-          os << "\n\nGrads:\n";
-          printVals(*t.getGrads());
-        }
-      }
-      #else
-        __throw_runtime_error("Not compiled with CUDA");
-      #endif
-      break;
+  printVals(t);
+  if(t.grads){
+    os << "\n\nGrads:\n";
+    printVals(*t.grads);
   }
-
   return os;
 }
 

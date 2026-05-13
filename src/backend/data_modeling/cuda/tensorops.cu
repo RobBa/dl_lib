@@ -79,7 +79,7 @@ namespace{
    * @param size Total size of both src and dst.
    */
   __global__ void createContiguousCopyKernel(float* dst, const float* const src, const tensorSize_t* const strides,
-                                             const tensorSize_t* const contiguousStrides, int ndim, tensorSize_t size)
+                                             const tensorSize_t* const contiguousStrides, const int ndims, const tensorSize_t size)
   {
       tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
       if (flatIdx >= size) 
@@ -87,9 +87,9 @@ namespace{
 
       tensorSize_t remainder = flatIdx;
       tensorSize_t srcOffset = 0;
-      for (int i = 0; i < ndim; ++i) {
-          tensorSize_t coord = remainder / contiguousStrides[i];
-          remainder %= contiguousStrides[i];
+      for (int i = ndims - 1; i >= 0; i--) {
+          tensorSize_t coord = remainder % contiguousStrides[i];
+          remainder /= contiguousStrides[i];
           srcOffset += coord * strides[i];
       }
       dst[flatIdx] = src[srcOffset];
