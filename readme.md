@@ -54,10 +54,11 @@ make
 
 ### Building with CUDA
 
-To build with CUDA, a flag has to be supplied to CMake.
+Project automatically detects whether CUDA is installed, and compiles with it.
+If CUDA compilation not desired you can switch it off via 
 
 ```bash
-cmake --DCUDA=On ..
+cmake --DCUDA=Off ..
 ```
 
 
