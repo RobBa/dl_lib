@@ -27,31 +27,34 @@ constexpr bool always_false = false;
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
 namespace cuda_impl {
-struct DeviceProperties final {
-  private:
-    int threadsPerBlock;
+  struct DeviceProperties final {
+    private:
+      int threadsPerBlock;
+      int warpSize;
 
-    static const DeviceProperties& get() {
-      static DeviceProperties instance;
-      return instance;
-    }
+      static const DeviceProperties& get() {
+        static DeviceProperties instance;
+        return instance;
+      }
 
-    DeviceProperties() {
-      cudaDeviceProp prop;
-      cudaGetDeviceProperties(&prop, 0);
+      DeviceProperties() {
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, 0);
 
-      threadsPerBlock = prop.maxThreadsPerBlock;
-    }
+        threadsPerBlock = prop.maxThreadsPerBlock;
+        warpSize = prop.warpSize;
+      }
 
-  public:
-    DeviceProperties(const DeviceProperties&) = delete;
-    DeviceProperties& operator=(const DeviceProperties&) = delete;
-    
-    DeviceProperties(DeviceProperties&&) = delete;
-    DeviceProperties& operator=(DeviceProperties&&) = delete;
-    
-    ~DeviceProperties() = default;
+    public:
+      DeviceProperties(const DeviceProperties&) = delete;
+      DeviceProperties& operator=(const DeviceProperties&) = delete;
+      
+      DeviceProperties(DeviceProperties&&) = delete;
+      DeviceProperties& operator=(DeviceProperties&&) = delete;
+      
+      ~DeviceProperties() = default;
 
-    static int getThreadsPerBlock() { return get().threadsPerBlock; }
-};
+      static int getThreadsPerBlock() { return get().threadsPerBlock; }
+      static int getWarpSize() { return get().warpSize; }
+  };
 }

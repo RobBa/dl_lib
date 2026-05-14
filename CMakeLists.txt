@@ -27,7 +27,7 @@ endif()
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-option(CUDA "Enable CUDA execution for some faster data structures" OFF)
+option(CUDA "Enable CUDA execution for some faster data structures" ON)
 
 if (CUDA)  
   include(CheckLanguage)
@@ -40,7 +40,7 @@ if (CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   else()
-    message(WARNING "Could not find CUDA on system. Exiting.")
+    message(WARNING "Could not find CUDA on system. Compiling without CUDA enabled")
   endif()
 endif()
 
