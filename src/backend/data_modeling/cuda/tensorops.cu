@@ -22,8 +22,10 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include <thrust/device_ptr.h>
 
 namespace{
-  __global__ void elementwiseaddKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size)
-  {
+  /**
+   * @brief Kernel for simple elementwise addition.
+   */
+  __global__ void elementwiseaddKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -31,9 +33,11 @@ namespace{
     res[gid] = left[gid] + right[gid];
   }
 
-  __global__ void broadcastaddKernel(ftype* res, const ftype* const matrix, const ftype* const vec, 
-                                     const tensorSize_t vectorSize, const tensorSize_t matrixSize)
-  {
+  /**
+   * @brief Kernel for broadcasted addition, e.g. when adding a bias to a matrix.
+   */
+  __global__ void broadcastaddKernel(ftype* const res, const ftype* const matrix, const ftype* const vec, 
+                                     const tensorSize_t vectorSize, const tensorSize_t matrixSize) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=matrixSize)
         return;
@@ -42,8 +46,10 @@ namespace{
     res[gid] = matrix[gid] + vec[vectorIdx];
   }
 
-  __global__ void elementwisemulKernel(ftype* res, const ftype* const left, const ftype* const right, const tensorSize_t size)
-  {
+  /**
+   * @brief Kernel for simple elementwise multiplication.
+   */
+  __global__ void elementwisemulKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -51,8 +57,10 @@ namespace{
     res[gid] = left[gid] * right[gid];
   }
 
-  __global__ void scalaraddKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size)
-  {
+  /**
+   * @brief Kernel for scalar addition.
+   */
+  __global__ void scalaraddKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -60,8 +68,10 @@ namespace{
     res[gid] = left[gid] + scalar;
   }
 
-  __global__ void scalarmulKernel(ftype* res, const ftype* const left, ftype scalar, tensorSize_t size)
-  {
+  /**
+   * @brief Kernel for scalar multiplication.
+   */
+  __global__ void scalarmulKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=size)
       return;
@@ -82,7 +92,7 @@ namespace{
    * @param rightCols n columns of right matrix.
    * @param resSize Size of the resulting 2D matrix.
    */
-  __global__ void matMul2DKernel(ftype* res, const ftype* const left, const ftype* const right,
+  __global__ void matMul2DKernel(ftype* const res, const ftype* const left, const ftype* const right,
                                const tensorDim_t leftRows, const tensorDim_t leftCols,
                                const tensorDim_t rightCols, const tensorSize_t resSize)
   {

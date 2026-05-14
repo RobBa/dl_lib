@@ -19,21 +19,21 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
-  __global__ void reluBackwardKernel(ftype* res, const ftype* const upstreamGrad, const ftype* const parent, const tensorSize_t size) {
+  __global__ void reluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) return;
 
     res[gid] =  parent[gid] > 0 ? upstreamGrad[gid] : 0;
   }
 
-  __global__ void leakyReluBackwardKernel(ftype* res, const ftype* const upstreamGrad, const ftype* const parent, const ftype eps, const tensorSize_t size) {
+  __global__ void leakyReluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const ftype eps, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) return;
 
     res[gid] = parent[gid] > 0 ? upstreamGrad[gid] : eps * upstreamGrad[gid];
   }
 
-  __global__ void sigmoidBackwardKernel(ftype* res, const ftype* const upstreamGrad, const ftype* const sigmoid, const tensorSize_t size) {
+  __global__ void sigmoidBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const sigmoid, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) return;
 

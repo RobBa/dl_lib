@@ -32,7 +32,7 @@ namespace {
     }
   }
 
-  __global__ void bceKernel(ftype* res, const ftype* const y, const ftype* const ypred, tensorSize_t size) {
+  __global__ void bceKernel(ftype* const res, const ftype* const y, const ftype* const ypred, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid >= size)
       return;

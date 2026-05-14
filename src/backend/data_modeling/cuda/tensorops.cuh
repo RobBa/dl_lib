@@ -32,8 +32,8 @@ namespace cuda_impl {
   void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right);
   void matmul(Tensor& res, const Tensor& left, const Tensor& right);
 
-  void transpose2D(ftype* res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
-  void transpose(ftype* res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
+  void transpose2D(ftype* const res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
+  void transpose(ftype* const res, const ftype* const src, Dimension dims, tensorDim_t dim1, tensorDim_t dim2);
 
   void scalarFill(Tensor& t, ftype value);
 

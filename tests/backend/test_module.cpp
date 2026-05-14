@@ -147,7 +147,7 @@ TEST(AutogradTest, SigmoidBackward) {
     // for x=0: grad = 0.5 * 0.5 = 0.25
     // for x=1: grad = 0.7311 * 0.2689 = 0.1966
     auto t = TensorFunctions::makeSharedTensor(
-        {2}, {0.0, 1.0}, true);
+      {2}, {0.0, 1.0}, true);
     
     module::Sigmoid sig;
     auto res = sig(t);
@@ -196,9 +196,10 @@ TEST(ActivationTest, SoftmaxForwardNumericalStability) {
     auto res = sm(t);
 
     for(int i = 0; i < 3; i++) {
-        EXPECT_FALSE(std::isnan(res[i]));
-        EXPECT_FALSE(std::isinf(res[i]));
+      EXPECT_FALSE(std::isnan(res[i]));
+      EXPECT_FALSE(std::isinf(res[i]));
     }
+
     ftype rowsum = res[0] + res[1] + res[2];
     ASSERT_NEAR(rowsum, 1.0, delta);
 }
@@ -221,7 +222,7 @@ TEST(AutogradTest, SoftmaxBackward) {
     
     // set upstream gradient to [1, 0, 0]
     auto upstream = TensorFunctions::makeSharedTensor(
-        {1, 3}, {1.0, 0.0, 0.0});
+      {1, 3}, {1.0, 0.0, 0.0});
     resPtr->setGrads(upstream);
     resPtr->backward();
 

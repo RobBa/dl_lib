@@ -14,13 +14,18 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #endif // __CUDA
 
 #include "activations.cuh"
+
 #include "utility/cuda/cuda_common.cuh"
+#include "utility/macros.h"
 
 #include <stdexcept>
 
 using namespace std;
 
 namespace {
+  /**
+   * @brief Kernel for forward ReLU function.
+   */
   __global__ void reluKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
@@ -30,6 +35,9 @@ namespace {
     res[gid] = fmaxf(input[gid], zero);
   }
 
+  /**
+   * @brief Kernel for forward Leaky-ReLU function.
+   */
   __global__ void leakyReluKernel(ftype* const res, const ftype* const input, const ftype eps, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
@@ -38,12 +46,18 @@ namespace {
     res[gid] = fmaxf(input[gid], eps * input[gid]); // eps < 1
   }
 
+  /**
+   * @brief Single sigmoid computation.
+   */
   __device__ __forceinline__ ftype sigmoid(ftype x) {
       ftype z = expf(-fabsf(x));
       ftype s = 1.0f / (1.0f + z);
       return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
   }
 
+  /**
+   * @brief Kernel for forward Sigmoid function.
+   */
   __global__ void sigmoidKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
@@ -108,6 +122,8 @@ namespace {
    */
   template<int maxoffset>
   __global__ void findMaxKernelOneWarp(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t size) {
+    assert(blockDim.x % 32 == 0);
+
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -122,16 +138,20 @@ namespace {
     warpMaxReduce<maxoffset>(start, stride, offset);
 
     // one warp reduces one 'stride'
-    if(offset == 0)
+    if(offset == 0) {
       res[tid / 32] = smem[tid];
+    }
   }
 
   /**
-   * @brief Numerically stable version of 
+   * @brief Numerically stable version of softmax kernel. Just as in findMaxKernelOneWarp we assume that stride <= 2 * warpsize.
+   * Numerical stability comes from computing the maximum values per row, see findMaxKernelOneWarp and argument maxValues.
    */
   template<typename T, int maxoffset>
   __global__ void stableSoftmaxKernelOneWarp(ftype* const res, const ftype* const input, const ftype* const maxValues,
-                                  const tensorSize_t stride, const tensorSize_t size) {
+                                             const tensorSize_t stride, const tensorSize_t size) {
+    assert(blockDim.x % 32 == 0);
+
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -141,7 +161,6 @@ namespace {
 
     int tid = threadIdx.x;
     extern __shared__ ftype smem[]; // can lead to bank conflicts iff std::is_same_v<T, double>
-    __syncthreads();
 
     ftype expVal = 0;
     if constexpr (std::is_same_v<T, float>) {
@@ -163,105 +182,87 @@ namespace {
     res[gid] = expVal / start[0];
   }
 
-  // TODO: use shared memory
-  __global__ void findMaxKernelOneBlock(ftype* res, ftype* const input, const tensorSize_t stride, const tensorSize_t size) {
+  /**
+   * @brief Like findMaxKernelOneWarp. The difference now is that the input size can be much larger. stride is 
+   * 64 < stride <= threadsPerBlock. res has the maximum values stored.
+   */
+  __global__ void findMaxKernelOneBlock(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t size) {
+    assert(blockDim.x % stride == 0); // guarantees that stride not spread across two blocks 
+
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
 
     int tid = threadIdx.x;
+    extern __shared__ ftype smem[]; // can lead to bank conflicts iff std::is_same_v<T, double>
+    smem[tid] = input[gid];
+    __syncthreads();
+
     const tensorSize_t baseOffset = gid % stride;
-    for(tensorSize_t offset = (stride + 1) / 2; offset > 32; offset = (offset + 1) / 2) { // ceil-division
-      // ceil-division over two -> last thread crosses boundary iff stride % 2 == 1
+    for(tensorSize_t offset = (stride + 1) / 2; offset > 32; offset = (offset + 1) / 2) {
+      // ceil-division over two -> at least one thread crosses boundary iff stride % 2 == 1
       if(baseOffset + offset < stride) {
-        input[gid] = max(input[gid], input[gid + offset]);
+        smem[tid] = max(smem[tid], smem[tid + offset]);
       }
       __syncthreads();
     }
 
-    // loop unrolling
-    if(baseOffset + 16 < stride) {
-      input[gid] = max(input[gid], input[gid + 16]);
-      __syncthreads();
-    }
-    if(baseOffset + 8 < stride) {
-      input[gid] = max(input[gid], input[gid + 8]);
-      __syncthreads();
-    }
-    if(baseOffset + 4 < stride) {
-      input[gid] = max(input[gid], input[gid + 4]);
-      __syncthreads();
-    }    
-    if(baseOffset + 2 < stride) {
-      input[gid] = max(input[gid], input[gid + 2]);
-      __syncthreads();
-    }
-    if(baseOffset + 1 < stride) {
-      input[gid] = max(input[gid], input[gid + 1]);
-      __syncthreads();
-    }
+    volatile ftype* const start = smem + (tid / stride) * stride;
+    const int offset = gid % stride;
+    warpMaxReduce<32>(start, stride, offset);
 
-    // write to result
     if(baseOffset == 0) {
-      res[gid / stride] = input[gid];
+      res[gid / stride] = start[0];
     }
   }
 
-  // TODO: use shared memory
+  /**
+   * @brief Just like stableSoftmaxKernelOneWarp, but this one works across a whole block, not just a warp.
+   */
   template<typename T>
-  __global__ void expAndSumKernelOneBlock(T* res, T* const tmp, const T* const input, const T* const maxValues,
-                                  const tensorSize_t stride, const tensorSize_t size) {
+  __global__ void stableSoftmaxKernelOneBlock(ftype* res, const ftype* const input, const ftype* const maxValues,
+                                          const tensorSize_t stride, const tensorSize_t size) {
+    assert(blockDim.x % stride == 0); // guarantees that stride not spread across two blocks 
+
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
 
     const auto strideOffset = gid / stride;
     const auto maxValue = maxValues[strideOffset];
+
+    extern __shared__ ftype smem[];
+    int tid = threadIdx.x;
+
+    ftype expVal = 0;
     if constexpr (std::is_same_v<T, float>) {
-      res[gid] = expf(input[gid] - maxValue);
+      expVal = expf(input[gid] - maxValue);
     }
     else if constexpr (std::is_same_v<T, double>) {
-      res[gid] = exp(input[gid] - maxValue);
+      expVal = exp(input[gid] - maxValue);
     }
     else {
       static_assert(always_false<T>, "ftype encountered unexpected type");
     }
-
+    smem[tid] = expVal;
     __syncthreads();
 
     const tensorSize_t baseOffset = gid % stride;
-    tensorSize_t offset = (stride + 1) / 2; // ceil-division
-    while(offset > 32) {
-      if(baseOffset + offset >= stride) continue; // ceil-division -> last thread can cross boundary
-
-      tmp[gid] = res[gid] + res[gid + offset];
-      offset = (offset + 1) / 2;
+    for(tensorSize_t offset = (stride + 1) / 2; offset > 32; offset = (offset + 1) / 2) {
+      if(baseOffset + offset < stride) {
+        smem[tid] = smem[tid] + smem[tid + offset]; // ceil-division -> last thread can cross boundary
+      }
+      __syncthreads();
     }
 
-    // loop unrolling
-    if(offset <= 32 && baseOffset + 16 < stride) {
-      tmp[gid] = res[gid] + res[gid + 16];
-    }
-    if(offset <= 16 && baseOffset + 8 < stride) {
-      tmp[gid] = res[gid] + res[gid + 8];
-    }
-    if(offset <= 8 && baseOffset + 4 < stride) {
-      tmp[gid] = res[gid] + res[gid + 4];
-    }
-    if(offset <= 4 && baseOffset + 2 < stride) {
-      tmp[gid] = res[gid] + res[gid + 2];
-    }
-    if(offset <= 2 && baseOffset + 1 < stride) {
-      tmp[gid] = res[gid] + res[gid + 1];
-    }
+    volatile ftype* const start = smem + (tid / stride) * stride;
+    const int offset = gid % stride;
+    warpSumReduce<32>(start, stride, offset);
 
-    // write to result
-    if(baseOffset == 0) {
-      tmp[strideOffset] = tmp[gid];
-    }
+    res[gid] = expVal / start[0];
   }
 
-  __global__ void softmaxDivisionKernel(ftype* res, const ftype* const sums, const tensorSize_t stride, const tensorSize_t size) {
+  __global__ void softmaxDivisionKernel(ftype* const res, const ftype* const sums, const tensorSize_t stride, const tensorSize_t size) {
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -302,11 +303,7 @@ namespace cuda_impl {
       __throw_invalid_argument("Attemped softmax of one element");
     }
 
-    // TODO: use some static struct here to prevent those guys from keeping on re-allocating memory
-/*     ftype* tmp;
-    cudaErrchk(cudaMalloc(&tmp, in.getSize() * sizeof(ftype)));
-    cudaErrchk(cudaMemcpy(tmp, in.getData(), in.getSize() * sizeof(ftype), cudaMemcpyDeviceToDevice)); */
-
+    // TODO: use some static struct here to prevent this guy from keeping on re-allocating memory
     ftype* maxValues;
     const tensorSize_t nMaxValues = in.getSize() / stride;
     cudaErrchk(cudaMalloc(&maxValues, nMaxValues * sizeof(ftype)));
@@ -366,23 +363,26 @@ namespace cuda_impl {
     }
     else if (stride <= 256) {
       // threads per block needs to be multiple of stride
-/*       constexpr int threadsPerBlock = 256;
-      const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+      constexpr int maxThreadsPerBlock = 256;
+      assert_debug(stride <= maxThreadsPerBlock, "If you adapt maxThreadsPerBlock you also have to adapt the limit in the if-clause above");
 
-      findMaxKernelOneBlock<<<blocks, threadsPerBlock>>>(maxValues, tmp, stride, in.getSize());
+      const int nStrides = in.getSize() / stride;
+      const int stridesPerBlock = max(maxThreadsPerBlock / stride, 1);
+
+      const int threadsPerBlock = stridesPerBlock * stride; 
+      const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock;
+
+      findMaxKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
-      expAndSumKernelOneBlock<ftype><<<blocks, threadsPerBlock>>>(res.getData(), tmp, in.getData(), maxValues, stride, in.getSize());
+      stableSoftmaxKernelOneBlock<ftype><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(res.getData(), in.getData(), 
+                                                                                                       maxValues, stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
-
-      softmaxDivisionKernel<<<blocks, threadsPerBlock>>>(res.getData(), tmp, stride, in.getSize());
-      cudaErrchk(cudaDeviceSynchronize()); */
     }
     else {
       __throw_runtime_error("Softmax kernels not yet implemented at inter-block level");
     }
 
-    //cudaErrchk(cudaFree(tmp));
     cudaErrchk(cudaFree(maxValues));
   }
 }
