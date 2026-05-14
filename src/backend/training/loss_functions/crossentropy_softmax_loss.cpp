@@ -42,28 +42,27 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
 
   switch(y->getDevice()) {
     case Device::CPU: {
-      const auto nRows = logits->getDims()[-2];
-      const auto nCols = logits->getDims()[-1];
-
-      // pre-compute exponents and max-values
-      vector<ftype> maxValues(nRows);
-      Tensor tmp(logits->getDims(), logits->getDevice(), false);
-      for(tensorDim_t i=0; i<nRows; i++){
-        // for numerical stability, avoid inf
-        ftype maxV = -std::numeric_limits<ftype>::infinity();
-        for(tensorDim_t j=0; j<nCols; j++){
-          maxV = std::max(maxV, logits->get(i, j));
-        }
-
-        maxValues[i] = maxV;
-
-        for(tensorDim_t j=0; j<nCols; j++){
-          ftype e = logits->get(i, j)-maxV;
-          tmp.set(exp(e), i, j);
-        }
-      }
-
       const tensorSize_t stride = logits->getDims()[-1];
+      const tensorSize_t nSamples = logits->getSize() / stride;
+
+      // pre-compute exponents and max-values, centering each slice for numerical stability
+      vector<ftype> maxValues(nSamples);
+      Tensor tmp(logits->getDims(), logits->getDevice(), false);
+      tensorSize_t offset = 0;
+      while(offset < logits->getSize()) {
+        ftype maxV = -std::numeric_limits<ftype>::infinity();
+        for(tensorSize_t i = offset; i < offset + stride; i++) {
+          maxV = std::max(maxV, (*logits)[i]);
+        }
+
+        maxValues[offset / stride] = maxV;
+
+        for(tensorSize_t i = offset; i < offset + stride; i++) {
+          tmp.set(exp((*logits)[i] - maxV), i);
+        }
+
+        offset += stride;
+      }
       ftype loss = 0;
 
       /**
@@ -73,26 +72,26 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
        */
       auto compute = [&loss, &y, &logits, &tmp, &maxValues, stride](tensorSize_t start){
         ftype lsum = 0;
-        for(tensorSize_t i=start; i<start+stride; i++){
+        for(tensorSize_t i=start; i < start+stride; i++){
           lsum += tmp[i];
         }
         lsum = log(lsum);
 
-        const tensorSize_t j = start/stride;
-        for(tensorSize_t i=start; i<start+stride; i++){
+        const tensorSize_t j = start / stride;
+        for(tensorSize_t i = start; i < start + stride; i++){
           if((*y)[i]>0){ // y either zero or one
             loss += -(*logits)[i] + maxValues[j] + lsum;
           }
         }
       };
 
-      tensorSize_t offset=0;
-      while(offset<logits->getSize()) {
+      offset = 0;
+      while(offset < logits->getSize()) {
         compute(offset);
         offset += stride;
       }
 
-      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / logits->getDims()[0]}, y->getDevice(), true);
+      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / static_cast<ftype>(nSamples)}, y->getDevice(), true);
       break;
     }
     case Device::CUDA:

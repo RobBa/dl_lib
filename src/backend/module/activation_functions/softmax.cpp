@@ -37,26 +37,24 @@ Tensor Softmax::operator()(const Tensor& t) const {
 
   switch(t.getDevice()) {
     case Device::CPU: {
-      const auto nRows = t.getDims()[-2];
-      const auto nCols = t.getDims()[-1];
+      const tensorSize_t stride = t.getDims()[-1];
 
-      // pre-compute exponents
+      // pre-compute exponents, centering each slice around its max for numerical stability
       Tensor tmp(t.getDims(), t.getDevice(), false);
-      for(tensorDim_t i = 0; i < nRows; i++){
-        // for numerical stability, avoid large values
-        // by centering around maxValue for each sample
+      tensorSize_t offset = 0;
+      while(offset < t.getSize()) {
         ftype maxValue = -std::numeric_limits<ftype>::infinity();
-        for(tensorDim_t j = 0; j < nCols; j++){
-          maxValue = std::max(maxValue, t.get(i, j));
+        for(tensorSize_t i = offset; i < offset + stride; i++) {
+          maxValue = std::max(maxValue, t[i]);
         }
 
-        for(tensorDim_t j = 0; j < nCols; j++){
-          ftype e = t.get(i, j) - maxValue;
-          tmp.set(exp(e), i, j);
+        for(tensorSize_t i = offset; i < offset + stride; i++) {
+          tmp.set(exp(t[i] - maxValue), i);
         }
+
+        offset += stride;
       }
 
-      const tensorSize_t stride = t.getDims()[-1];
       auto compute = [&res, &tmp, stride](tensorSize_t start){
         ftype sum = 0;
         for(tensorSize_t i = start; i < start+stride; i++){
@@ -68,7 +66,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
         }
       };
 
-      tensorSize_t offset = 0;
+      offset = 0;
       while(offset < res.getSize()) {
         compute(offset);
         offset += stride;

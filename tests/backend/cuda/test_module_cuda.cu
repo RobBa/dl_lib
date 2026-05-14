@@ -180,8 +180,37 @@ TEST(CudaActivationTest, SoftmaxForwardNumericalStability) {
     ASSERT_FALSE(std::isnan(res[i]));
     ASSERT_FALSE(std::isinf(res[i]));
   }
+
   ftype rowsum = res[0] + res[1] + res[2];
   ASSERT_NEAR(rowsum, 1.0, 1e-5);
+}
+
+TEST(CudaActivationTest, SoftmaxMediumLargeInput) {
+  constexpr tensorDim_t testDim = 190;
+  assert(testDim <= 256 && testDim > 64); // see the kernel call 
+
+  auto t = TensorFunctions::Gaussian({5, 10, testDim}, 2.0f, Device::CUDA);
+  auto tCopy = t.createDeepCopy();
+  tCopy.setDevice(Device::CPU);
+
+  module::Softmax sm;
+  auto resGpu = sm(t);
+  auto resCpu = sm(tCopy);
+
+  cout << resCpu << endl;
+  cout << resGpu << endl;
+
+  resGpu.setDevice(Device::CUDA);
+  for(int i = 0; i < resGpu.getDims().get(0); i++) {
+    for(int j = 0; j < resGpu.getDims().get(1); j++) {
+      for(int k = 0; k < resGpu.getDims().get(2); k++) {
+        ASSERT_NEAR(resCpu.get(i, j, k), resGpu.get(i, j, k), 1e-4)
+          << "Mismatch at (" << i << ", " << j << ", " << k <<  ")"
+          << " cpu=" << resCpu.get(i, j, k) 
+          << " gpu=" << resGpu.get(i, j, k);
+      }
+    }
+  }
 }
 
 /*

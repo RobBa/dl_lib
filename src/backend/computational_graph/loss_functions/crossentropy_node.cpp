@@ -21,6 +21,10 @@
 using namespace std;
 using namespace cgraph;
 
+/**
+ * @brief Backward function on crossentropy-node. Uses cached values of forward pass 
+ * for higher efficiency.
+ */
 vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
 
@@ -29,14 +33,11 @@ vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGr
 
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
-      ftype bSize = yPred->getDims()[0];
-      for(tensorDim_t i=0; i<yPred->getDims()[0]; i++){
-        for(tensorDim_t j=0; j<yPred->getDims()[1]; j++){
-          auto yij = yTrue->get(i, j);
-          auto yijHat = yPred->get(i, j);
-          auto g = -yij/std::max(yijHat, EPS_CROSSENTROPY);
-          res->set(g/bSize, i, j);
-        }
+      const tensorSize_t stride = yPred->getDims()[-1];
+      const ftype bSize = static_cast<ftype>(yPred->getSize() / stride);
+      for(tensorSize_t i = 0; i < yPred->getSize(); i++) {
+        auto g = -(*yTrue)[i] / std::max((*yPred)[i], EPS_CROSSENTROPY);
+        res->set(g / bSize, i);
       }
       break;
     }

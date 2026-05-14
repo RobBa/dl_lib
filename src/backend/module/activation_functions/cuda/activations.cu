@@ -261,15 +261,6 @@ namespace {
 
     res[gid] = expVal / start[0];
   }
-
-  __global__ void softmaxDivisionKernel(ftype* const res, const ftype* const sums, const tensorSize_t stride, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size)
-      return;
-
-    const auto strideOffset = gid / stride;
-    res[gid] = res[gid] / sums[strideOffset];
-  }
 }
 
 namespace cuda_impl {
