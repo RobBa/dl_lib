@@ -31,7 +31,7 @@ vector<shared_ptr<Tensor>> LeakyReLuNode::backward(const Tensor& upstreamGrad) {
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
       constexpr ftype zero = 0.0;
-      for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
+      for(tensorSize_t i = 0; i < upstreamGrad.getSize(); i++){
         res->set((*parent)[i] > zero ? upstreamGrad[i] : upstreamGrad[i] * eps, i);
       }
       break;

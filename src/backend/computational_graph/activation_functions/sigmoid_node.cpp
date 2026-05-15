@@ -30,10 +30,10 @@ vector<shared_ptr<Tensor>> SigmoidNode::backward(const Tensor& upstreamGrad) {
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
       auto derivative = [](ftype s){
-        return s * (1-s);
+        return s * (1 - s);
       };
 
-      for(tensorSize_t i=0; i<upstreamGrad.getSize(); i++){
+      for(tensorSize_t i = 0; i < upstreamGrad.getSize(); i++){
         res->set(derivative((*sigmoid)[i]) * upstreamGrad[i], i);
       }
       break;
