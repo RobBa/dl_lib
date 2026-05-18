@@ -282,7 +282,7 @@ namespace {
       start[tid] += start[tid + 2];
       start[tid] += start[tid + 1];
     }
-    __syncthreads();
+    __syncthreads(); // needed because threads > 32 will also use start[0]
 
     res[gid] = expVal / start[0];
     if(!doPadding) {
@@ -311,9 +311,9 @@ namespace {
     smem[tid] = (localIdx0 < (strideIdx + 1) * stride) ? input[localIdx0] : -INFINITY;
     smem[tid + blockDim.x] = (localIdx1 < (strideIdx + 1) * stride) ? input[localIdx1] : -INFINITY;
     __syncthreads();
-    
+
     // same reduction as findMaxKernelOneBlock from here
-    for(tensorSize_t offset = blockDim.x >> 1; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x; offset > 32; offset >>= 1) {
       if(tid < offset){
         smem[tid] = max(smem[tid], smem[tid + offset]);
       } 
@@ -367,12 +367,12 @@ namespace {
     // TODO: warp shuffle for newer architectures
     volatile ftype* const start = smem;
     if(tid < 32) {
-      if(32 < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 32]);
-      if(16 < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 16]);
-      if(8  < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 8]);
-      if(4  < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 4]);
-      if(2  < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 2]);
-      if(1  < blockDim.x * 2) start[tid] = max(start[tid], start[tid + 1]);
+      if(tid + 32 < blockDim.x) start[tid] = max(start[tid], start[tid + 32]);
+      if(tid + 16 < blockDim.x) start[tid] = max(start[tid], start[tid + 16]);
+      if(tid + 8  < blockDim.x) start[tid] = max(start[tid], start[tid + 8]);
+      if(tid + 4  < blockDim.x) start[tid] = max(start[tid], start[tid + 4]);
+      if(tid + 2  < blockDim.x) start[tid] = max(start[tid], start[tid + 2]);
+      if(tid + 1  < blockDim.x) start[tid] = max(start[tid], start[tid + 1]);
     }
 
     if(tid == 0) { // one block per stride
@@ -408,7 +408,7 @@ namespace {
     smem[tid + blockDim.x] = expVal1;
     __syncthreads();
     
-    // write exp values to output
+    // write values to output -> will be nominator in division
     if(localIdx0 < (strideIdx + 1) * stride) {
       res[localIdx0] = expVal0;
     }
@@ -433,7 +433,6 @@ namespace {
       start[tid] += start[tid + 2];
       start[tid] += start[tid + 1];
     }
-    //__syncthreads();
 
     if(tid == 0) {
       partialSums[blockIdx.x] = start[0];
@@ -472,14 +471,13 @@ namespace {
     // TODO: warp shuffle for newer architectures
     volatile ftype* const start = smem;
     if(tid < 32) {
-      if(32 < blockDim.x * 2) start[tid] += start[tid + 32];
-      if(16 < blockDim.x * 2) start[tid] += start[tid + 16];
-      if(8  < blockDim.x * 2) start[tid] += start[tid + 8];
-      if(4  < blockDim.x * 2) start[tid] += start[tid + 4];
-      if(2  < blockDim.x * 2) start[tid] += start[tid + 2];
-      if(1  < blockDim.x * 2) start[tid] += start[tid + 1];
+      if(tid + 32 < blockDim.x) start[tid] += start[tid + 32];
+      if(tid + 16 < blockDim.x) start[tid] += start[tid + 16];
+      if(tid + 8  < blockDim.x) start[tid] += start[tid + 8];
+      if(tid + 4  < blockDim.x) start[tid] += start[tid + 4];
+      if(tid + 2  < blockDim.x) start[tid] += start[tid + 2];
+      if(tid + 1  < blockDim.x) start[tid] += start[tid + 1];
     }
-    //__syncthreads();
 
     if(tid == 0) { // one block per stride
       sums[blockIdx.x] = start[0];
@@ -606,9 +604,9 @@ namespace cuda_impl {
       constexpr int stridesPerBlock = 1; // if multiple strides per block allowed (adapt kernels!): max(maxThreadsPerBlock / stride, 1);
 
       // threads per block needs to be power of 2 for reduction to resolve cleanly
-      int paddedStride = 1;
-      while(paddedStride < stride) paddedStride <<= 1;
-      int threadsPerBlock = paddedStride / 2;
+      int threadsPerBlock = 1;
+      while(threadsPerBlock < stride) threadsPerBlock <<= 1;
+      threadsPerBlock /= 2;
 
       const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock; // gerneralized version iff multiple strides per block allowed
 
@@ -646,12 +644,12 @@ namespace cuda_impl {
       // pass 2: reduce partial maxes to one max per stride
       int threadsPass2 = 1;
       while(threadsPass2 < blocksPerStride) threadsPass2 <<= 1; // threadsPass2 needs to be power of 2
-      threadsPass2 /= 2;
+      threadsPass2 = max(1, threadsPass2 / 2);
       
-      findMaxKernelLargePass2<<<nStrides, threadsPass2, 2 * threadsPass2 * sizeof(ftype)>>>(maxValues, partialMaxValues, blocksPerStride);
+      findMaxKernelLargePass2<<<nStrides, threadsPass2, threadsPass2 * sizeof(ftype)>>>(maxValues, partialMaxValues, blocksPerStride);
       cudaErrchk(cudaDeviceSynchronize());
 
-      // softmax: same two-pass structure for the sum
+      // same two-pass structure for the sum
       ftype* partialSums;
       cudaErrchk(cudaMalloc(&partialSums, nPartialMax * sizeof(ftype)));
 
@@ -660,7 +658,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
 
       // pass 2: reduce partial sums
-      stableSoftmaxLargePass2<<<nStrides, threadsPass2, 2 * threadsPass2 * sizeof(ftype)>>>(partialSums, partialSums, blocksPerStride);
+      stableSoftmaxLargePass2<<<nStrides, threadsPass2, threadsPass2 * sizeof(ftype)>>>(partialSums, partialSums, blocksPerStride);
       cudaErrchk(cudaDeviceSynchronize());
 
       // final division pass: divide each exp value by its stride's sum

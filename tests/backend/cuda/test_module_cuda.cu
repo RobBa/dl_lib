@@ -225,9 +225,6 @@ TEST(CudaActivationTest, SoftmaxLargeInput) {
   auto resGpu = sm(t);
   auto resCpu = sm(tCopy);
 
-  cout << resCpu << endl;
-  cout << resGpu << endl;
-
   resGpu.setDevice(Device::CUDA);
   for(int i = 0; i < resGpu.getDims().get(0); i++) {
     for(int j = 0; j < resGpu.getDims().get(1); j++) {
