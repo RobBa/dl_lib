@@ -213,6 +213,34 @@ TEST(CudaActivationTest, SoftmaxMediumLargeInput) {
   }
 }
 
+TEST(CudaActivationTest, SoftmaxLargeInput) {
+  constexpr tensorDim_t testDim = 1500;
+  assert(testDim > 256); // see the kernel call 
+
+  auto t = TensorFunctions::Gaussian({2, 2, testDim}, 2.0f, Device::CUDA);
+  auto tCopy = t.createDeepCopy();
+  tCopy.setDevice(Device::CPU);
+
+  module::Softmax sm;
+  auto resGpu = sm(t);
+  auto resCpu = sm(tCopy);
+
+  cout << resCpu << endl;
+  cout << resGpu << endl;
+
+  resGpu.setDevice(Device::CUDA);
+  for(int i = 0; i < resGpu.getDims().get(0); i++) {
+    for(int j = 0; j < resGpu.getDims().get(1); j++) {
+      for(int k = 0; k < resGpu.getDims().get(2); k++) {
+        ASSERT_NEAR(resCpu.get(i, j, k), resGpu.get(i, j, k), 1e-4)
+          << "Mismatch at (" << i << ", " << j << ", " << k <<  ")"
+          << " cpu=" << resCpu.get(i, j, k) 
+          << " gpu=" << resGpu.get(i, j, k);
+      }
+    }
+  }
+}
+
 /*
 TEST(CudaAutogradTest, SoftmaxBackward) {
   auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA, true);
