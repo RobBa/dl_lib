@@ -25,8 +25,6 @@
 
 using namespace std;
 
-constexpr ftype delta = 1e-3;
-
 TEST(ActivationTest, ReluForward) {
   auto t1 = TensorFunctions::Ones({3, 2});
   auto f = module::ReLu();
@@ -113,9 +111,9 @@ TEST(ActivationTest, SigmoidForward) {
     module::Sigmoid sig;
     auto res = sig(t);
 
-    ASSERT_NEAR(res[0], 0.5, delta);
-    ASSERT_NEAR(res[1], 0.7311, delta);
-    ASSERT_NEAR(res[2], 0.2689, delta);
+    ASSERT_NEAR(res[0], 0.5, 1e-4);
+    ASSERT_NEAR(res[1], 0.7311, 1e-4);
+    ASSERT_NEAR(res[2], 0.2689, 1e-4);
 }
 
 TEST(ActivationTest, SigmoidLargePositive) {
@@ -125,7 +123,7 @@ TEST(ActivationTest, SigmoidLargePositive) {
     module::Sigmoid sig;
     auto res = sig(t);
 
-    ASSERT_NEAR(res[0], 1.0, delta);
+    ASSERT_NEAR(res[0], 1.0, 1e-5);
     EXPECT_FALSE(std::isnan(res[0]));
     EXPECT_FALSE(std::isinf(res[0]));
 }
@@ -137,7 +135,7 @@ TEST(ActivationTest, SigmoidLargeNegative) {
     module::Sigmoid sig;
     auto res = sig(t);
 
-    ASSERT_NEAR(res[0], 0.0, delta);
+    ASSERT_NEAR(res[0], 0.0, 1e-5);
     EXPECT_FALSE(std::isnan(res[0]));
     EXPECT_FALSE(std::isinf(res[0]));
 }
@@ -154,8 +152,8 @@ TEST(AutogradTest, SigmoidBackward) {
     res->backward();
 
     auto grads = t->getGrads();
-    ASSERT_NEAR((*grads)[0], 0.25, delta);
-    ASSERT_NEAR((*grads)[1], 0.1966, delta);
+    ASSERT_NEAR((*grads)[0], 0.25, 1e-4);
+    ASSERT_NEAR((*grads)[1], 0.1966, 1e-4);
 }
 
 TEST(ActivationTest, SoftmaxForward) {
@@ -168,9 +166,9 @@ TEST(ActivationTest, SoftmaxForward) {
     module::Softmax sm;
     auto res = sm(t);
 
-    ASSERT_NEAR(res[0], 0.0900, delta);
-    ASSERT_NEAR(res[1], 0.2447, delta);
-    ASSERT_NEAR(res[2], 0.6652, delta);
+    ASSERT_NEAR(res[0], 0.0900, 1e-4);
+    ASSERT_NEAR(res[1], 0.2447, 1e-4);
+    ASSERT_NEAR(res[2], 0.6652, 1e-4);
 }
 
 TEST(ActivationTest, SoftmaxSumsToOne) {
@@ -184,8 +182,8 @@ TEST(ActivationTest, SoftmaxSumsToOne) {
     // each row must sum to 1
     ftype row0sum = res[0] + res[1] + res[2] + res[3];
     ftype row1sum = res[4] + res[5] + res[6] + res[7];
-    ASSERT_NEAR(row0sum, 1.0, delta);
-    ASSERT_NEAR(row1sum, 1.0, delta);
+    ASSERT_NEAR(row0sum, 1.0, 1e-5);
+    ASSERT_NEAR(row1sum, 1.0, 1e-5);
 }
 
 TEST(ActivationTest, SoftmaxForwardNumericalStability) {
@@ -201,7 +199,7 @@ TEST(ActivationTest, SoftmaxForwardNumericalStability) {
     }
 
     ftype rowsum = res[0] + res[1] + res[2];
-    ASSERT_NEAR(rowsum, 1.0, delta);
+    ASSERT_NEAR(rowsum, 1.0, 1e-5);
 }
 
 TEST(AutogradTest, SoftmaxBackward) {
@@ -227,9 +225,9 @@ TEST(AutogradTest, SoftmaxBackward) {
     resPtr->backward();
 
     auto grads = t->getGrads();
-    ASSERT_NEAR((*grads)[0],  0.0819, delta);
-    ASSERT_NEAR((*grads)[1], -0.0220, delta);
-    ASSERT_NEAR((*grads)[2], -0.0599, delta);
+    ASSERT_NEAR((*grads)[0],  0.0819, 1e-4);
+    ASSERT_NEAR((*grads)[1], -0.0220, 1e-4);
+    ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
 }
 
 TEST(LayerTest, TestFfLayer) {
@@ -264,14 +262,14 @@ TEST(AutogradTest, FfLayerBackward) {
   ASSERT_NE(xGrads, nullptr);
   ASSERT_EQ(xGrads->getDims(), x->getDims());
   for(tensorSize_t i = 0; i < xGrads->getSize(); i++) {
-    ASSERT_NEAR((*xGrads)[i], 2.0, delta);
+    ASSERT_NEAR((*xGrads)[i], 2.0, 1e-5);
   }
 
   auto wGrads = layer.getWeights()->getGrads();
   ASSERT_NE(wGrads, nullptr);
   ASSERT_EQ(wGrads->getDims(), layer.getWeights()->getDims());
   for(tensorSize_t i = 0; i < wGrads->getSize(); i++) {
-    ASSERT_NEAR((*wGrads)[i], 2.0, delta);
+    ASSERT_NEAR((*wGrads)[i], 2.0, 1e-5);
   }
 }
 
@@ -294,17 +292,17 @@ TEST(AutogradTest, FfLayerBackwardWithBias) {
   auto xGrads = x->getGrads();
   ASSERT_NE(xGrads, nullptr);
   for(tensorSize_t i = 0; i < xGrads->getSize(); i++) {
-    ASSERT_NEAR((*xGrads)[i], 2.0, delta);
+    ASSERT_NEAR((*xGrads)[i], 2.0, 1e-5);
   }
 
   auto wGrads = layer.getWeights()->getGrads();
   ASSERT_NE(wGrads, nullptr);
   for(tensorSize_t i = 0; i < wGrads->getSize(); i++) {
-    ASSERT_NEAR((*wGrads)[i], 2.0, delta);
+    ASSERT_NEAR((*wGrads)[i], 2.0, 1e-5);
   }
 
   auto bGrads = layer.getBias()->getGrads();
   ASSERT_NE(bGrads, nullptr);
-  ASSERT_NEAR((*bGrads)[0], 2.0, delta);
-  ASSERT_NEAR((*bGrads)[1], 2.0, delta);
+  ASSERT_NEAR((*bGrads)[0], 2.0, 1e-5);
+  ASSERT_NEAR((*bGrads)[1], 2.0, 1e-5);
 }
