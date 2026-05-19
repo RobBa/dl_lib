@@ -69,24 +69,25 @@ namespace {
                                                 const tensorSize_t stride, const int stridesWidthPerBlock, const int threadsPerStride, tensorSize_t size) {
     const int tid = threadIdx.x;
 
-    const int strideNumber = (tid / stride);
-    if(tid - (strideNumber * threadsPerStride) > stride) {
-      // this warp is padded, i.e. it only exists to align warps with strides
-      return;
-    }
-
-    const int gid = blockIdx.x * stridesWidthPerBlock + tid;
-    const ftype yi = softmax[gid];
-
-    const int strideOffset = strideNumber * stride;
     const int withinStrideOffset = tid % threadsPerStride;
+    const bool isPadded = withinStrideOffset >= stride; // padded threads only exists to align warps with strides
+
+    const int strideOffset = (tid / stride) * stride;
+    const int gid = blockIdx.x * stridesWidthPerBlock + strideOffset + withinStrideOffset;
+
+    const ftype yi = softmax[gid];
     const int smemOffset = strideOffset + withinStrideOffset;
 
     extern __shared__ ftype smem[];
-    smem[smemOffset] = yi;
-    smem[smemOffset + stride] = upstreamGrad[gid];
+    if(!isPadded) {
+      smem[smemOffset] = yi;
+      smem[smemOffset + stride] = upstreamGrad[gid];
+    }
     __syncthreads();
-
+    
+    if(isPadded) {
+      return;
+    }
 
     ftype grad = 0;
     for(int j = 0; j < stride; j++) {

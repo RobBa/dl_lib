@@ -197,9 +197,6 @@ TEST(CudaActivationTest, SoftmaxMediumLargeInput) {
   auto resGpu = sm(t);
   auto resCpu = sm(tCopy);
 
-  cout << resCpu << endl;
-  cout << resGpu << endl;
-
   resGpu.setDevice(Device::CUDA);
   for(int i = 0; i < resGpu.getDims().get(0); i++) {
     for(int j = 0; j < resGpu.getDims().get(1); j++) {
@@ -238,7 +235,6 @@ TEST(CudaActivationTest, SoftmaxLargeInput) {
   }
 }
 
-/*
 TEST(CudaAutogradTest, SoftmaxBackward) {
   auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA, true);
 
@@ -255,6 +251,7 @@ TEST(CudaAutogradTest, SoftmaxBackward) {
   ASSERT_NEAR((*grads)[2], -0.0599, 1e-5);
 }
 
+/*
 TEST(CudaLayerTest, TestFfLayer) {
   auto t1 = TensorFunctions::Ones({3, 2}, Device::CUDA);
   auto layer = module::FfLayer(2, 1, Device::CUDA);

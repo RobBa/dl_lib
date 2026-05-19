@@ -40,7 +40,7 @@ Roadmap:
 - [x] Python Binding Unit Tests
 - [x] Optimizers and training framework
 - [x] MNIST example
-- [ ] CUDA mode for operations
+- [x] CUDA mode for operations
 - [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
 - [ ] Docker deployment example
