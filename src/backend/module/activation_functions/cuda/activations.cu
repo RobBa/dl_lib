@@ -500,7 +500,7 @@ namespace {
 namespace cuda_impl {
   void relu(Tensor& res, const Tensor& in) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+    const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     reluKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
     cudaErrchk(cudaDeviceSynchronize());
@@ -508,7 +508,7 @@ namespace cuda_impl {
 
   void leakyRelu(Tensor& res, const Tensor& in, ftype eps) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+    const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     leakyReluKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), eps, in.getSize());
     cudaErrchk(cudaDeviceSynchronize());
@@ -516,7 +516,7 @@ namespace cuda_impl {
 
   void sigmoid(Tensor& res, const Tensor& in) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (in.getSize()+threadsPerBlock-1) / threadsPerBlock;
+    const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     sigmoidKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
     cudaErrchk(cudaDeviceSynchronize());
@@ -669,6 +669,7 @@ namespace cuda_impl {
       cudaErrchk(cudaFree(partialMaxValues));
       cudaErrchk(cudaFree(partialSums));
     }
+
     cudaErrchk(cudaFree(maxValues));
   }
 }
