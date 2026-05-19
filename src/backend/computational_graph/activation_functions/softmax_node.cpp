@@ -24,6 +24,9 @@
 using namespace std;
 using namespace cgraph;
 
+/**
+ * @brief Shape assumptions of softmax forward: [bsize, dim1, dim2, ..., stride]
+ */
 vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
 
@@ -32,21 +35,21 @@ vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
 
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
-      const auto bSize = yPred->getDims()[0];
-      assert(bSize>0);
-
-      for(tensorDim_t b = 0; b < bSize; b++){
-        for(tensorDim_t i = 0; i < yPred->getDims()[1]; i++){
+      const tensorSize_t stride = yPred->getDims()[-1];
+      tensorSize_t offset = 0;
+      while(offset < yPred->getSize()) {
+        for(tensorSize_t i = 0; i < stride; i++) {
           ftype grad = 0;
-          const ftype yi = softmax->get(b, i);
+          const ftype yi = softmax->get(offset + i);
 
-          for(tensorDim_t j = 0; j < yPred->getDims()[1]; j++){
-            ftype yj = softmax->get(b, j);
-            ftype jacobian = (i == j) ? yi * (1 - yj) : -yi * yj;
-            grad += upstreamGrad.get(b, j) * jacobian;
+          for(tensorSize_t j = 0; j < stride; j++) {
+            const ftype yj = softmax->get(offset + j);
+            const ftype jacobian = (i == j) ? yi * (1 - yj) : -yi * yj;
+            grad += upstreamGrad.get(offset + j) * jacobian;
           }
-          res->set(grad, b, i);
+          res->set(grad, offset + i);
         }
+        offset += stride;
       }
       break;
     }
