@@ -19,22 +19,11 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
-  // TODO: forward kernel
-
-  // TODO: forwardBias kernel
+  // TODO: matMulPlusBias kernel
 }
 
 namespace cuda_impl {
-  void forward(Tensor& res, const Tensor& input, const Tensor& weights) {
-    constexpr int threadsPerBlock = 256;
-    const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
-
-    // TODO: launch kernel
-
-    cudaErrchk(cudaDeviceSynchronize());
-  }
-
-  void forwardBias(Tensor& res, const Tensor& input, const Tensor& weights, const Tensor& bias) {
+  void matMulPlusBias(Tensor& res, const Tensor& input, const Tensor& weights, const Tensor& bias) {
     constexpr int threadsPerBlock = 256;
     const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 

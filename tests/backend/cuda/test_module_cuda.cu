@@ -278,7 +278,6 @@ TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   }
 }
 
-/*
 TEST(CudaLayerTest, TestFfLayer) {
   auto t1 = TensorFunctions::Ones({3, 2}, Device::CUDA);
   auto layer = module::FfLayer(2, 1, Device::CUDA);
@@ -287,4 +286,83 @@ TEST(CudaLayerTest, TestFfLayer) {
 
   ASSERT_EQ(res.getDims(), Dimension({3, 1}));
 }
- */
+
+TEST(CudaLayerTest, TestFfLayerLarge) {
+  constexpr tensorDim_t largeDim = 200;
+  auto tCpu = TensorFunctions::Ones({30, largeDim});
+
+  auto tGpu = tCpu.createDeepCopy();
+  tGpu.setDevice(Device::CUDA);
+
+  auto layer = module::FfLayer(largeDim, 10);
+  auto resCpu = layer(tCpu);
+
+  layer.setDevice(Device::CUDA);
+  auto resGpu = layer(tGpu);
+
+  for(int i = 0; i < resCpu.getSize(); i++) {
+    EXPECT_NEAR(resCpu[i], resGpu[i], 1e-4);
+  }
+}
+
+
+TEST(CudaAutogradTest, FfLayerBackward) {
+  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+    1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0
+  }, Device::CUDA, true);
+
+  auto layer = module::FfLayer(3, 2, Device::CUDA, false, true);
+  auto w = layer.getWeights();
+  for(tensorSize_t i = 0; i < w->getSize(); i++) w->set(1.0, i);
+
+  auto res = layer(x);
+  auto loss = cgraph::sumTensor(res);
+  loss->backward();
+
+  auto xGrads = x->getGrads();
+  ASSERT_NE(xGrads, nullptr);
+  ASSERT_EQ(xGrads->getDims(), x->getDims());
+  for(tensorSize_t i = 0; i < xGrads->getSize(); i++) {
+    ASSERT_NEAR((*xGrads)[i], 2.0, 1e-5);
+  }
+
+  auto wGrads = layer.getWeights()->getGrads();
+  ASSERT_NE(wGrads, nullptr);
+  ASSERT_EQ(wGrads->getDims(), layer.getWeights()->getDims());
+  for(tensorSize_t i = 0; i < wGrads->getSize(); i++) {
+    ASSERT_NEAR((*wGrads)[i], 2.0, 1e-5);
+  }
+}
+
+TEST(CudaAutogradTest, FfLayerBackwardWithBias) {
+  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+    1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0
+  }, Device::CUDA, true);
+
+  auto layer = module::FfLayer(3, 2, Device::CUDA, true, true);
+  auto w = layer.getWeights();
+  for(tensorSize_t i = 0; i < w->getSize(); i++) w->set(1.0, i);
+
+  auto res = layer(x);
+  auto loss = cgraph::sumTensor(res);
+  loss->backward();
+
+  auto xGrads = x->getGrads();
+  ASSERT_NE(xGrads, nullptr);
+  for(tensorSize_t i = 0; i < xGrads->getSize(); i++) {
+    ASSERT_NEAR((*xGrads)[i], 2.0, 1e-5);
+  }
+
+  auto wGrads = layer.getWeights()->getGrads();
+  ASSERT_NE(wGrads, nullptr);
+  for(tensorSize_t i = 0; i < wGrads->getSize(); i++) {
+    ASSERT_NEAR((*wGrads)[i], 2.0, 1e-5);
+  }
+
+  auto bGrads = layer.getBias()->getGrads();
+  ASSERT_NE(bGrads, nullptr);
+  ASSERT_NEAR((*bGrads)[0], 2.0, 1e-5);
+  ASSERT_NEAR((*bGrads)[1], 2.0, 1e-5);
+}

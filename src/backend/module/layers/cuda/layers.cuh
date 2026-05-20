@@ -19,6 +19,5 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "data_modeling/tensor.h"
 
 namespace cuda_impl {
-  void forward(Tensor& res, const Tensor& input, const Tensor& weights);
-  void forwardBias(Tensor& res, const Tensor& input, const Tensor& weights, const Tensor& bias);
+  void matMulPlusBias(Tensor& res, const Tensor& input, const Tensor& weights, const Tensor& bias);
 }

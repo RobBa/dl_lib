@@ -19,7 +19,6 @@
 namespace module {
   class FfLayer : public ModuleBase {
     bool requiresGrad = false;
-    bool useBias = false;
 
     std::shared_ptr<Tensor> weights = nullptr;
     std::shared_ptr<Tensor> bias = nullptr;
@@ -48,6 +47,13 @@ namespace module {
 
     std::vector< std::shared_ptr<Tensor> > parameters() const override {
       return {weights, bias};
+    }
+
+    void setDevice(Device d) noexcept override {
+      weights->setDevice(d);
+      if(bias) {
+        bias->setDevice(d);
+      }
     }
 
     void print(std::ostream& os) const noexcept override;

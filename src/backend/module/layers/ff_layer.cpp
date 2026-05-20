@@ -40,7 +40,7 @@ FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, bool useBias, bool req
  */
 FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d, 
     bool useBias, bool requiresGrad, shared_ptr<InitializerBase> init)
-  : useBias{useBias}, requiresGrad{requiresGrad} 
+  : requiresGrad{requiresGrad} 
 {
   if(!init){
     init = make_shared<NormalXavierInitializer>(inSize, outSize);  
@@ -64,24 +64,30 @@ Tensor FfLayer::operator()(const Tensor& input) const {
   switch(input.getDevice()) {
     case Device::CPU: {
       auto res = input.matmul(*weights);
-      if(useBias) res = res + *bias;
+      if(bias) res = res + *bias;
       return res;
     }
     case Device::CUDA:
     #ifdef __CUDA
       {
-        auto resDims = input.getDims().toVector();
-        resDims.back() = static_cast<tensorDim_t>(weights->getDims().get(-1));
-        Tensor res(resDims, input.getDevice(), false);
-        if(useBias) {
-          cuda_impl::forwardBias(res, input, *weights, *bias);
+        if(bias) {
+          // TODO: the following should be an optimized fusion kernel
+          /* auto resDims = input.getDims().toVector();
+          resDims.back() = static_cast<tensorDim_t>(weights->getDims().get(-1));
+          Tensor res(resDims, input.getDevice(), false);
+
+          cuda_impl::matMulPlusBias(res, input, *weights, *bias); */
+
+          auto res = input.matmul(*weights);
+          res = res + *bias;
+          return res;
         } else {
-          cuda_impl::forward(res, input, *weights);
+          return input.matmul(*weights);
         }
-        return res;
       }
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
+      return input.createShallowCopy(); // line should not be reached
     #endif
   }
 }
@@ -90,8 +96,9 @@ Tensor FfLayer::operator()(const Tensor& input) const {
  * @brief Like overload, but creates computational graph.
  */
 std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input) const {
+  // TODO: if you fuse kernel you'll also have to do it here. Perhaps give tensor a matmulplusbias method?
   auto res = cgraph::matmul(input, weights);
-  if(useBias){
+  if(bias){
     res = cgraph::add(res, bias);
   }
 

@@ -61,6 +61,8 @@ namespace module {
       #endif
       };
 
+      virtual void setDevice(Device d) noexcept {}
+
       friend std::ostream& operator<<(std::ostream& os, const ModuleBase& t) noexcept;
   };
 }
