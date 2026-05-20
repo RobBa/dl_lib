@@ -58,16 +58,16 @@ TEST(TensorOpsTest, ScalarMul) {
 }
 
 TEST(AutogradTest, ScalarMultiplication) {
-    auto t1 = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
-    auto t2 = TensorFunctions::makeSharedTensor({1}, {3.0}, true);
+  auto t1 = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
+  auto t2 = TensorFunctions::makeSharedTensor({1}, {3.0}, true);
 
-    auto t3 = cgraph::mul(t1, t2);
-    auto loss = cgraph::mul(t3, t3);
-    
-    loss->backward();
-    
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get(0), 36.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get(0), 24.0);
+  auto t3 = cgraph::mul(t1, t2);
+  auto loss = cgraph::mul(t3, t3);
+
+  loss->backward();
+
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get(0), 36.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get(0), 24.0);
 }
 
 TEST(TensorOpsTest, TensorAdd) {
@@ -84,17 +84,24 @@ TEST(TensorOpsTest, TensorAdd) {
   }
 }
 
-TEST(AutogradTest, TensorAdd) {
-    auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, true);
-    auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
+TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
+  auto t1 = TensorFunctions::Ones({2, 2});
+  auto t2 = TensorFunctions::Ones({2, 3}) * 4;
 
-    auto t3 = cgraph::add(t1, t2);
-    auto loss = cgraph::mul(t3, t3);
-    
-    loss->backward();
-    
-    ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
-    ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
+  ASSERT_THROW(t1 + t2, std::invalid_argument);
+}
+
+TEST(AutogradTest, TensorAdd) {
+  auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, true);
+  auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
+
+  auto t3 = cgraph::add(t1, t2);
+  auto loss = cgraph::mul(t3, t3);
+
+  loss->backward();
+
+  ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
+  ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
 }
 
 TEST(TensorOpsTest, BroadcastAdd) {
@@ -114,19 +121,19 @@ TEST(TensorOpsTest, BroadcastAdd) {
 }
 
 TEST(TensorOpsTest, BroadcastAdd2D) {
-    // (2,3) + (3) 
-    auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
-                              4.0, 5.0, 6.0});
-    auto t2 = Tensor({3}, {10.0, 20.0, 30.0});
-    auto res = t1 + t2;
+  // (2,3) + (3)
+  auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
+                            4.0, 5.0, 6.0});
+  auto t2 = Tensor({3}, {10.0, 20.0, 30.0});
+  auto res = t1 + t2;
 
-    // expected: each row of t1 gets t2 added elementwise
-    ASSERT_NEAR(res.get(0, 0), 11.0, 1e-5);
-    ASSERT_NEAR(res.get(0, 1), 22.0, 1e-5);
-    ASSERT_NEAR(res.get(0, 2), 33.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 0), 14.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 1), 25.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 2), 36.0, 1e-5);
+  // expected: each row of t1 gets t2 added elementwise
+  ASSERT_NEAR(res.get(0, 0), 11.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1), 22.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 2), 33.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 0), 14.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1), 25.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 2), 36.0, 1e-5);
 }
 
 TEST(TensorOpsTest, BroadcastAddNotCommutative) {
@@ -136,44 +143,37 @@ TEST(TensorOpsTest, BroadcastAddNotCommutative) {
   ASSERT_THROW(t2 + t1, std::invalid_argument);
 }
 
-TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
-  auto t1 = TensorFunctions::Ones({2, 2});
-  auto t2 = TensorFunctions::Ones({2, 3}) * 4;
-
-  ASSERT_THROW(t1 + t2, std::invalid_argument);
-}
-
 TEST(AutogradTest, BroadcastAdd) {
-    // gradient of broadcast add w.r.t. bias should be sum over batch dimension
-    // upstream grad: (2,3) of ones → bias grad should be (3) of twos
-    auto t1 = TensorFunctions::makeSharedTensor({2, 3}, 
-        {1.0, 2.0, 3.0,
-         4.0, 5.0, 6.0}, true);
-    auto bias = TensorFunctions::makeSharedTensor({3}, 
-        {0.0, 0.0, 0.0}, true);
+  // gradient of broadcast add w.r.t. bias should be sum over batch dimension
+  // upstream grad: (2,3) of ones → bias grad should be (3) of twos
+  auto t1 = TensorFunctions::makeSharedTensor({2, 3},
+    {1.0, 2.0, 3.0,
+     4.0, 5.0, 6.0}, true);
+  auto bias = TensorFunctions::makeSharedTensor({3},
+    {0.0, 0.0, 0.0}, true);
 
-    auto res = cgraph::add(t1, bias);
+  auto res = cgraph::add(t1, bias);
 
-    // set upstream grad to ones and backprop
-    auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
-        {1.0, 1.0, 1.0,
-         1.0, 1.0, 1.0}, false);
-    res->backward();
+  // set upstream grad to ones and backprop
+  auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
+    {1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0}, false);
+  res->backward();
 
-    // bias grad should be sum over batch: [2, 2, 2]
-    auto biasGrad = bias->getGrads();
-    ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
-    ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
-    ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
+  // bias grad should be sum over batch: [2, 2, 2]
+  auto biasGrad = bias->getGrads();
+  ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
+  ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
+  ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
 
-    // t1 grad should be ones (add is identity for non-broadcast operand)
-    auto t1Grad = t1->getGrads();
-    for(int i = 0; i < 6; i++) {
-        ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
-    }
+  // t1 grad should be ones (add is identity for non-broadcast operand)
+  auto t1Grad = t1->getGrads();
+  for(int i = 0; i < 6; i++) {
+    ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
+  }
 }
 
-TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
+TEST(TensorOpsTest, MatrixAdd) {
   auto t1 = TensorFunctions::Ones({2, 2});
   auto t2 = TensorFunctions::Ones({2, 2});
     
@@ -188,7 +188,7 @@ TEST(TensorOpsTest, MatrixAddGivesCorrectResults) {
   }
 }
 
-TEST(TensorOpsTest, ElementwiseMulGivesCorrectResults) {
+TEST(TensorOpsTest, ElementwiseMul) {
   constexpr ftype factor = 0.5;
   auto t1 = TensorFunctions::Ones({2, 2});
   auto t2 = TensorFunctions::Ones({2, 2}) * 0.5;
@@ -210,7 +210,7 @@ TEST(TensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
   ASSERT_THROW(t1 * t2, std::invalid_argument);
 }
 
-TEST(TensorOpsTest, MatMulGivesCorrectValues1) {
+TEST(TensorOpsTest, MatMul) {
   auto t1 = TensorFunctions::Ones({3, 2});
   auto t2 = TensorFunctions::Ones({2, 6}) * 1.5;
     
@@ -226,7 +226,7 @@ TEST(TensorOpsTest, MatMulGivesCorrectValues1) {
   }
 }
 
-TEST(TensorOpsTest, MatMulGivesCorrectValues2) {
+TEST(TensorOpsTest, MatMul2) {
   auto t1 = Tensor({2, 2});
   auto t2 = Tensor({2, 2});
 
@@ -264,36 +264,36 @@ TEST(TensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
 }
 
 TEST(AutogradTest, MatMul) {
-    auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
-    auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
-    
-    auto t3 = cgraph::matmul(t1, t2);
+  auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
+  auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
 
-    auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, true);
-    for (size_t i = 0; i < t3->getSize(); ++i) {
-        loss = cgraph::add(loss, cgraph::get(t3, i));
-    }
-    
-    loss->backward();
-    
-    EXPECT_TRUE(t1->hasGrads());
-    EXPECT_TRUE(t2->hasGrads());
+  auto t3 = cgraph::matmul(t1, t2);
 
-    // dL/dt1 = dloss/dt3 @ t2^t = Ones({2, 2}) @ t2^t
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 0}), 3.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 2}), 11.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 0}), 3.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 2}), 11.0);
+  auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, true);
+  for(size_t i = 0; i < t3->getSize(); ++i) {
+    loss = cgraph::add(loss, cgraph::get(t3, i));
+  }
 
-    // dL/dt2 = t1^t @ dloss/dt3 = t1^t @ Ones({2, 2})
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 0}), 5.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 1}), 5.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 0}), 7.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 1}), 7.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 0}), 9.0);
-    ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 1}), 9.0);
+  loss->backward();
+
+  EXPECT_TRUE(t1->hasGrads());
+  EXPECT_TRUE(t2->hasGrads());
+
+  // dL/dt1 = dloss/dt3 @ t2^t = Ones({2, 2}) @ t2^t
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 0}), 3.0);
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 1}), 7.0);
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({0, 2}), 11.0);
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 0}), 3.0);
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 1}), 7.0);
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get({1, 2}), 11.0);
+
+  // dL/dt2 = t1^t @ dloss/dt3 = t1^t @ Ones({2, 2})
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 0}), 5.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({0, 1}), 5.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 0}), 7.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({1, 1}), 7.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 0}), 9.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get({2, 1}), 9.0);
 }
 
 

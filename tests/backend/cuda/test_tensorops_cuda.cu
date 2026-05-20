@@ -74,17 +74,24 @@ TEST(CudaTensorOpsTest, TensorAdd) {
   }
 }
 
-/* TEST(CudaAutogradTest, TensorAdd) {
-    auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
-    auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
+  auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
+  auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 4;
 
-    auto t3 = cgraph::add(t1, t2);
-    auto loss = cgraph::mul(t3, t3);
-    
-    loss->backward();
-    
-    ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
-    ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
+  ASSERT_THROW(t1 + t2, std::invalid_argument);
+}
+
+/* TEST(CudaAutogradTest, TensorAdd) {
+  auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
+  auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+
+  auto t3 = cgraph::add(t1, t2);
+  auto loss = cgraph::mul(t3, t3);
+
+  loss->backward();
+
+  ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
+  ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
 } */
 
 TEST(CudaTensorOpsTest, BroadcastAdd) {
@@ -104,20 +111,20 @@ TEST(CudaTensorOpsTest, BroadcastAdd) {
 }
 
 TEST(CudaTensorOpsTest, BroadcastAdd_2D) {
-    // (2,3) + (3) 
-    auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
-                              4.0, 5.0, 6.0}, Device::CUDA);
-    auto t2 = Tensor({3}, {10.0, 20.0, 30.0}, Device::CUDA);
+  // (2,3) + (3)
+  auto t1 = Tensor({2, 3}, {1.0, 2.0, 3.0,
+                            4.0, 5.0, 6.0}, Device::CUDA);
+  auto t2 = Tensor({3}, {10.0, 20.0, 30.0}, Device::CUDA);
 
-    auto res = t1 + t2;
+  auto res = t1 + t2;
 
-    // expected: each row of t1 gets t2 added elementwise
-    ASSERT_NEAR(res.get(0, 0), 11.0, 1e-5);
-    ASSERT_NEAR(res.get(0, 1), 22.0, 1e-5);
-    ASSERT_NEAR(res.get(0, 2), 33.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 0), 14.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 1), 25.0, 1e-5);
-    ASSERT_NEAR(res.get(1, 2), 36.0, 1e-5);
+  // expected: each row of t1 gets t2 added elementwise
+  ASSERT_NEAR(res.get(0, 0), 11.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1), 22.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 2), 33.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 0), 14.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1), 25.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 2), 36.0, 1e-5);
 }
 
 TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
@@ -127,14 +134,7 @@ TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
   ASSERT_THROW(t2 + t1, std::invalid_argument);
 }
 
-TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
-  auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 4;
-
-  ASSERT_THROW(t1 + t2, std::invalid_argument);
-}
-
-TEST(CudaTensorOpsTest, MatrixAddGivesCorrectResults) {
+TEST(CudaTensorOpsTest, MatrixAdd) {
   auto t1 = TensorFunctions::Ones({200, 200}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({200, 200}, Device::CUDA);
     
@@ -149,7 +149,7 @@ TEST(CudaTensorOpsTest, MatrixAddGivesCorrectResults) {
   }
 }
 
-TEST(CudaTensorOpsTest, ElementwiseMulGivesCorrectResults) {
+TEST(CudaTensorOpsTest, ElementwiseMul) {
   constexpr ftype factor = 0.5;
   auto t1 = TensorFunctions::Ones({200, 200}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({200, 200}, Device::CUDA) * 0.5;
@@ -171,31 +171,7 @@ TEST(CudaTensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
   ASSERT_THROW(t1 * t2, std::invalid_argument);
 }
 
-TEST(CudaTensorOpsTest, MatMulGivesCorrectValues) {
-  auto t1 = TensorFunctions::Gaussian({1000, 10}, 2.0);
-  auto t2 = TensorFunctions::Gaussian({10, 1000}, 2.0);
-  auto resCpu = t1.matmul(t2);
-
-  t1.setDevice(Device::CUDA);
-  t2.setDevice(Device::CUDA);
-
-  auto resGpu = t1.matmul(t2);
-  resGpu.setDevice(Device::CPU);
-
-  const auto expectedDims = resCpu.getDims().toVector();
-  ASSERT_EQ(resGpu.getDims().toVector(), expectedDims);
-
-  for(auto i = 0; i< resCpu.getDims().get(0); i++) {
-    for(auto j = 0; j < resCpu.getDims().get(1); j++) {
-      ASSERT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)     
-        << "Mismatch at (" << i << ", " << j << ")"
-        << " cpu=" << resCpu.get(i, j) 
-        << " gpu=" << resGpu.get(i, j);
-    }
-  }
-}
-
-TEST(CudaTensorOpsTest, MatMulGivesCorrectValues2) {
+TEST(CudaTensorOpsTest, MatMul) {
   auto t1 = Tensor({2, 2});
   auto t2 = Tensor({2, 2});
 
@@ -228,6 +204,30 @@ TEST(CudaTensorOpsTest, MatMulGivesCorrectValues2) {
   }
 }
 
+TEST(CudaTensorOpsTest, MatMulLarge) {
+  auto t1 = TensorFunctions::Gaussian({1000, 10}, 2.0);
+  auto t2 = TensorFunctions::Gaussian({10, 1000}, 2.0);
+  auto resCpu = t1.matmul(t2);
+
+  t1.setDevice(Device::CUDA);
+  t2.setDevice(Device::CUDA);
+
+  auto resGpu = t1.matmul(t2);
+  resGpu.setDevice(Device::CPU);
+
+  const auto expectedDims = resCpu.getDims().toVector();
+  ASSERT_EQ(resGpu.getDims().toVector(), expectedDims);
+
+  for(auto i = 0; i< resCpu.getDims().get(0); i++) {
+    for(auto j = 0; j < resCpu.getDims().get(1); j++) {
+      ASSERT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)     
+        << "Mismatch at (" << i << ", " << j << ")"
+        << " cpu=" << resCpu.get(i, j) 
+        << " gpu=" << resGpu.get(i, j);
+    }
+  }
+}
+
 TEST(CudaTensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
   auto t1 = TensorFunctions::Ones({2, 2});
   auto t2 = TensorFunctions::Ones({3, 2});
@@ -235,7 +235,7 @@ TEST(CudaTensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
   ASSERT_THROW(t1.matmul(t2), std::runtime_error);
 }
 
-TEST(CudaTensorOpsTest, TransposeAsIntended1) {
+TEST(CudaTensorOpsTest, MatrixTranspose1) {
   auto t = TensorFunctions::Gaussian({200, 200}, 1.0, Device::CUDA);
 
   auto transposed = t.createDeepCopy();
@@ -257,7 +257,7 @@ TEST(CudaTensorOpsTest, TransposeAsIntended1) {
 }
 
 // Swap first two dimensions.
-TEST(CudaTensorOpsTest, TransposeAsIntended2) {
+TEST(CudaTensorOpsTest, MatrixTranspose2) {
   auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, 1);
   transposed.setDevice(Device::CPU);
@@ -281,7 +281,7 @@ TEST(CudaTensorOpsTest, TransposeAsIntended2) {
 }
 
 // Swap first and last dimension.
-TEST(CudaTensorOpsTest, TransposeAsIntended3) {
+TEST(CudaTensorOpsTest, MatrixTranspose3) {
   auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, -1);
   transposed.setDevice(Device::CPU);

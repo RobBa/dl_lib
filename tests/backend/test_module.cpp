@@ -54,13 +54,13 @@ TEST(AutogradTest, ReLUBackward) {
 
   auto y = relu(x);    // [0, 0, 2]
   auto loss = cgraph::sumTensor(y);  // loss = 2
-    
-    loss->backward();
-    
-    // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
-    ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
+
+  loss->backward();
+
+  // Gradient: [0, 0, 1] (only where input > 0)
+  ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
+  ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
+  ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
 TEST(ActivationTest, LeakyReluForward) {
@@ -88,118 +88,118 @@ TEST(ActivationTest, LeakyReluInputNegative) {
 }
 
 TEST(AutogradTest, LeakyReLUBackward) {
-    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
 
-    constexpr ftype eps = 0.3;
-    auto relu = module::LeakyReLu(eps);
+  constexpr ftype eps = 0.3;
+  auto relu = module::LeakyReLu(eps);
 
-    auto y = relu(x);    // [0, 0, 2]
-    auto loss = cgraph::sumTensor(y);  // loss = 2
-    
-    loss->backward();
-    
-    // Gradient: [0, 0, 1] (only where input > 0)
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
-    ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps); // by convention
-    ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
+  auto y = relu(x);    // [0, 0, 2]
+  auto loss = cgraph::sumTensor(y);  // loss = 2
+
+  loss->backward();
+
+  // Gradient: [0, 0, 1] (only where input > 0)
+  ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
+  ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps); // by convention
+  ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
 TEST(ActivationTest, SigmoidForward) {
-    // sigmoid(0) = 0.5, sigmoid(1) = 0.7311, sigmoid(-1) = 0.2689
-    auto t = Tensor({3}, {0.0, 1.0, -1.0});
-    
-    module::Sigmoid sig;
-    auto res = sig(t);
+  // sigmoid(0) = 0.5, sigmoid(1) = 0.7311, sigmoid(-1) = 0.2689
+  auto t = Tensor({3}, {0.0, 1.0, -1.0});
 
-    ASSERT_NEAR(res[0], 0.5, 1e-4);
-    ASSERT_NEAR(res[1], 0.7311, 1e-4);
-    ASSERT_NEAR(res[2], 0.2689, 1e-4);
+  module::Sigmoid sig;
+  auto res = sig(t);
+
+  ASSERT_NEAR(res[0], 0.5, 1e-4);
+  ASSERT_NEAR(res[1], 0.7311, 1e-4);
+  ASSERT_NEAR(res[2], 0.2689, 1e-4);
 }
 
 TEST(ActivationTest, SigmoidLargePositive) {
-    // sigmoid(100) should be ~1, not inf or nan
-    auto t = Tensor({1}, vector<ftype>{100.0});
-    
-    module::Sigmoid sig;
-    auto res = sig(t);
+  // sigmoid(100) should be ~1, not inf or nan
+  auto t = Tensor({1}, vector<ftype>{100.0});
 
-    ASSERT_NEAR(res[0], 1.0, 1e-5);
-    EXPECT_FALSE(std::isnan(res[0]));
-    EXPECT_FALSE(std::isinf(res[0]));
+  module::Sigmoid sig;
+  auto res = sig(t);
+
+  ASSERT_NEAR(res[0], 1.0, 1e-5);
+  EXPECT_FALSE(std::isnan(res[0]));
+  EXPECT_FALSE(std::isinf(res[0]));
 }
 
 TEST(ActivationTest, SigmoidLargeNegative) {
-    // sigmoid(-100) should be ~0, not nan
-    auto t = Tensor({1}, vector<ftype>{-100.0});
-    
-    module::Sigmoid sig;
-    auto res = sig(t);
+  // sigmoid(-100) should be ~0, not nan
+  auto t = Tensor({1}, vector<ftype>{-100.0});
 
-    ASSERT_NEAR(res[0], 0.0, 1e-5);
-    EXPECT_FALSE(std::isnan(res[0]));
-    EXPECT_FALSE(std::isinf(res[0]));
+  module::Sigmoid sig;
+  auto res = sig(t);
+
+  ASSERT_NEAR(res[0], 0.0, 1e-5);
+  EXPECT_FALSE(std::isnan(res[0]));
+  EXPECT_FALSE(std::isinf(res[0]));
 }
 
 TEST(AutogradTest, SigmoidBackward) {
-    // grad of sigmoid = sigmoid(x) * (1 - sigmoid(x))
-    // for x=0: grad = 0.5 * 0.5 = 0.25
-    // for x=1: grad = 0.7311 * 0.2689 = 0.1966
-    auto t = TensorFunctions::makeSharedTensor(
-      {2}, {0.0, 1.0}, true);
-    
-    module::Sigmoid sig;
-    auto res = sig(t);
-    res->backward();
+  // grad of sigmoid = sigmoid(x) * (1 - sigmoid(x))
+  // for x=0: grad = 0.5 * 0.5 = 0.25
+  // for x=1: grad = 0.7311 * 0.2689 = 0.1966
+  auto t = TensorFunctions::makeSharedTensor(
+    {2}, {0.0, 1.0}, true);
 
-    auto grads = t->getGrads();
-    ASSERT_NEAR((*grads)[0], 0.25, 1e-4);
-    ASSERT_NEAR((*grads)[1], 0.1966, 1e-4);
+  module::Sigmoid sig;
+  auto res = sig(t);
+  res->backward();
+
+  auto grads = t->getGrads();
+  ASSERT_NEAR((*grads)[0], 0.25, 1e-4);
+  ASSERT_NEAR((*grads)[1], 0.1966, 1e-4);
 }
 
 TEST(ActivationTest, SoftmaxForward) {
-    // softmax([1, 2, 3])
-    // exp([1,2,3]) = [2.7183, 7.3891, 20.0855]
-    // sum = 30.1929
-    // softmax = [0.0900, 0.2447, 0.6652]
-    auto t = Tensor({1, 3}, {1.0, 2.0, 3.0});
-    
-    module::Softmax sm;
-    auto res = sm(t);
+  // softmax([1, 2, 3])
+  // exp([1,2,3]) = [2.7183, 7.3891, 20.0855]
+  // sum = 30.1929
+  // softmax = [0.0900, 0.2447, 0.6652]
+  auto t = Tensor({1, 3}, {1.0, 2.0, 3.0});
 
-    ASSERT_NEAR(res[0], 0.0900, 1e-4);
-    ASSERT_NEAR(res[1], 0.2447, 1e-4);
-    ASSERT_NEAR(res[2], 0.6652, 1e-4);
+  module::Softmax sm;
+  auto res = sm(t);
+
+  ASSERT_NEAR(res[0], 0.0900, 1e-4);
+  ASSERT_NEAR(res[1], 0.2447, 1e-4);
+  ASSERT_NEAR(res[2], 0.6652, 1e-4);
 }
 
 TEST(ActivationTest, SoftmaxSumsToOne) {
-    auto t = Tensor({2, 4}, 
-                    {1.0, 2.0, 3.0, 4.0,
-                     2.0, 1.0, 4.0, 3.0});
-    
-    module::Softmax sm;
-    auto res = sm(t);
+  auto t = Tensor({2, 4},
+                  {1.0, 2.0, 3.0, 4.0,
+                   2.0, 1.0, 4.0, 3.0});
 
-    // each row must sum to 1
-    ftype row0sum = res[0] + res[1] + res[2] + res[3];
-    ftype row1sum = res[4] + res[5] + res[6] + res[7];
-    ASSERT_NEAR(row0sum, 1.0, 1e-5);
-    ASSERT_NEAR(row1sum, 1.0, 1e-5);
+  module::Softmax sm;
+  auto res = sm(t);
+
+  // each row must sum to 1
+  ftype row0sum = res[0] + res[1] + res[2] + res[3];
+  ftype row1sum = res[4] + res[5] + res[6] + res[7];
+  ASSERT_NEAR(row0sum, 1.0, 1e-5);
+  ASSERT_NEAR(row1sum, 1.0, 1e-5);
 }
 
 TEST(ActivationTest, SoftmaxForwardNumericalStability) {
-    // large values should not produce nan or inf
-    auto t = Tensor({1, 3}, {100.0, 101.0, 102.0});
-    
-    module::Softmax sm;
-    auto res = sm(t);
+  // large values should not produce nan or inf
+  auto t = Tensor({1, 3}, {100.0, 101.0, 102.0});
 
-    for(int i = 0; i < 3; i++) {
-      EXPECT_FALSE(std::isnan(res[i]));
-      EXPECT_FALSE(std::isinf(res[i]));
-    }
+  module::Softmax sm;
+  auto res = sm(t);
 
-    ftype rowsum = res[0] + res[1] + res[2];
-    ASSERT_NEAR(rowsum, 1.0, 1e-5);
+  for(int i = 0; i < 3; i++) {
+    EXPECT_FALSE(std::isnan(res[i]));
+    EXPECT_FALSE(std::isinf(res[i]));
+  }
+
+  ftype rowsum = res[0] + res[1] + res[2];
+  ASSERT_NEAR(rowsum, 1.0, 1e-5);
 }
 
 TEST(AutogradTest, SoftmaxBackward) {

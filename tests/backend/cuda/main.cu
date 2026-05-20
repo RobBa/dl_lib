@@ -17,17 +17,17 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 class CudaEnvironment : public ::testing::Environment {
 public:
-    void SetUp() override {
-        // cuda warmup to avoid context initialization costs
-        void* tmp;
-        cudaMalloc(&tmp, 1);
-        cudaFree(tmp);
-        cudaDeviceSynchronize();
-    }
+  void SetUp() override {
+    // cuda warmup to avoid context initialization costs
+    void* tmp;
+    cudaMalloc(&tmp, 1);
+    cudaFree(tmp);
+    cudaDeviceSynchronize();
+  }
 };
 
 int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    ::testing::AddGlobalTestEnvironment(new CudaEnvironment());
-    return RUN_ALL_TESTS();
+  ::testing::InitGoogleTest(&argc, argv);
+  ::testing::AddGlobalTestEnvironment(new CudaEnvironment());
+  return RUN_ALL_TESTS();
 }
