@@ -103,9 +103,52 @@ namespace {
     res[gid] = grad;
   }
 
-  __global__ void softmaxBackwardKernelLargePass1(ftype* const res, const ftype* const softmax, const ftype* const upstreamGrad, 
-                                                  const tensorSize_t stride, tensorSize_t size) {
-    // TODO: code here
+  /**
+   * @brief Large softmax pass. Because the stride now does not fit into one block anymore we do a grid-stride loop.
+   */
+  __global__ void softmaxBackwardKernelLargePass(ftype* const res, const ftype* const upstreamGrad, const ftype* const softmax, const int blocksPerStride, const tensorSize_t stride) {    
+    const int strideNumber = blockIdx.x / blocksPerStride;
+    const int strideOffset = strideNumber * stride;
+    const int i = (blockIdx.x % blocksPerStride) * blockDim.x + threadIdx.x;
+    // blockIdx.x % blocksPerStride = block number within this stride
+
+    const int tid = threadIdx.x;
+    const int gid = strideOffset + i;
+
+    extern __shared__ ftype smem[];
+
+    const bool isNotPadded = i < stride;
+    const ftype yi = isNotPadded ? softmax[gid] : 0;
+
+    ftype grad = 0;
+    for(int offset = 0; offset < stride; offset += blockDim.x) {
+      // load int smem
+      {
+        const int j = offset + tid;
+        if(j < stride) {
+          smem[tid] = softmax[strideOffset + j];
+          smem[tid + blockDim.x] = upstreamGrad[strideOffset + j];
+        }
+        __syncthreads();
+      }
+
+
+      for(int k = 0; k < blockDim.x; k++) {
+        const int j = offset + k;
+        if(j < stride) {
+          ftype yj = smem[k];
+          ftype gj = smem[k + blockDim.x];
+
+          auto jacobian = (i == j) ? yi * (1 - yj) : -yi * yj;
+          grad += gj * jacobian;
+        }
+      }
+      __syncthreads();
+    }
+
+    if(isNotPadded) {
+      res[gid] = grad;
+    } 
   }
 }
 
@@ -158,11 +201,17 @@ namespace cuda_impl {
 
       softmaxBackwardKernelOneBlock<<<blocks, threadsPerBlock, 2 * strideWidthPerBlock * sizeof(ftype)>>>(
           res.getData(), upstreamGrad.getData(), softmax.getData(), stride, strideWidthPerBlock, threadsPerStride, softmax.getSize());
-      cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      __throw_runtime_error("Not implemented yet");
-      // TODO: do multi pass kernel
-    }    
+      constexpr int maxThreadsPerBlock = 256; 
+
+      const int nStrides = softmax.getSize() / stride;
+      const int threadsPerBlock = maxThreadsPerBlock; // TODO: do that one better, this can result in gross imbalance; also for normal softmax
+      const int blocksPerStride = (stride + threadsPerBlock - 1) / threadsPerBlock; 
+
+      softmaxBackwardKernelLargePass<<<blocksPerStride * nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+                                       res.getData(), upstreamGrad.getData(), softmax.getData(), blocksPerStride, stride);
+    }
+    cudaErrchk(cudaDeviceSynchronize());
   }
 }

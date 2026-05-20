@@ -23,8 +23,6 @@ using namespace train;
 
 static constexpr ftype kTol = 1e-4f;
 
-// ─── CrossEntropy ────────────────────────────────────────────────────────────
-
 TEST(LossTest, CrossEntropyFoward) {
     auto y = TensorFunctions::makeSharedTensor(
         {2, 3}, {1.0, 0.0, 0.0,
@@ -111,8 +109,6 @@ TEST(LossTest, CrossEntropyBackward) {
     EXPECT_NEAR((*grads)[4], -0.625f,  kTol);
     EXPECT_NEAR((*grads)[5],  0.0f,    kTol);
 }
-
-// ─── BCE ─────────────────────────────────────────────────────────────────────
 
 TEST(LossTest, BceForward) {
     auto y = TensorFunctions::makeSharedTensor(

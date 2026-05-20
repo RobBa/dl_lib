@@ -251,6 +251,33 @@ TEST(CudaAutogradTest, SoftmaxBackward) {
   ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
 }
 
+TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
+  constexpr tensorDim_t testDim = 1300;
+  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({2, 2, testDim}, 2.0f, true));
+  auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
+  tGpu->setDevice(Device::CUDA);
+
+  module::Softmax sm;
+  auto resPtrCpu = sm(tCpu);
+  auto resPtrGpu = sm(tGpu);
+
+  auto upstreamGradCpu = make_shared<Tensor>(TensorFunctions::Ones(tCpu->getDims().toVector()));
+  auto upstreamGradGpu = make_shared<Tensor>(TensorFunctions::Ones(tCpu->getDims().toVector(), Device::CUDA));
+
+  resPtrCpu->setGrads(upstreamGradCpu);
+  resPtrGpu->setGrads(upstreamGradGpu);
+
+  resPtrCpu->backward();
+  resPtrGpu->backward();
+
+  auto gradsCpu = tCpu->getGrads();
+  auto gradsGpu = tGpu->getGrads();
+
+  for(int i = 0; i < tCpu->getSize(); i++) {
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4);
+  }
+}
+
 /*
 TEST(CudaLayerTest, TestFfLayer) {
   auto t1 = TensorFunctions::Ones({3, 2}, Device::CUDA);
