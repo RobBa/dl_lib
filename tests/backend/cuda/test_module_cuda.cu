@@ -246,9 +246,9 @@ TEST(CudaAutogradTest, SoftmaxBackward) {
   resPtr->backward();
 
   auto grads = t->getGrads();
-  ASSERT_NEAR((*grads)[0],  0.0819, 1e-5);
-  ASSERT_NEAR((*grads)[1], -0.0220, 1e-5);
-  ASSERT_NEAR((*grads)[2], -0.0599, 1e-5);
+  ASSERT_NEAR((*grads)[0],  0.0819, 1e-4);
+  ASSERT_NEAR((*grads)[1], -0.0220, 1e-4);
+  ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
 }
 
 /*

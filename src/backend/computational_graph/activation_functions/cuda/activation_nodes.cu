@@ -65,7 +65,7 @@ namespace {
    * 
    * stridesWidthPerBlock is an awkward name. It is the product of number of strides per block (times) stride. We pre-compute it on host. 
    */
-  __global__ void softmaxBackwardKernelOneBlock(ftype* const res, const ftype* const softmax, const ftype* const upstreamGrad, 
+  __global__ void softmaxBackwardKernelOneBlock(ftype* const res, const ftype* const upstreamGrad, const ftype* const softmax,  
                                                 const tensorSize_t stride, const int stridesWidthPerBlock, const int threadsPerStride, tensorSize_t size) {
     const int tid = threadIdx.x;
 
@@ -75,17 +75,18 @@ namespace {
     const int strideOffset = (tid / stride) * stride;
     const int gid = blockIdx.x * stridesWidthPerBlock + strideOffset + withinStrideOffset;
 
-    const ftype yi = softmax[gid];
+    ftype yi = 0;
     const int smemOffset = strideOffset + withinStrideOffset;
 
     extern __shared__ ftype smem[];
     if(!isPadded) {
+      yi = softmax[gid];
       smem[smemOffset] = yi;
       smem[smemOffset + stride] = upstreamGrad[gid];
     }
     __syncthreads();
-    
-    if(isPadded) {
+
+    if(isPadded || gid > size) {
       return;
     }
 
@@ -145,15 +146,17 @@ namespace cuda_impl {
     
     if(stride < maxThreadsPerBlock) {
       const int threadsPerStride = max(1, ((stride + 31) / 32)) * 32; // == warps per stride * 32
-      const int stridesPerBlock = maxThreadsPerBlock / threadsPerStride;
-      const int strideWidthPerBlock = stridesPerBlock * stride; // for smem idx computation
 
+      // min over maximum possible strides per block and actual number of strides
+      const int stridesPerBlock = min(maxThreadsPerBlock / threadsPerStride, softmax.getSize() / stride);
+      const int strideWidthPerBlock = stridesPerBlock * stride; // for smem idx computation
+      
       int threadsPerBlock = 1;
       while(threadsPerBlock < threadsPerStride * stridesPerBlock) threadsPerBlock <<= 1; 
       // threadsPerBlock now larger than threadsPerStride * stridesPerBlock
-
       const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
-      softmaxBackwardKernelOneBlock<<<threadsPerBlock, blocks, 2 * strideWidthPerBlock * sizeof(ftype)>>>(
+
+      softmaxBackwardKernelOneBlock<<<blocks, threadsPerBlock, 2 * strideWidthPerBlock * sizeof(ftype)>>>(
           res.getData(), upstreamGrad.getData(), softmax.getData(), stride, strideWidthPerBlock, threadsPerStride, softmax.getSize());
       cudaErrchk(cudaDeviceSynchronize());
     }
