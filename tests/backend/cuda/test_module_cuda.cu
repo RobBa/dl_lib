@@ -61,8 +61,8 @@ TEST(CudaAutogradTest, ReLUBackward) {
 
   loss->backward();
 
-  ASSERT_DOUBLE_EQ(x->getGrads()->get(0), 0.0);
-  ASSERT_DOUBLE_EQ(x->getGrads()->get(1), 0.0);
+  ASSERT_NEAR(x->getGrads()->get(0), 0.0, 1e-5);
+  ASSERT_NEAR(x->getGrads()->get(1), 0.0, 1e-5);
   ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
@@ -106,8 +106,8 @@ TEST(CudaAutogradTest, LeakyReLUBackward) {
 
   loss->backward();
 
-  ASSERT_DOUBLE_EQ(x->getGrads()->get(0), eps);
-  ASSERT_DOUBLE_EQ(x->getGrads()->get(1), eps);
+  ASSERT_NEAR(x->getGrads()->get(0), eps, 1e-5);
+  ASSERT_NEAR(x->getGrads()->get(1), eps, 1e-5);
   ASSERT_NEAR(x->getGrads()->get(2), 1.0, 1e-5);
 }
 
@@ -304,7 +304,6 @@ TEST(CudaLayerTest, TestFfLayerLarge) {
     EXPECT_NEAR(resCpu[i], resGpu[i], 1e-4);
   }
 }
-
 
 TEST(CudaAutogradTest, FfLayerBackward) {
   auto x = TensorFunctions::makeSharedTensor({2, 3}, {

@@ -18,7 +18,20 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"
 
-TEST(CudaTensorOpsTest, ScalarAddWorks) {
+TEST(CudaTensorOpsTest, TestCtor) {
+  auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CUDA);
+
+  ASSERT_EQ(t.getDims(), Dimension({2, 2}));
+  ASSERT_EQ(t.getDevice(), Device::CPU);
+  ASSERT_TRUE(!t.getRequiresGrad());
+
+  ASSERT_NEAR(t.get(0, 0), 2.0, 1e-5);
+  ASSERT_NEAR(t.get(0, 1), 3.0, 1e-5);
+  ASSERT_NEAR(t.get(1, 0), 4.0, 1e-5);
+  ASSERT_NEAR(t.get(1, 1), 5.0, 1e-5);
+}
+
+TEST(CudaTensorOpsTest, ScalarAdd) {
   auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
 
   auto res = t1 + 1.5;
@@ -32,7 +45,7 @@ TEST(CudaTensorOpsTest, ScalarAddWorks) {
   }
 }
 
-TEST(CudaTensorOpsTest, ScalarMulWorks) {
+TEST(CudaTensorOpsTest, ScalarMul) {
   auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
 
   constexpr ftype f = 2.5;
@@ -46,7 +59,7 @@ TEST(CudaTensorOpsTest, ScalarMulWorks) {
   }
 }
 
-TEST(CudaTensorOpsTest, TensorAddWorks) {
+TEST(CudaTensorOpsTest, TensorAdd) {
   auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({500, 500}, Device::CUDA) * 4;
 
@@ -61,7 +74,20 @@ TEST(CudaTensorOpsTest, TensorAddWorks) {
   }
 }
 
-TEST(CudaTensorOpsTest, TensorAddCanBroadCast) {
+/* TEST(CudaAutogradTest, TensorAdd) {
+    auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
+    auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+
+    auto t3 = cgraph::add(t1, t2);
+    auto loss = cgraph::mul(t3, t3);
+    
+    loss->backward();
+    
+    ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
+    ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
+} */
+
+TEST(CudaTensorOpsTest, BroadcastAdd) {
   auto t1 = TensorFunctions::Ones({3, 2, 2}, Device::CUDA);
   auto t2 = Tensor({2}, {2, 3}, Device::CUDA);
 
@@ -71,8 +97,8 @@ TEST(CudaTensorOpsTest, TensorAddCanBroadCast) {
   
   for(auto i=0; i<res.getDims().get(0); i++) {
     for(auto j=0; j<res.getDims().get(1); j++) {
-      EXPECT_NEAR(res.get(i, j, 0), 3.0, 1e-5);
-      EXPECT_NEAR(res.get(i, j, 1), 4.0, 1e-5);
+      ASSERT_NEAR(res.get(i, j, 0), 3.0, 1e-5);
+      ASSERT_NEAR(res.get(i, j, 1), 4.0, 1e-5);
     }
   }
 }
@@ -86,26 +112,26 @@ TEST(CudaTensorOpsTest, BroadcastAdd_2D) {
     auto res = t1 + t2;
 
     // expected: each row of t1 gets t2 added elementwise
-    EXPECT_NEAR(res.get(0, 0), 11.0, 1e-5);
-    EXPECT_NEAR(res.get(0, 1), 22.0, 1e-5);
-    EXPECT_NEAR(res.get(0, 2), 33.0, 1e-5);
-    EXPECT_NEAR(res.get(1, 0), 14.0, 1e-5);
-    EXPECT_NEAR(res.get(1, 1), 25.0, 1e-5);
-    EXPECT_NEAR(res.get(1, 2), 36.0, 1e-5);
+    ASSERT_NEAR(res.get(0, 0), 11.0, 1e-5);
+    ASSERT_NEAR(res.get(0, 1), 22.0, 1e-5);
+    ASSERT_NEAR(res.get(0, 2), 33.0, 1e-5);
+    ASSERT_NEAR(res.get(1, 0), 14.0, 1e-5);
+    ASSERT_NEAR(res.get(1, 1), 25.0, 1e-5);
+    ASSERT_NEAR(res.get(1, 2), 36.0, 1e-5);
 }
 
-TEST(CudaTensorOpsTest, TensorAddBroadcastNotCommutative) {
+TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
   auto t1 = TensorFunctions::Ones({3, 2, 2}, Device::CUDA);
   auto t2 = Tensor({2}, {2, 3}, Device::CUDA);
 
-  EXPECT_THROW(t2 + t1, std::invalid_argument);
+  ASSERT_THROW(t2 + t1, std::invalid_argument);
 }
 
 TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
   auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 4;
 
-  EXPECT_THROW(t1 + t2, std::invalid_argument);
+  ASSERT_THROW(t1 + t2, std::invalid_argument);
 }
 
 TEST(CudaTensorOpsTest, MatrixAddGivesCorrectResults) {
@@ -143,7 +169,7 @@ TEST(CudaTensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
   auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 0.5;
     
-  EXPECT_THROW(t1 * t2, std::invalid_argument);
+  ASSERT_THROW(t1 * t2, std::invalid_argument);
 }
 
 TEST(CudaTensorOpsTest, MatMulGivesCorrectValues) {
@@ -208,10 +234,10 @@ TEST(CudaTensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
   auto t1 = TensorFunctions::Ones({2, 2});
   auto t2 = TensorFunctions::Ones({3, 2});
 
-  EXPECT_THROW(t1.matmul(t2), std::runtime_error);
+  ASSERT_THROW(t1.matmul(t2), std::runtime_error);
 }
 
-TEST(CudaTensorOpsTest, TransposeWorksAsIntended1) {
+TEST(CudaTensorOpsTest, TransposeAsIntended1) {
   auto t = TensorFunctions::Gaussian({200, 200}, 1.0, Device::CUDA);
 
   auto transposed = t.createDeepCopy();
@@ -233,7 +259,7 @@ TEST(CudaTensorOpsTest, TransposeWorksAsIntended1) {
 }
 
 // Swap first two dimensions.
-TEST(CudaTensorOpsTest, TransposeWorksAsIntended2) {
+TEST(CudaTensorOpsTest, TransposeAsIntended2) {
   auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, 1);
   transposed.setDevice(Device::CPU);
@@ -257,7 +283,7 @@ TEST(CudaTensorOpsTest, TransposeWorksAsIntended2) {
 }
 
 // Swap first and last dimension.
-TEST(CudaTensorOpsTest, TransposeWorksAsIntended3) {
+TEST(CudaTensorOpsTest, TransposeAsIntended3) {
   auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, -1);
   transposed.setDevice(Device::CPU);

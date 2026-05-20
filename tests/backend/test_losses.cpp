@@ -21,7 +21,7 @@
 
 using namespace train;
 
-static constexpr ftype kTol = 1e-4f;
+static constexpr ftype delta = 1e-4f;
 
 TEST(LossTest, CrossEntropyFoward) {
     auto y = TensorFunctions::makeSharedTensor(
@@ -37,7 +37,7 @@ TEST(LossTest, CrossEntropyFoward) {
 
     // expected: -( log(0.7) + log(0.8) ) / 2 = 0.2899
     const ftype expected = -(std::log(0.7f) + std::log(0.8f)) / 2.0f;
-    EXPECT_NEAR((*result)[0], expected, kTol);
+    ASSERT_NEAR((*result)[0], expected, delta);
 }
 
 TEST(LossTest, CrossEntropyPerfectPrediction) {
@@ -54,7 +54,7 @@ TEST(LossTest, CrossEntropyPerfectPrediction) {
     auto result = loss(y, ypred);
 
     // loss should be very small
-    EXPECT_LT((*result)[0], 0.01f);
+    ASSERT_LT((*result)[0], 0.01f);
 }
 
 TEST(LossTest, CrossEntropyUniformPrediction) {
@@ -68,7 +68,7 @@ TEST(LossTest, CrossEntropyUniformPrediction) {
     CrossEntropyLoss loss;
     auto result = loss(y, ypred);
 
-    EXPECT_NEAR((*result)[0], std::log(3.0f), kTol);
+    ASSERT_NEAR((*result)[0], std::log(3.0f), delta);
 }
 
 TEST(LossTest, CrossEntropyThrowsOnDimMismatch) {
@@ -78,7 +78,7 @@ TEST(LossTest, CrossEntropyThrowsOnDimMismatch) {
         {2, 2}, {0.5, 0.5, 0.5, 0.5}, true);
 
     CrossEntropyLoss loss;
-    EXPECT_THROW(loss(y, ypred), std::invalid_argument);
+    ASSERT_THROW(loss(y, ypred), std::invalid_argument);
 }
 
 TEST(LossTest, CrossEntropyBackward) {
@@ -102,12 +102,12 @@ TEST(LossTest, CrossEntropyBackward) {
     result->backward();
 
     auto grads = ypred->getGrads();
-    EXPECT_NEAR((*grads)[0], -0.7143f, kTol);
-    EXPECT_NEAR((*grads)[1],  0.0f,    kTol);
-    EXPECT_NEAR((*grads)[2],  0.0f,    kTol);
-    EXPECT_NEAR((*grads)[3],  0.0f,    kTol);
-    EXPECT_NEAR((*grads)[4], -0.625f,  kTol);
-    EXPECT_NEAR((*grads)[5],  0.0f,    kTol);
+    ASSERT_NEAR((*grads)[0], -0.7143f, delta);
+    ASSERT_NEAR((*grads)[1],  0.0f,    delta);
+    ASSERT_NEAR((*grads)[2],  0.0f,    delta);
+    ASSERT_NEAR((*grads)[3],  0.0f,    delta);
+    ASSERT_NEAR((*grads)[4], -0.625f,  delta);
+    ASSERT_NEAR((*grads)[5],  0.0f,    delta);
 }
 
 TEST(LossTest, BceForward) {
@@ -123,7 +123,7 @@ TEST(LossTest, BceForward) {
     // expected: -( log(0.9) + log(0.9) + log(0.8) + log(0.8) ) / 4 = 0.1643
     const ftype expected = -(std::log(0.9f) + std::log(0.9f) + 
                               std::log(0.8f) + std::log(0.8f)) / 4.0f;
-    EXPECT_NEAR((*result)[0], expected, kTol);
+    ASSERT_NEAR((*result)[0], expected, delta);
 }
 
 TEST(LossTest, BcePerfectPrediction) {
@@ -136,7 +136,7 @@ TEST(LossTest, BcePerfectPrediction) {
     BceLoss loss;
     auto result = loss(y, ypred);
 
-    EXPECT_LT((*result)[0], 0.01f);
+    ASSERT_LT((*result)[0], 0.01f);
 }
 
 TEST(LossTest, BceRandomPrediction) {
@@ -150,7 +150,7 @@ TEST(LossTest, BceRandomPrediction) {
     BceLoss loss;
     auto result = loss(y, ypred);
 
-    EXPECT_NEAR((*result)[0], std::log(2.0f), kTol);
+    ASSERT_NEAR((*result)[0], std::log(2.0f), delta);
 }
 
 TEST(LossTest, BceThrowsOnDimMismatch) {
@@ -160,7 +160,7 @@ TEST(LossTest, BceThrowsOnDimMismatch) {
         {3, 1}, {0.5, 0.5, 0.5}, true);
 
     BceLoss loss;
-    EXPECT_THROW(loss(y, ypred), std::invalid_argument);
+    ASSERT_THROW(loss(y, ypred), std::invalid_argument);
 }
 
 TEST(LossTest, BceNoInfOrNanOnNearZeroPred) {
@@ -173,7 +173,7 @@ TEST(LossTest, BceNoInfOrNanOnNearZeroPred) {
     auto result = loss(y, ypred);
 
     // clipping prevents log(0)
-    EXPECT_FALSE(std::isinf((*result)[0]));
+    ASSERT_FALSE(std::isinf((*result)[0]));
 }
 
 TEST(LossTest, BceBackward) {
@@ -191,8 +191,8 @@ TEST(LossTest, BceBackward) {
     result->backward();
 
     auto grads = ypred->getGrads();
-    EXPECT_NEAR((*grads)[0], -0.625f,  kTol);
-    EXPECT_NEAR((*grads)[1],  0.7143f, kTol);
+    ASSERT_NEAR((*grads)[0], -0.625f,  delta);
+    ASSERT_NEAR((*grads)[1],  0.7143f, delta);
 }
 
 TEST(LossTest, RmseForward) {
@@ -208,7 +208,7 @@ TEST(LossTest, RmseForward) {
     auto loss = RmseLoss{};
     auto result = loss(y, ypred);
 
-    EXPECT_NEAR((*result)[0], 0.5f, kTol);
+    ASSERT_NEAR((*result)[0], 0.5f, delta);
 }
 
 TEST(LossTest, RmsePerfectPrediction) {
@@ -220,7 +220,7 @@ TEST(LossTest, RmsePerfectPrediction) {
     RmseLoss loss;
     auto result = loss(y, ypred);
 
-    EXPECT_NEAR((*result)[0], 0.0f, kTol);
+    ASSERT_NEAR((*result)[0], 0.0f, delta);
 }
 
 TEST(LossTest, RmseBackward) {
@@ -239,6 +239,6 @@ TEST(LossTest, RmseBackward) {
     result->backward();
 
     auto grads = ypred->getGrads();
-    EXPECT_NEAR((*grads)[0], -0.5f, kTol);
-    EXPECT_NEAR((*grads)[1],  0.5f, kTol);
+    ASSERT_NEAR((*grads)[0], -0.5f, delta);
+    ASSERT_NEAR((*grads)[1],  0.5f, delta);
 }

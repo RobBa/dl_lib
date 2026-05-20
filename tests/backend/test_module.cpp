@@ -49,11 +49,11 @@ TEST(ActivationTest, ReluInputNegative) {
 }
 
 TEST(AutogradTest, ReLUBackward) {
-    auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
-    auto relu = module::ReLu();
+  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+  auto relu = module::ReLu();
 
-    auto y = relu(x);    // [0, 0, 2]
-    auto loss = cgraph::sumTensor(y);  // loss = 2
+  auto y = relu(x);    // [0, 0, 2]
+  auto loss = cgraph::sumTensor(y);  // loss = 2
     
     loss->backward();
     
@@ -203,31 +203,30 @@ TEST(ActivationTest, SoftmaxForwardNumericalStability) {
 }
 
 TEST(AutogradTest, SoftmaxBackward) {
-    // for softmax with upstream grad of ones, the gradient is zero
-    // because d/dx_i sum(softmax(x)) = 0 (softmax sums to 1 always)
-    // more useful: upstream = [1, 0, 0]
-    // grad[i] = softmax[i] * (upstream[i] - dot(upstream, softmax))
-    // for x=[1,2,3], softmax=[0.09, 0.2447, 0.6652]
-    // dot([1,0,0], softmax) = 0.09
-    // grad[0] = 0.09   * (1 - 0.09)   =  0.0819
-    // grad[1] = 0.2447 * (0 - 0.09)   = -0.0220
-    // grad[2] = 0.6652 * (0 - 0.09)   = -0.0599
-    auto t = TensorFunctions::makeSharedTensor(
-        {1, 3}, {1.0, 2.0, 3.0}, true);
+  // for softmax with upstream grad of ones, the gradient is zero
+  // because d/dx_i sum(softmax(x)) = 0 (softmax sums to 1 always)
+  // more useful: upstream = [1, 0, 0]
+  // grad[i] = softmax[i] * (upstream[i] - dot(upstream, softmax))
+  // for x=[1,2,3], softmax=[0.09, 0.2447, 0.6652]
+  // dot([1,0,0], softmax) = 0.09
+  // grad[0] = 0.09   * (1 - 0.09)   =  0.0819
+  // grad[1] = 0.2447 * (0 - 0.09)   = -0.0220
+  // grad[2] = 0.6652 * (0 - 0.09)   = -0.0599
+  auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, true);
     
-    module::Softmax sm;
-    auto resPtr = sm(t);
+  module::Softmax sm;
+  auto resPtr = sm(t);
     
-    // set upstream gradient to [1, 0, 0]
-    auto upstream = TensorFunctions::makeSharedTensor(
-      {1, 3}, {1.0, 0.0, 0.0});
-    resPtr->setGrads(upstream);
-    resPtr->backward();
+  // set upstream gradient to [1, 0, 0]
+  auto upstream = TensorFunctions::makeSharedTensor(
+    {1, 3}, {1.0, 0.0, 0.0});
+  resPtr->setGrads(upstream);
+  resPtr->backward();
 
-    auto grads = t->getGrads();
-    ASSERT_NEAR((*grads)[0],  0.0819, 1e-4);
-    ASSERT_NEAR((*grads)[1], -0.0220, 1e-4);
-    ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
+  auto grads = t->getGrads();
+  ASSERT_NEAR((*grads)[0],  0.0819, 1e-4);
+  ASSERT_NEAR((*grads)[1], -0.0220, 1e-4);
+  ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
 }
 
 TEST(LayerTest, TestFfLayer) {
