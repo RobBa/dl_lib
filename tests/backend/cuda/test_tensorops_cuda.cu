@@ -22,7 +22,7 @@ TEST(CudaTensorOpsTest, TestCtor) {
   auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CUDA);
 
   ASSERT_EQ(t.getDims(), Dimension({2, 2}));
-  ASSERT_EQ(t.getDevice(), Device::CPU);
+  ASSERT_EQ(t.getDevice(), Device::CUDA);
   ASSERT_TRUE(!t.getRequiresGrad());
 
   ASSERT_NEAR(t.get(0, 0), 2.0, 1e-5);
@@ -165,7 +165,6 @@ TEST(CudaTensorOpsTest, ElementwiseMulGivesCorrectResults) {
 }
 
 TEST(CudaTensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
-  constexpr ftype factor = 0.5;
   auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 0.5;
     
@@ -222,7 +221,6 @@ TEST(CudaTensorOpsTest, MatMulGivesCorrectValues2) {
   auto expectedDims = std::vector<tensorDim_t>{2, 2};
   ASSERT_EQ(res.getDims().toVector(), expectedDims);
 
-  constexpr ftype resSum = 3.0;
   for(auto i=0; i<t1.getDims().get(0); i++) {
     for(auto j=0; j<t1.getDims().get(1); j++) {
       EXPECT_NEAR(res.get(i, j), cmpRes.get(i, j), 1e-5);
