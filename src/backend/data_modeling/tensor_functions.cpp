@@ -11,6 +11,11 @@
 
 #include "tensor_functions.h"
 
+#ifdef __CUDA
+#include "data_modeling/cuda/tensor_ops.cuh"
+#include "computational_graph/tensor_ops/cuda/tensor_ops_nodes.cuh"
+#endif
+
 using namespace std;
 
 Tensor TensorFunctions::Zeros(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
@@ -97,17 +102,30 @@ Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
   auto resDims = t.getDims().collapseDimension(dim);
   Tensor res = Zeros(resDims.toVector(), t.getDevice(), t.getRequiresGrad()); // inefficiency toVector
 
-  tensorSize_t stride = 1;
-  for(tensorDim_t i=dim+1; i<t.getDims().nDims(); i++){
-    stride *= t.getDims()[i];
-  }
-  
-  tensorSize_t targetOffset = 0;
-  for(tensorDim_t loop=0; loop<t.getDims()[dim]; loop++){
-    for(tensorSize_t i=0; i<stride; i++){
-      res.set(res.get(i) + t.get(targetOffset), i);
-      targetOffset++;
+  switch(t.getDevice()) {
+    case Device::CPU:
+    {
+      tensorSize_t stride = 1;
+      for(tensorDim_t i = dim + 1; i < t.getDims().nDims(); i++){
+        stride *= t.getDims()[i];
+      }
+      
+      tensorSize_t targetOffset = 0;
+      for(tensorDim_t loop = 0; loop < t.getDims()[dim]; loop++){
+        for(tensorSize_t i = 0; i < stride; i++){
+          res.set(res.get(i) + t.get(targetOffset), i);
+          targetOffset++;
+        }
+      }
+      break;
     }
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda_impl::sumOverDims(res, t, dim);
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+      #endif
+      break;
   }
   
   return res;

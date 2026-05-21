@@ -1,0 +1,24 @@
+/**
+ * @file tensor_ops_nodes.cuh
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief
+ * @version 0.1
+ * @date 2026-05-20
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
+#pragma once
+
+#ifndef __CUDA
+static_assert(false, "File should not be included without CUDA enabled");
+#endif // __CUDA
+
+#include "utility/global_params.h"
+#include "data_modeling/tensor.h"
+
+namespace cuda_impl {
+  void scalarMulBackward(Tensor& res, const Tensor& upstreamGrad, ftype factor);
+  void getterBackward(Tensor& res, ftype val, tensorSize_t linearIdx);
+}

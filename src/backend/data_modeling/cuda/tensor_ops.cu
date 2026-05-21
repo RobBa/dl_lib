@@ -1,5 +1,5 @@
 /**
- * @file tensorops.cu
+ * @file tensor_ops.cu
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -15,7 +15,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "data_modeling/tensor.h"
 
-#include "tensorops.cuh"
+#include "tensor_ops.cuh"
 #include "utility/cuda/cuda_common.cuh"
 
 #include <thrust/fill.h>
@@ -121,6 +121,54 @@ namespace{
   }
 
   /**
+   * @brief Does what you think it does. Assumption for kernel call: Each block contains one or more strides completely.
+   */
+  __global__ void sumOverDimsKernelOneBlock(ftype* const res, const ftype* const input, const tensorSize_t stride, 
+                                            const int srcDimSize, const int stridesPerBlock, const int threadsPerStride) {
+    const int withinStrideIdx = threadIdx.x % threadsPerStride;
+    const bool isNotPadded = withinStrideIdx < stride;
+
+    const int strideInBlockNumber = threadIdx.x / threadsPerStride;
+    const int localIdx = strideInBlockNumber * stride + withinStrideIdx;
+    const int globalIdx = blockIdx.x * stridesPerBlock * stride + localIdx;
+
+    extern __shared__ ftype smem[];
+    if(isNotPadded) {
+      smem[localIdx] = 0;
+    }
+    __syncthreads();
+
+    ftype sum = 0;
+    for(int k = 0; k < srcDimSize; k++) {
+      if(isNotPadded) {
+        smem[localIdx] += input[k * stride + withinStrideIdx];
+      }
+      __syncthreads();
+    }
+
+    if(isNotPadded) {
+      res[withinStrideIdx] += smem[localIdx];
+    }
+  }
+
+/*   __global__ void sumOverDimsKernel(ftype* const res, const ftype* const input, const tensorSize_t stride, 
+                                    const int srcDimSize, const tensorSize_t size) {
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid > size) {
+      return;
+    }
+
+    const int tid = threadIdx.x;
+
+    ftype sum = 0;
+    for(int k = 0; k < srcDimSize; k++) {
+      sum += input[k * stride + tid];      
+    }
+
+    res[gid] = sum;
+  } */
+
+  /**
    * @brief Create a contiguous copy of src and copy it into dst. Used for reshaping, transposing, etc.
    * 
    * @param strides The original strides of src. With these strides src would be contiguous.
@@ -214,6 +262,33 @@ namespace cuda_impl {
       resOffset += resSize;
     }
     
+    cudaErrchk(cudaDeviceSynchronize());
+  }
+
+  void sumOverDims(Tensor& res, const Tensor& input, tensorDim_t dim) {
+
+    tensorSize_t stride = 1;
+    for(tensorDim_t i = dim+1; i < input.getDims().nDims(); i++){
+      stride *= input.getDims()[i];
+    }
+
+    constexpr int maxThreadsPerBlock = 256;
+    if(stride <= maxThreadsPerBlock) {
+      const int stridesPerBlock = (stride + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
+
+      int threadsPerStride = 1;
+      while(threadsPerStride < stride) threadsPerStride <<= 1;
+
+      const int threadsPerBlock = threadsPerStride * stridesPerBlock;
+      const int blocks = (input.getSize() + stridesPerBlock - 1) / stridesPerBlock;
+
+      sumOverDimsKernelOneBlock<<<blocks, threadsPerBlock, threadsPerStride * sizeof(ftype)>>>(
+          res.getData(), input.getData(), stride, input.getDims()[dim], stridesPerBlock, threadsPerStride);
+    }
+    else {
+      std::__throw_runtime_error("Not implemented yet");
+    }
+
     cudaErrchk(cudaDeviceSynchronize());
   }
 

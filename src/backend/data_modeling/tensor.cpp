@@ -24,7 +24,7 @@
 
 #ifdef __CUDA
 #include "utility/cuda/cuda_common.cuh"
-#include "data_modeling/cuda/tensorops.cuh"
+#include "data_modeling/cuda/tensor_ops.cuh"
 #endif
 
 using namespace std;

@@ -18,6 +18,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"
 
+#include "computational_graph/tensor_ops/graph_creation.h"
+
 TEST(CudaTensorOpsTest, TestCtor) {
   auto t = Tensor({2, 2}, {2.0, 3.0, 4.0, 5.0}, Device::CUDA);
 
@@ -81,7 +83,7 @@ TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
   ASSERT_THROW(t1 + t2, std::invalid_argument);
 }
 
-/* TEST(CudaAutogradTest, TensorAdd) {
+TEST(CudaAutogradTest, TensorAdd) {
   auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
   auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
 
@@ -92,7 +94,7 @@ TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
 
   ASSERT_NEAR(t1->getGrads()->get(0), 10.0, 1e-5);
   ASSERT_NEAR(t2->getGrads()->get(0), 10.0, 1e-5);
-} */
+}
 
 TEST(CudaTensorOpsTest, BroadcastAdd) {
   auto t1 = TensorFunctions::Ones({3, 2, 2}, Device::CUDA);
@@ -132,6 +134,36 @@ TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
   auto t2 = Tensor({2}, {2, 3}, Device::CUDA);
 
   ASSERT_THROW(t2 + t1, std::invalid_argument);
+}
+
+TEST(CudaAutogradTest, BroadcastAdd) {
+  // gradient of broadcast add w.r.t. bias should be sum over batch dimension
+  // upstream grad: (2,3) of ones → bias grad should be (3) of twos
+  auto t1 = TensorFunctions::makeSharedTensor({2, 3},
+    {1.0, 2.0, 3.0,
+     4.0, 5.0, 6.0}, Device::CUDA, true);
+  auto bias = TensorFunctions::makeSharedTensor({3},
+    {0.0, 0.0, 0.0}, Device::CUDA, true);
+
+  auto res = cgraph::add(t1, bias);
+
+  // set upstream grad to ones and backprop
+  auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
+    {1.0, 1.0, 1.0,
+     1.0, 1.0, 1.0}, false);
+  res->backward();
+
+  // bias grad should be sum over batch: [2, 2, 2]
+  auto biasGrad = bias->getGrads();
+  ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
+  ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
+  ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
+
+  // t1 grad should be ones (add is identity for non-broadcast operand)
+  auto t1Grad = t1->getGrads();
+  for(int i = 0; i < 6; i++) {
+    ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
+  }
 }
 
 TEST(CudaTensorOpsTest, MatrixAdd) {

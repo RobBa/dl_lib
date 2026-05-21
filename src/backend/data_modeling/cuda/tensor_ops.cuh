@@ -1,5 +1,5 @@
 /**
- * @file tensorops.cuh
+ * @file tensor_ops.cuh
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -31,6 +31,7 @@ namespace cuda_impl {
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec);
   void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right);
   void matmul(Tensor& res, const Tensor& left, const Tensor& right);
+  void sumOverDims(Tensor& res, const Tensor& input, tensorDim_t dim);
 
   void scalarFill(Tensor& t, ftype value);
 
