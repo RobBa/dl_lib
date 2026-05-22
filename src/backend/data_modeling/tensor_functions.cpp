@@ -95,7 +95,7 @@ shared_ptr<Tensor> TensorFunctions::makeSharedTensor(const vector<tensorDim_t>& 
   * Input dim must be smaller then t.dims.nDims()-1
   */
 Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
-  if(dim>=t.getDims().nDims()-1){
+  if(dim > t.getDims().nDims() - 1){
     __throw_invalid_argument("Dim parameter must be smaller than number of dims, but was " + dim);
   }
 
@@ -109,12 +109,21 @@ Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
       for(tensorDim_t i = dim + 1; i < t.getDims().nDims(); i++){
         stride *= t.getDims()[i];
       }
+
+      // size of dimensions before dim
+      tensorSize_t outerSize = 1;
+      for(tensorDim_t i = 0; i < dim; i++) {
+        outerSize *= t.getDims()[i];
+      }
       
-      tensorSize_t targetOffset = 0;
-      for(tensorDim_t loop = 0; loop < t.getDims()[dim]; loop++){
-        for(tensorSize_t i = 0; i < stride; i++){
-          res.set(res.get(i) + t.get(targetOffset), i);
-          targetOffset++;
+      for(tensorSize_t outer = 0; outer < outerSize; outer++){
+        for(tensorDim_t k = 0; k < t.getDims()[dim]; k++){
+          for(tensorSize_t i = 0; i < stride; i++){
+            tensorSize_t srcIdx = outer * t.getDims()[dim] * stride + k * stride + i;
+            tensorSize_t dstIdx = outer * stride + i;
+            
+            res.set(res.get(dstIdx) + t.get(srcIdx), dstIdx);
+          }
         }
       }
       break;
