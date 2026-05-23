@@ -22,21 +22,25 @@ using namespace std;
 using namespace cgraph;
 
 vector< shared_ptr<Tensor> > CrossEntropySoftmaxNode::backward(const Tensor& upstreamGrad) {
-  assert(!upstreamGrad.getRequiresGrad());
+  assert(!upstreamGrad.getRequiresGrad() && logits.nDims() == 2);
 
   const auto& logits = parents[0];
   auto res = make_shared<Tensor>(logits->createEmptyCopy());
 
   switch(upstreamGrad.getDevice()) {
-    case Device::CPU: {
-      const auto softmax = module::Softmax();
+    case Device::CPU: 
+    {
+      static const auto softmax = module::Softmax();
       const auto s = softmax(*logits);
 
-      ftype bSize = logits->getDims()[0];
-      for(tensorSize_t b=0; b<logits->getDims()[0]; b++){
-        for(tensorSize_t i=0; i<logits->getDims()[1]; i++){
-          auto g = s.get(b, i) - yTrue->get(b, i);
-          res->set(g / bSize, b, i);
+      const tensorSize_t stride = logits->getDims().get(-1);
+      const tensorSize_t bSize = logits->getSize() / stride;
+
+      for(tensorSize_t b = 0; b < bSize; b++){
+        for(tensorSize_t i = 0; i < stride; i++){
+          const tensorSize_t flatIdx = b * stride + i;
+          auto g = s[flatIdx] - (*yTrue)[flatIdx];
+          res->set(g / bSize, flatIdx);
         }
       }
       break;

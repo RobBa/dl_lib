@@ -55,6 +55,7 @@ static_assert(sizeof(tensorDim_t)<=sizeof(tensorSize_t));
 
 constexpr ftype EPS_CROSSENTROPY = 1e-5;
 constexpr ftype EPS_BCE = 1e-5;
+constexpr ftype EPS_RMSE = 1e-9;
 
 // ----------------- Default values ------------------------
 

@@ -37,6 +37,27 @@ namespace utility {
 template <class... T>
 constexpr bool always_false = false;
 
+template<typename T>
+__device__ __forceinline__ ftype cudaMax(const ftype left, const ftype right) {
+  if constexpr (std::is_same_v<T, float>) {
+    return fmaxf(a, b);
+  } else if(std::is_same_v<T, double>) {
+      return fmax(a, b);
+  }
+  else {
+    always_false<T, "Unexpected value for ftype encountered">;
+  }
+}
+
+/**
+  * @brief Single sigmoid computation.
+  */
+__device__ __forceinline__ ftype cudaSigmoid(ftype x) {
+  ftype z = expf(-fabsf(x));
+  ftype s = 1.0f / (1.0f + z);
+  return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
+}
+
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
 namespace cuda_impl {

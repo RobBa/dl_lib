@@ -42,20 +42,25 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
 
   switch(y->getDevice()) {
     case Device::CPU: {
-      auto ce = [&y, &ypred](const tensorDim_t b){
+      const tensorSize_t stride = y->getDims()[-1];
+      const tensorSize_t nSamples = y->getSize() / stride;
+
+      auto ce = [&y, &ypred, stride](const tensorSize_t offset){
         ftype r = 0;
-        for(tensorDim_t i=0; i<y->getDims()[-1]; i++){
-          r += y->get(b, i) * log(std::max(ypred->get(b, i), EPS_CROSSENTROPY));
+        for(tensorSize_t i = offset; i < offset + stride; i++){
+          r += (*y)[i] * log(std::max((*ypred)[i], EPS_CROSSENTROPY));
         }
         return r;
       };
 
-      const auto nBatches = y->getDims()[0];
       ftype loss = 0;
-      for(tensorSize_t b=0; b<nBatches; b++){
-        loss += ce(b);
+      tensorSize_t offset = 0;
+      while(offset < y->getSize()){
+        loss += ce(offset);
+        offset += stride;
       }
-      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, y->getDevice(), true);
+
+      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nSamples}, y->getDevice(), true);
       break;
     }
     case Device::CUDA:

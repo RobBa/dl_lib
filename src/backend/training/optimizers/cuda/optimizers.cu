@@ -26,7 +26,7 @@ namespace {
 
 namespace cuda_impl {
   void sgdStep(Tensor& param, const Tensor& grad, ftype lr) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     // TODO: launch kernel
@@ -35,7 +35,7 @@ namespace cuda_impl {
   }
 
   void rmspropStep(Tensor& param, Tensor& movingAvg, const Tensor& grad, ftype lr, ftype decay, ftype eps) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     // TODO: launch kernel

@@ -29,10 +29,12 @@ vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
 
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
-      ftype bSize = yPred->getDims()[0];
+      const ftype bSize = yPred->getDims()[0];
+
       for(tensorSize_t i = 0; i < yPred->getDims()[0]; i++){
         auto yi = (*yTrue)[i];
         auto yiHat = (*yPred)[i];
+        
         auto g = -yi / std::max(yiHat, EPS_BCE) + (1 - yi) / std::max(1 - yiHat, EPS_BCE);
         res->set(g / bSize, i);
       }

@@ -47,15 +47,6 @@ namespace {
   }
 
   /**
-   * @brief Single sigmoid computation.
-   */
-  __device__ __forceinline__ ftype sigmoid(ftype x) {
-      ftype z = expf(-fabsf(x));
-      ftype s = 1.0f / (1.0f + z);
-      return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
-  }
-
-  /**
    * @brief Kernel for forward Sigmoid function.
    */
   __global__ void sigmoidKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
@@ -63,7 +54,7 @@ namespace {
     if(gid >= size)
       return;
 
-    res[gid] = sigmoid(input[gid]);
+    res[gid] = cudaSigmoid(input[gid]);
   }
 
   /**

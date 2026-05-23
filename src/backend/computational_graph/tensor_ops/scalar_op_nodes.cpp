@@ -12,6 +12,11 @@
 #include "scalar_op_nodes.h"
 
 #include <utility>
+#include <stdexcept>
+
+#ifdef __CUDA
+#include "computational_graph/tensor_ops/cuda/tensor_ops_nodes.cuh"
+#endif
 
 using namespace std;
 using namespace cgraph;
@@ -25,6 +30,16 @@ vector<shared_ptr<Tensor>> cgraph::ScalarMulNode::backward(const Tensor& upstrea
   assert(!upstreamGrad.getRequiresGrad());
 
   auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
+  switch(res->getDevice()) {
+    case Device::CPU:
+
+    case Device::CUDA:
+    #ifdef __CUDA
+      scalarMulBackward(res, upstreamGrad, factor);
+    #else
+      __throw_invalid_argument("Not compiled with CUDA");
+    #endif
+  }
   for(tensorSize_t i=0; i<res->getSize(); i++){
     res->set(res->get(i) * factor, i);
   }

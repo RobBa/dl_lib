@@ -70,15 +70,15 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
        * log(sum_j(exp(z_j))) = max(z) + log(sum_j(exp(z_j - max(z)))).
        * for numerical stability
        */
-      auto compute = [&loss, &y, &logits, &tmp, &maxValues, stride](tensorSize_t start){
+      auto compute = [&loss, &y, &logits, &tmp, &maxValues, stride](tensorSize_t start) {
         ftype lsum = 0;
-        for(tensorSize_t i=start; i < start+stride; i++){
+        for(tensorSize_t i = start; i < start + stride; i++){
           lsum += tmp[i];
         }
         lsum = log(lsum);
 
         const tensorSize_t j = start / stride;
-        for(tensorSize_t i = start; i < start + stride; i++){
+        for(tensorSize_t i = start; i < start + stride; i++) {
           if((*y)[i]>0){ // y either zero or one
             loss += -(*logits)[i] + maxValues[j] + lsum;
           }

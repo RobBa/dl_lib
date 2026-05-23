@@ -107,7 +107,7 @@ namespace cuda_impl {
   }
 
   Tensor bceSigmoidLoss(const Tensor& y, const Tensor& yPred) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
@@ -118,7 +118,7 @@ namespace cuda_impl {
   }
 
   Tensor crossEntropyLoss(const Tensor& y, const Tensor& yPred) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
@@ -129,7 +129,7 @@ namespace cuda_impl {
   }
 
   Tensor crossEntropySoftmaxLoss(const Tensor& y, const Tensor& yPred) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);
@@ -140,7 +140,7 @@ namespace cuda_impl {
   }
 
   Tensor rmseLoss(const Tensor& y, const Tensor& yPred) {
-    const int threadsPerBlock = DeviceProperties::getThreadsPerBlock();
+    constexpr int threadsPerBlock = 256;
     const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     Tensor res(vector<tensorDim_t>{1}, Device::CUDA, true);

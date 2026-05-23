@@ -40,12 +40,12 @@ vector< shared_ptr<Tensor> > BceSigmoidNode::backward(const Tensor& upstreamGrad
         return e / (one + e);
       };
 
-      ftype bSize = logits->getDims()[0];
-      for(tensorSize_t i=0; i<logits->getDims()[0]; i++){
+      const ftype bSize = logits->getDims()[0];
+      for(tensorSize_t i = 0; i < logits->getDims()[0]; i++){
         auto y = (*yTrue)[i];
         auto s = sigmoid((*logits)[i]);
         auto g = s - y;
-        res->set(g/bSize, i);
+        res->set(g / bSize, i);
       }
       break;
     }
