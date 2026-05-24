@@ -922,6 +922,10 @@ Device Tensor::getDefaultDevice() noexcept {
 void Tensor::setDevice(const Device d) noexcept {
   makeContiguous();
   values->setDevice(d);
+
+  if(grads) {
+    grads->setDevice(d);
+  }
 }
 
 Device Tensor::getDevice() const noexcept {

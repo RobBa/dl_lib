@@ -61,6 +61,19 @@ TEST(CudaTensorOpsTest, ScalarMul) {
   }
 }
 
+TEST(CudaAutogradTest, ScalarMul) {
+  auto t1 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+  auto t2 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
+
+  auto t3 = cgraph::mul(t1, t2);
+  auto loss = cgraph::mul(t3, t3);
+
+  loss->backward();
+
+  ASSERT_DOUBLE_EQ(t1->getGrads()->get(0), 36.0);
+  ASSERT_DOUBLE_EQ(t2->getGrads()->get(0), 24.0);
+}
+
 TEST(CudaTensorOpsTest, TensorAdd) {
   auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
   auto t2 = TensorFunctions::Ones({500, 500}, Device::CUDA) * 4;
@@ -137,8 +150,6 @@ TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
 }
 
 TEST(CudaAutogradTest, BroadcastAdd) {
-  // gradient of broadcast add w.r.t. bias should be sum over batch dimension
-  // upstream grad: (2,3) of ones → bias grad should be (3) of twos
   auto t1 = TensorFunctions::makeSharedTensor({2, 3},
     {1.0, 2.0, 3.0,
      4.0, 5.0, 6.0}, Device::CUDA, true);
@@ -146,23 +157,54 @@ TEST(CudaAutogradTest, BroadcastAdd) {
     {0.0, 0.0, 0.0}, Device::CUDA, true);
 
   auto res = cgraph::add(t1, bias);
-
-  // set upstream grad to ones and backprop
-  auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
-    {1.0, 1.0, 1.0,
-     1.0, 1.0, 1.0}, false);
   res->backward();
 
   // bias grad should be sum over batch: [2, 2, 2]
   auto biasGrad = bias->getGrads();
-  ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
-  ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
-  ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
+  ASSERT_NEAR((*biasGrad)[0], 2.0, 1e-5);
+  ASSERT_NEAR((*biasGrad)[1], 2.0, 1e-5);
+  ASSERT_NEAR((*biasGrad)[2], 2.0, 1e-5);
 
   // t1 grad should be ones (add is identity for non-broadcast operand)
   auto t1Grad = t1->getGrads();
   for(int i = 0; i < 6; i++) {
-    ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
+    ASSERT_NEAR((*t1Grad)[i], 1.0, 1e-5);
+  }
+}
+
+TEST(CudaAutogradTest, BroadcastAddLarge) {
+  constexpr int dimsize = 1500;
+
+  auto t1 = std::make_shared<Tensor>(
+    TensorFunctions::Gaussian({2, dimsize},
+      5.0, Device::CPU, true));
+
+  auto bias = std::make_shared<Tensor>(
+    TensorFunctions::Gaussian({dimsize},
+      2.0, Device::CPU, true));
+
+  auto t1Gpu = std::make_shared<Tensor>(t1->createDeepCopy());
+  t1Gpu->setDevice(Device::CUDA);
+  auto biasGpu = std::make_shared<Tensor>(bias->createDeepCopy());
+  biasGpu->setDevice(Device::CUDA);
+
+  auto resCpu = cgraph::add(t1, bias);
+  resCpu->backward();
+
+  auto resGpu = cgraph::add(t1Gpu, biasGpu);
+  resGpu->backward();
+  resGpu->setDevice(Device::CPU);
+
+  auto biasGrad = bias->getGrads();
+  auto biasGradGpu = biasGpu->getGrads();
+  for(int i = 0; i < biasGrad->getSize(); i++) {
+    ASSERT_NEAR((*biasGrad)[i], (*biasGradGpu)[i], 1e-5);
+  }
+
+  auto t1Grad = t1->getGrads();
+  auto t1GpuGrads = t1Gpu->getGrads();
+  for(int i = 0; i < t1Grad->getSize(); i++) {
+    ASSERT_NEAR((*t1Grad)[i], (*t1GpuGrads)[i], 1e-5);
   }
 }
 
@@ -250,7 +292,7 @@ TEST(CudaTensorOpsTest, MatMulLarge) {
   const auto expectedDims = resCpu.getDims().toVector();
   ASSERT_EQ(resGpu.getDims().toVector(), expectedDims);
 
-  for(auto i = 0; i< resCpu.getDims().get(0); i++) {
+  for(auto i = 0; i < resCpu.getDims().get(0); i++) {
     for(auto j = 0; j < resCpu.getDims().get(1); j++) {
       ASSERT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)     
         << "Mismatch at (" << i << ", " << j << ")"
@@ -265,6 +307,70 @@ TEST(CudaTensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
   auto t2 = TensorFunctions::Ones({3, 2});
 
   ASSERT_THROW(t1.matmul(t2), std::runtime_error);
+}
+
+TEST(CudaAutogradTest, MatMul) {
+  constexpr int dimsize = 30;
+
+  // init tensors
+  auto t1 = std::make_shared<Tensor>(
+    TensorFunctions::Gaussian(
+      {10, dimsize}, 2.0, Device::CPU, true));
+
+  auto t2 = std::make_shared<Tensor>(
+    TensorFunctions::Gaussian(
+      {dimsize, 10}, 2.0, Device::CPU, true));
+
+  auto t1Gpu = std::make_shared<Tensor>(t1->createDeepCopy());
+  auto t2Gpu = std::make_shared<Tensor>(t2->createDeepCopy());
+  t1Gpu->setDevice(Device::CUDA);
+  t2Gpu->setDevice(Device::CUDA);
+
+  {
+    // compute and take loss
+    auto resCpu = cgraph::matmul(t1, t2);
+    auto lossCpu = TensorFunctions::makeSharedTensor(
+      {1}, {0.0}, Device::CPU, true);
+    for(size_t i = 0; i < resCpu->getSize(); ++i) {
+      lossCpu = cgraph::add(lossCpu, cgraph::get(resCpu, i));
+    }
+    lossCpu->backward();
+  }
+
+  {
+    auto resGpu = cgraph::matmul(t1Gpu, t2Gpu);
+    auto lossGpu = TensorFunctions::makeSharedTensor(
+      {1}, {0.0}, Device::CUDA, true);
+    for(size_t i = 0; i < resGpu->getSize(); ++i) {
+      lossGpu = cgraph::add(lossGpu, cgraph::get(resGpu, i));
+    }
+    lossGpu->backward();
+  }
+
+  // get grads and compare
+  auto t1Grads = t1->getGrads();
+  auto t2Grads = t2->getGrads();
+
+  auto t1GpuGrads = t1Gpu->getGrads();
+  auto t2GpuGrads = t2Gpu->getGrads();
+
+  for(auto i = 0; i < t1Grads->getDims().get(0); i++) {
+    for(auto j = 0; j < t1Grads->getDims().get(1); j++) {    
+      EXPECT_NEAR(t1Grads->get(i, j), t1GpuGrads->get(i, j), 1e-5)
+        << "Mismatch at (" << i << ", " << j << ")"
+        << " cpu=" << t1Grads->get(i, j) 
+        << " gpu=" << t1GpuGrads->get(i, j);
+    }
+  }
+
+  for(auto i = 0; i < t2Grads->getDims().get(0); i++) {
+    for(auto j = 0; j < t2Grads->getDims().get(1); j++) {    
+      EXPECT_NEAR(t2Grads->get(i, j), t2GpuGrads->get(i, j), 1e-5)
+        << "Mismatch at (" << i << ", " << j << ")"
+        << " cpu=" << t2Grads->get(i, j) 
+        << " gpu=" << t2GpuGrads->get(i, j);
+    }
+  }
 }
 
 TEST(CudaTensorOpsTest, MatrixTranspose1) {

@@ -81,15 +81,18 @@ Tensor FfLayer::operator()(const Tensor& input) const {
           auto res = input.matmul(*weights);
           res = res + *bias;
           return res;
-        } else {
-          return input.matmul(*weights);
-        }
+        } 
+
+        return input.matmul(*weights);
       }
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
       return input.createShallowCopy(); // line should not be reached
     #endif
   }
+
+  __throw_runtime_error("This line should never be reached.");
+  return input.createShallowCopy(); // suppress warnings
 }
 
 /**

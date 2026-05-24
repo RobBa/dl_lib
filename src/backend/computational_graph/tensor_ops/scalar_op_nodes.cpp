@@ -32,16 +32,20 @@ vector<shared_ptr<Tensor>> cgraph::ScalarMulNode::backward(const Tensor& upstrea
   auto res = make_shared<Tensor>(upstreamGrad.createDeepCopy());
   switch(res->getDevice()) {
     case Device::CPU:
-
+    {
+      for(tensorSize_t i=0; i<res->getSize(); i++){
+        res->set(res->get(i) * factor, i);
+      }
+      break;
+    }
     case Device::CUDA:
     #ifdef __CUDA
-      scalarMulBackward(res, upstreamGrad, factor);
+      cuda_impl::scalarMulBackward(*res, upstreamGrad, factor);
     #else
       __throw_invalid_argument("Not compiled with CUDA");
     #endif
+      break;
   }
-  for(tensorSize_t i=0; i<res->getSize(); i++){
-    res->set(res->get(i) * factor, i);
-  }
+
   return {std::move(res)};
 }

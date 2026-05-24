@@ -34,9 +34,9 @@ namespace {
     }
 
     auto yi = yTrue[gid];
-    auto yiHat = Pred[gid];
+    auto yiHat = yPred[gid];
 
-    auto g = -yi / cudaMax(yiHat, EPS_BCE) + (1 - yi) / cudaMax(1 - yiHat, EPS_BCE);
+    auto g = -yi / cudaMax<ftype>(yiHat, EPS_BCE) + (1 - yi) / cudaMax<ftype>(1 - yiHat, EPS_BCE);
     res[gid] = g;
   }
 
@@ -46,7 +46,7 @@ namespace {
    * @param bSize Batch-size.
    * @param sigmoids Sigmoids from forward pass.
    */
-  __global__ void bceSigmoidBackwardKernel(ftype* const res, const ftype* const sigmoids, const ftype* const yTrue, const ftype bSize, const tensorSize_t size) {
+  __global__ void bceSigmoidBackwardKernel(ftype* const res, const ftype* const logits, const ftype* const yTrue, const ftype bSize, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -70,7 +70,7 @@ namespace {
       return;
     }
 
-    auto g = -yTrue[gid] / cudaMax(yPred[gid], EPS_CROSSENTROPY);
+    auto g = -yTrue[gid] / cudaMax<ftype>(yPred[gid], EPS_CROSSENTROPY);
     res[gid] = g / nSamples;
   }
 
@@ -120,7 +120,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (logits.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits->getDims()[0], res.getSize());
+    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits.getDims()[0], res.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
@@ -128,8 +128,8 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    const tensorSize_t stride = yPred->getDims()[-1];
-    const ftype nSamples = static_cast<ftype>(yPred->getSize() / stride);
+    const tensorSize_t stride = yPred.getDims()[-1];
+    const ftype nSamples = static_cast<ftype>(yPred.getSize() / stride);
 
     crossEntropyBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), nSamples, yTrue.getSize());
     cudaErrchk(cudaDeviceSynchronize());
@@ -140,12 +140,12 @@ namespace cuda_impl {
     const int blocks = (logits.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     static const auto softmax = module::Softmax();
-    const auto softmaxedLogits = softmax(*logits);
+    const auto softmaxedLogits = softmax(logits);
 
-    const tensorSize_t stride = logits->getDims().get(-1);
-    const auto nSamples = static_cast<ftype>(->getSize() / stride);
+    const tensorSize_t stride = logits.getDims().get(-1);
+    const auto nSamples = static_cast<ftype>(logits.getSize() / stride);
 
-    crossEntropySoftmaxBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), softmaxedLogits.getData(), yTrue.getData(), bSize, logits.getSize());
+    crossEntropySoftmaxBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), softmaxedLogits.getData(), yTrue.getData(), nSamples, logits.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
@@ -153,7 +153,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    rmseBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), rmse, static_cast<ftype>(yPred->getDims()[0]), yPred.getSize());
+    rmseBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), rmse, static_cast<ftype>(yPred.getDims()[0]), yPred.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 }

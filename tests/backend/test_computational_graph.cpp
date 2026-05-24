@@ -56,7 +56,7 @@ TEST(AutogradTest, MultiVariateChainRule) {
   
   auto y = cgraph::mul(x, 3.0); // y = [3, 6]
   auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, true);
-  for(int i=0; i<y->getSize(); i++){
+  for(int i = 0; i < y->getSize(); i++){
     loss = cgraph::add(loss, cgraph::get(y, i));
   }    // loss = 9
   

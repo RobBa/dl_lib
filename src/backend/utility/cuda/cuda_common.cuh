@@ -16,6 +16,7 @@ static_assert(false, "File should not be included without CUDA enabled");
 #endif // __CUDA
 
 #include "cuda_runtime.h"
+#include "utility/global_params.h"
 
 #include <type_traits>
 
@@ -38,14 +39,14 @@ template <class... T>
 constexpr bool always_false = false;
 
 template<typename T>
-__device__ __forceinline__ ftype cudaMax(const ftype left, const ftype right) {
+__device__ __forceinline__ ftype cudaMax(const ftype a, const ftype b) {
   if constexpr (std::is_same_v<T, float>) {
     return fmaxf(a, b);
   } else if(std::is_same_v<T, double>) {
       return fmax(a, b);
   }
   else {
-    always_false<T, "Unexpected value for ftype encountered">;
+    static_assert(always_false<T>, "Unexpected value for ftype encountered");
   }
 }
 

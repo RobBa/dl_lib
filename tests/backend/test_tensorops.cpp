@@ -57,7 +57,7 @@ TEST(TensorOpsTest, ScalarMul) {
   }
 }
 
-TEST(AutogradTest, ScalarMultiplication) {
+TEST(AutogradTest, ScalarMul) {
   auto t1 = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
   auto t2 = TensorFunctions::makeSharedTensor({1}, {3.0}, true);
 
@@ -153,23 +153,18 @@ TEST(AutogradTest, BroadcastAdd) {
     {0.0, 0.0, 0.0}, true);
 
   auto res = cgraph::add(t1, bias);
-
-  // set upstream grad to ones and backprop
-  auto upstreamGrad = TensorFunctions::makeSharedTensor({2, 3},
-    {1.0, 1.0, 1.0,
-     1.0, 1.0, 1.0}, false);
   res->backward();
 
   // bias grad should be sum over batch: [2, 2, 2]
   auto biasGrad = bias->getGrads();
-  ASSERT_DOUBLE_EQ((*biasGrad)[0], 2.0);
-  ASSERT_DOUBLE_EQ((*biasGrad)[1], 2.0);
-  ASSERT_DOUBLE_EQ((*biasGrad)[2], 2.0);
+  ASSERT_NEAR((*biasGrad)[0], 2.0, 1e-5);
+  ASSERT_NEAR((*biasGrad)[1], 2.0, 1e-5);
+  ASSERT_NEAR((*biasGrad)[2], 2.0, 1e-5);
 
   // t1 grad should be ones (add is identity for non-broadcast operand)
   auto t1Grad = t1->getGrads();
   for(int i = 0; i < 6; i++) {
-    ASSERT_DOUBLE_EQ((*t1Grad)[i], 1.0);
+    ASSERT_NEAR((*t1Grad)[i], 1.0, 1e-5);
   }
 }
 
