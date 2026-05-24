@@ -44,12 +44,12 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
     case Device::CPU: {
       auto bceSimplified = [](ftype y, ftype logit){
         constexpr ftype zero = 0;
-        return std::max(logit, zero) - logit*y + log(1+exp(-std::abs(logit)));
+        return std::max(logit, zero) - logit * y + log(1 + exp(-std::abs(logit)));
       };
 
       const auto nBatches = y->getDims()[0];
       ftype loss = 0;
-      for(tensorSize_t i=0; i<nBatches; i++){
+      for(tensorSize_t i = 0; i < nBatches; i++){
         loss += bceSimplified((*y)[i], (*logits)[i]);
       }
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / nBatches}, y->getDevice(), true);
@@ -57,7 +57,8 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
     }
     case Device::CUDA:
     #ifdef __CUDA
-      res = make_shared<Tensor>(cuda_impl::bceSigmoidLoss(*y, *logits));
+      res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
+      cuda_impl::bceSigmoidLoss(*res, *y, *logits);
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif

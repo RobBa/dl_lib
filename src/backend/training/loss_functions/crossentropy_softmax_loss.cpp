@@ -96,7 +96,8 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
     }
     case Device::CUDA:
     #ifdef __CUDA
-      res = make_shared<Tensor>(cuda_impl::crossEntropySoftmaxLoss(*y, *logits));
+      res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
+      cuda_impl::crossEntropySoftmaxLoss(*res, *y, *logits);
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif

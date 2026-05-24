@@ -60,7 +60,8 @@ shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared
     }
     case Device::CUDA:
     #ifdef __CUDA
-      res = make_shared<Tensor>(cuda_impl::rmseLoss(*y, *ypred));
+      res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
+      cuda_impl::rmseLoss(*res, *y, *ypred);
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif

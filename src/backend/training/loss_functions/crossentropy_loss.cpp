@@ -65,7 +65,8 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
     }
     case Device::CUDA:
     #ifdef __CUDA
-      res = make_shared<Tensor>(cuda_impl::crossEntropyLoss(*y, *ypred));
+      res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
+      cuda_impl::crossEntropyLoss(*res, *y, *ypred);
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif

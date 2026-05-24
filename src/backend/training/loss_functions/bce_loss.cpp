@@ -41,14 +41,8 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   shared_ptr<Tensor> res = nullptr;
 
   switch(y->getDevice()) {
-    case Device::CUDA:
-    #ifdef __CUDA
-      res = make_shared<Tensor>(cuda_impl::bceLoss(*y, *ypred));
-    #else
-      __throw_invalid_argument("Attempted to give CUDA tensor");
-    #endif
-      break;
-    case Device::CPU: {
+    case Device::CPU: 
+    {
       auto bce = [](ftype y, ftype ypred){
         return y * log(std::max(ypred, EPS_BCE)) + (1 - y) * log(std::max(1-ypred, EPS_BCE));
       };
@@ -58,9 +52,18 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
       for(tensorSize_t i = 0; i < nBatches; i++){
         loss += bce((*y)[i], (*ypred)[i]);
       }
+      
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, Device::CPU, true);
       break;
     }
+    case Device::CUDA:
+    #ifdef __CUDA
+      res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
+      cuda_impl::bceLoss(*res, *y, *ypred);
+    #else
+      __throw_invalid_argument("Attempted to give CUDA tensor");
+    #endif
+      break;
   }
 
   res->setCgNode(make_shared<cgraph::BceNode>(y, ypred));
