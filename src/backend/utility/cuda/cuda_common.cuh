@@ -20,23 +20,9 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 #include <type_traits>
 
-template<typename T>
-struct FtypeWarning {
-    static constexpr void check() {}
-};
-
-template<>
-struct FtypeWarning<double> {
-    [[deprecated("ftype=double has serious CUDA performance implications")]]
-    static constexpr void check() {}
-};
-
 namespace utility {
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);
 }
-
-template <class... T>
-constexpr bool always_false = false;
 
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 

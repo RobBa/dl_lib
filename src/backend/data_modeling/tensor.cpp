@@ -14,7 +14,7 @@
 #include "computational_graph/graph_node.h"
 #include "computational_graph/topological_sort.h"
 
-#include "utility/macros.h"
+#include "utility/utils.h"
 
 #include <utility>
 #include <limits>

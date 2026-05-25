@@ -15,7 +15,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "loss_functions.cuh"
 
-#include "utility/macros.h"
+#include "utility/utils.h"
 #include "utility/cuda/cuda_common.cuh"
 
 #include "shared/cuda/common_kernels.cuh"
@@ -226,7 +226,64 @@ namespace {
     }
   }
 
-  // TODO: crossEntropySoftmaxLoss kernel
+  /**
+   * @brief Softmax cross-entropy loss kernel. One block per sample.
+   */
+  template<typename T>
+  __global__ void crossEntropySoftmaxLossKernel(ftype* const perSampleLoss, const ftype* const y, const ftype* const logits,
+                                                const ftype* const maxValues, const tensorSize_t stride) {
+    const int tid  = threadIdx.x;
+    const int tid2 = tid + blockDim.x;
+    const int sampleBase = blockIdx.x * stride;
+    const ftype maxV = maxValues[blockIdx.x];
+
+    extern __shared__ ftype smem[];
+
+    const bool inBounds0 = (tid < stride);
+    const bool inBounds1 = (tid2 < stride);
+
+    constexpr ftype zero = 0;
+    ftype e0  = inBounds0 ? stableExp<T>(logits[sampleBase + tid],  maxV) : zero;
+    ftype yz0 = inBounds0 ? y[sampleBase + tid]  * logits[sampleBase + tid]  : zero;
+    ftype e1  = inBounds1 ? stableExp<T>(logits[sampleBase + tid2], maxV) : zero;
+    ftype yz1 = inBounds1 ? y[sampleBase + tid2] * logits[sampleBase + tid2] : zero;
+
+    // Phase 1: reduce exp sum across stride (smem has 2 * blockDim.x slots)
+    smem[tid]  = e0;
+    smem[tid2] = e1;
+    __syncthreads();
+
+    for(int offset = blockDim.x; offset >= 1; offset >>= 1) {
+      if(tid < offset) {
+        smem[tid] += smem[tid + offset];
+      }
+      __syncthreads();
+    }
+
+    const ftype expSum = smem[0];
+
+    // reduce y*z dot product (y is one-hot, so at most one non-zero per sample)
+    smem[tid] = yz0 + yz1;
+    __syncthreads();
+
+    for(int offset = blockDim.x / 2; offset >= 1; offset >>= 1) {
+      if(tid < offset) {
+        smem[tid] += smem[tid + offset];
+      }
+      __syncthreads();
+    }
+
+    if(tid == 0) {
+      ftype logExpSum;
+      if constexpr (std::is_same_v<T, float>) {
+        logExpSum = __logf(expSum);
+      }
+      else {
+        logExpSum = log(expSum);
+      }
+      perSampleLoss[blockIdx.x] = maxV + logExpSum - smem[0];
+    }
+  }
 
   /**
    * @brief Helper for RMSE loss.
@@ -286,10 +343,10 @@ namespace {
   }
 
   template<typename T>
-  __global__ void normalizeRmse(ftype* val, ftype divisor) {
-    const v = val[0];
+  __global__ void normalizeRmse(ftype* const val, ftype divisor) {
+    const ftype v = val[0];
     if constexpr (std::is_same_v<T, float>) {
-      val[0] = __sqrtf(v / divisor);
+      val[0] = sqrtf(v / divisor);
     }
     else if constexpr (std::is_same_v<T, double>) {
       val[0] = sqrt(v / divisor);
@@ -404,11 +461,64 @@ namespace cuda_impl {
   }
 
   void crossEntropySoftmaxLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
-    constexpr int threadsPerBlock = 256;
-    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const tensorSize_t stride   = static_cast<tensorSize_t>(yPred.getDims().get(-1));
+    const tensorSize_t nSamples = yPred.getSize() / stride;
 
-    // TODO: launch kernel
+    ftype* maxValues;
+    cudaErrchk(cudaMalloc(&maxValues, nSamples * sizeof(ftype)));
+
+    // Find per-sample max values for numerical stability (mirrors softmax dispatch)
+    static const auto warpSizeT2 = 2 * DeviceProperties::getWarpSize();
+    if(stride <= warpSizeT2) {
+      constexpr int threadsPerBlock = 256;
+      const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+
+      if(stride == 2)
+        findMaxKernelOneWarp<1><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      else if(stride <= 4)
+        findMaxKernelOneWarp<2><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      else if(stride <= 8)
+        findMaxKernelOneWarp<4><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      else if(stride <= 16)
+        findMaxKernelOneWarp<8><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      else if(stride <= 32)
+        findMaxKernelOneWarp<16><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      else
+        findMaxKernelOneWarp<32><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      cudaErrchk(cudaDeviceSynchronize());
+    }
+    else if(stride <= 512) {
+      int threadsPerBlock = 1;
+      while(threadsPerBlock < stride) threadsPerBlock <<= 1;
+      threadsPerBlock /= 2;
+
+      findMaxKernelOneBlock<<<nSamples, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
+      cudaErrchk(cudaDeviceSynchronize());
+    }
+    else {
+      cudaErrchk(cudaFree(maxValues));
+      __throw_invalid_argument("crossEntropySoftmaxLoss: stride > 512 not yet supported on CUDA");
+    }
+
+    // one block per sample, each thread covers up to 2 elements
+    int threadsPerBlock = 1;
+    while(threadsPerBlock * 2 < stride) threadsPerBlock <<= 1;
+    threadsPerBlock = max(1, threadsPerBlock);
+
+    ftype* perSampleLoss;
+    cudaErrchk(cudaMalloc(&perSampleLoss, nSamples * sizeof(ftype)));
+
+    crossEntropySoftmaxLossKernel<ftype><<<nSamples, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+      perSampleLoss, y.getData(), yPred.getData(), maxValues, stride);
     cudaErrchk(cudaDeviceSynchronize());
+
+    thrust::device_ptr<ftype> lossPtr(perSampleLoss);
+    thrust::device_ptr<ftype> resPtr(res.getData());
+    resPtr[0] = thrust::reduce(lossPtr, lossPtr + nSamples, static_cast<ftype>(0), thrust::plus<ftype>())
+                / static_cast<ftype>(nSamples);
+
+    cudaErrchk(cudaFree(perSampleLoss));
+    cudaErrchk(cudaFree(maxValues));
   }
 
   void rmseLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {

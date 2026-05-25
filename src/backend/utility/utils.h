@@ -1,5 +1,5 @@
 /**
- * @file macros.h
+ * @file utils.h
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
@@ -23,3 +23,17 @@
       } \
     } while(0)
 #endif
+
+template <class... T>
+constexpr bool always_false = false;
+
+template<typename T>
+struct FtypeWarning {
+    static constexpr void check() {}
+};
+
+template<>
+struct FtypeWarning<double> {
+    [[deprecated("ftype=double has serious CUDA performance implications")]]
+    static constexpr void check() {}
+};

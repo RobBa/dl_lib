@@ -19,9 +19,7 @@
 #include "data_modeling/tensor_functions.h"
 #include "computational_graph/tensor_ops/graph_creation.h"
 
-#ifdef __CUDA
-#include "utility/cuda/cuda_common.cuh"
-#endif
+#include "utility/utils.h"
 
 #include <boost/python.hpp>
 #include <boost/python/enum.hpp>
@@ -32,9 +30,7 @@
 
 BOOST_PYTHON_MODULE(_core)
 {
-#ifdef __CUDA
   FtypeWarning<ftype>::check();
-#endif
 
   using namespace boost::python;
 

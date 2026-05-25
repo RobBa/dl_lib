@@ -16,6 +16,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "loss_nodes.cuh"
 #include "module/activation_functions/softmax.h"
 
+#include "shared/cuda/common_kernels.cuh"
 #include "utility/cuda/cuda_common.cuh"
 #include "utility/global_params.h"
 
@@ -24,6 +25,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
+  using namespace cuda_impl;
+  
   /**
    * @brief Does what you think it does.
    */

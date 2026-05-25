@@ -14,9 +14,25 @@
 #include "common_kernels.cuh"
 
 #include "utility/global_params.h"
-#include "utility/macros.h"
+#include "utility/utils.h"
 
 namespace cuda_impl {
+
+  /**
+   * @brief Basic helper.
+   */
+  template<typename T>
+  __forceinline__ __device__ ftype stableExp(const ftype x, const ftype maxVal) {
+    if constexpr (std::is_same_v<T, float>) {
+      return __expf(x - maxVal);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+      return exp(x - maxVal);
+    }
+    else {
+      static_assert(always_false<T>, "ftype encountered unexpected type");
+    }
+  }
 
   /**
    * @brief Reduction kernel that computes the maximum within the size of 2 * warpsize at maximum.

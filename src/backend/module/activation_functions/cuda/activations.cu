@@ -18,7 +18,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "shared/cuda/common_kernels.cuh"
 #include "shared/cuda/common_softmax.cuh"
 
-#include "utility/macros.h"
+#include "utility/utils.h"
 #include "utility/cuda/cuda_common.cuh"
 
 #include <stdexcept>
@@ -27,7 +27,7 @@ using namespace std;
 
 namespace {
   using namespace cuda_impl;
-  
+
   /**
    * @brief Kernel for forward ReLU function.
    */
@@ -87,22 +87,6 @@ namespace {
       if(offset + 1 < stride) input[offset] += input[offset + 1];
     }
   }
-
-  /**
-   * @brief For the softmax implementations.
-   */
-  template<typename T>
-  __forceinline__ __device__ ftype stableExp(const ftype x, const ftype maxValue) {
-    if constexpr (std::is_same_v<T, float>) {
-      return expf(x - maxValue);
-    }
-    else if constexpr (std::is_same_v<T, double>) {
-      return exp(x - maxValue);
-    }
-    else {
-      static_assert(always_false<T>, "ftype encountered unexpected type");
-    }
-  } 
 
   /**
    * @brief Numerically stable version of softmax kernel. Just as in findMaxKernelOneWarp we assume that stride <= 2 * warpsize.

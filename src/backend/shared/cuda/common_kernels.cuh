@@ -12,6 +12,7 @@
 #pragma once
 
 #include "utility/global_params.h"
+#include "utility/utils.h"
 
 namespace cuda_impl {
   template<typename T>
@@ -38,7 +39,7 @@ namespace cuda_impl {
   /**
    * @brief For single normalization, e.g. when normalizing with batch-size.
    */
-  static __global__ void divideScalarKernel(ftype* val, ftype divisor) {
+  static __global__ void divideScalarKernel(ftype* const val, ftype divisor) {
       val[0] /= divisor;
   }
 }

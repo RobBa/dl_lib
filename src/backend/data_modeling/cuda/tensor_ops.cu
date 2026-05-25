@@ -17,7 +17,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "tensor_ops.cuh"
 #include "utility/cuda/cuda_common.cuh"
-#include "utility/macros.h"
+#include "utility/utils.h"
 
 #include <thrust/fill.h>
 #include <thrust/device_ptr.h>
