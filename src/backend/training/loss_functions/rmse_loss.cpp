@@ -48,12 +48,13 @@ shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared
         return diff * diff;
       };
 
-      const auto nBatches = y->getDims()[0];
+      const auto nSamples = y->getSize();
+      
       ftype loss = 0;
-      for(tensorSize_t i=0; i<nBatches; i++){
+      for(tensorSize_t i = 0; i < nSamples; i++){
         loss += diffPow((*y)[i], (*ypred)[i]);
       }
-      loss = sqrt(loss/nBatches);
+      loss = sqrt(loss / nSamples);
 
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss}, y->getDevice(), true);
       break;

@@ -25,12 +25,13 @@ For some examples on Python interface, see tests/python.
 
 ## Tech Stack
 
-- C++17/20
+- C++17/20/23
 - CMake build system
 - Boost.Python for Python bindings
 - Python 3 for library interface and examples
 - Google Test (GTest) and PyTest for unit testing
 - GitHub Actions for CI/CD
+- CUDA
 
 ## Current Status
 
@@ -82,6 +83,7 @@ ctest .
 - numpy 1.26.4
 - pytest and GTest for unit tests (we use pytest=9.0.2)
 - Google Benchmark for benchmarking
+- CUDA (we use CUDA 13.1 on an RTX-5050)
 
 ## Troubleshooting
 

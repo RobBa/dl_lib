@@ -59,6 +59,13 @@ __device__ __forceinline__ ftype cudaSigmoid(ftype x) {
   return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
 }
 
+/**
+ * @brief For single normalization, e.g. when normalizing with batch-size.
+ */
+static __global__ void divideScalarKernel(ftype* val, ftype divisor) {
+    val[0] /= divisor;
+}
+
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
 
 namespace cuda_impl {
