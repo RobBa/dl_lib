@@ -14,8 +14,12 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #endif // __CUDA
 
 #include "loss_functions.cuh"
-#include "utility/cuda/cuda_common.cuh"
+
 #include "utility/macros.h"
+#include "utility/cuda/cuda_common.cuh"
+
+#include "shared/cuda/common_kernels.cuh"
+#include "shared/cuda/common_softmax.cuh"
 
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
@@ -23,6 +27,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
+  using namespace cuda_impl;
+
   template<typename T>
   __forceinline__ __device__ T bce(T y, T ypred) {
     if constexpr (std::is_same_v<T, float>) {

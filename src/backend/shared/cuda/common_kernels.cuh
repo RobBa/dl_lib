@@ -1,0 +1,44 @@
+/**
+ * @file common_kernels.cuh
+ * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-25
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
+
+#pragma once
+
+#include "utility/global_params.h"
+
+namespace cuda_impl {
+  template<typename T>
+  __device__ __forceinline__ ftype cudaMax(const ftype a, const ftype b) {
+    if constexpr (std::is_same_v<T, float>) {
+      return fmaxf(a, b);
+    } else if(std::is_same_v<T, double>) {
+        return fmax(a, b);
+    }
+    else {
+      static_assert(always_false<T>, "Unexpected value for ftype encountered");
+    }
+  }
+
+  /**
+    * @brief Single sigmoid computation.
+    */
+  __device__ __forceinline__ ftype cudaSigmoid(ftype x) {
+    ftype z = expf(-fabsf(x));
+    ftype s = 1.0f / (1.0f + z);
+    return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
+  }
+
+  /**
+   * @brief For single normalization, e.g. when normalizing with batch-size.
+   */
+  static __global__ void divideScalarKernel(ftype* val, ftype divisor) {
+      val[0] /= divisor;
+  }
+}
