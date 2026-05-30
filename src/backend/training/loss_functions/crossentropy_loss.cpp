@@ -45,19 +45,9 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
       const tensorSize_t stride = y->getDims()[-1];
       const tensorSize_t nSamples = y->getSize() / stride;
 
-      auto ce = [&y, &ypred, stride](const tensorSize_t offset){
-        ftype r = 0;
-        for(tensorSize_t i = offset; i < offset + stride; i++){
-          r += (*y)[i] * log(std::max((*ypred)[i], EPS_CROSSENTROPY));
-        }
-        return r;
-      };
-
       ftype loss = 0;
-      tensorSize_t offset = 0;
-      while(offset < y->getSize()){
-        loss += ce(offset);
-        offset += stride;
+      for (tensorSize_t i = 0; i < y->getSize(); i++) {
+        loss += (*y)[i] * log(std::max((*ypred)[i], EPS_CROSSENTROPY));
       }
 
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nSamples}, y->getDevice(), true);

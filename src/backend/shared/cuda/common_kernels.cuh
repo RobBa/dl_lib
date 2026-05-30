@@ -30,7 +30,7 @@ namespace cuda_impl {
   /**
     * @brief Single sigmoid computation.
     */
-  __device__ __forceinline__ ftype cudaSigmoid(ftype x) {
+  __device__ __forceinline__ ftype cudaSigmoid(const ftype x) {
     ftype z = expf(-fabsf(x));
     ftype s = 1.0f / (1.0f + z);
     return (x >= 0.f) ? s : z * s; // x < 0 => e^x/(e^x+1) 
@@ -39,7 +39,7 @@ namespace cuda_impl {
   /**
    * @brief For single normalization, e.g. when normalizing with batch-size.
    */
-  static __global__ void divideScalarKernel(ftype* const val, ftype divisor) {
-      val[0] /= divisor;
+  static __global__ void divideScalarKernel(ftype* const val, const ftype divisor) {
+    val[0] /= divisor;
   }
 }
