@@ -191,7 +191,7 @@ namespace {
     }
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 64; offset >>= 1) {
+    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
@@ -308,7 +308,7 @@ namespace {
     }
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 64; offset >>= 1) {
+    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
@@ -436,7 +436,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      const int blocks = (y.getSize() + maxThreadsPerBlock - 1) / (maxThreadsPerBlock * 2);
+      const int blocks = (y.getSize() + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
 
       ftype* tmp;
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
@@ -537,7 +537,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      const int blocks = (nSamples + maxThreadsPerBlock - 1) / (maxThreadsPerBlock * 2);
+      const int blocks = (nSamples + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
 
       ftype* tmp;
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));

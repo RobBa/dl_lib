@@ -625,7 +625,7 @@ Tensor Tensor::operator*(const Tensor& other) const {
 
   makeContiguous();
   other.makeContiguous();
-  Tensor res(dims, values->getDevice(), false);
+  Tensor res(dims, values->getDevice(), requiresGrad);
 
   switch(values->getDevice()){
     case Device::CPU:
@@ -672,7 +672,7 @@ Tensor& Tensor::operator+=(const Tensor& other) {
 }
 
 Tensor Tensor::operator*(const ftype scalar) const {
-  Tensor res(dims, values->getDevice(), false);
+  Tensor res(dims, values->getDevice(), requiresGrad);
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
@@ -696,7 +696,7 @@ Tensor Tensor::operator/(const ftype scalar) const {
     __throw_runtime_error("Cannot divide by zero.");
   }
 
-  Tensor res(dims, values->getDevice(), false);
+  Tensor res(dims, values->getDevice(), requiresGrad);
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
@@ -716,7 +716,7 @@ Tensor Tensor::operator/(const ftype scalar) const {
 }
 
 Tensor Tensor::operator+(const ftype scalar) const {
-  Tensor res(dims, values->getDevice(), false);
+  Tensor res(dims, values->getDevice(), requiresGrad);
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {
@@ -736,7 +736,7 @@ Tensor Tensor::operator+(const ftype scalar) const {
 }
 
 Tensor Tensor::operator-(const ftype scalar) const {
-  Tensor res(dims, values->getDevice(), false);
+  Tensor res(dims, values->getDevice(), requiresGrad);
   switch(values->getDevice()){
     case Device::CPU:
       for (tensorSize_t i = 0; i < values->getSize(); ++i) {

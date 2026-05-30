@@ -23,6 +23,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <cmath>
 
+using namespace std;
 using namespace train;
 
 static constexpr ftype delta = 1e-4f;
@@ -69,6 +70,25 @@ TEST(CudaLossTest, CrossEntropyUniformPrediction) {
   auto result = loss(y, ypred);
 
   ASSERT_NEAR((*result)[0], std::log(3.0f), delta);
+}
+
+TEST(CudaLossTest, CrossEntropyForwardLarge) {
+  constexpr tensorDim_t nSamples = 500;
+  constexpr tensorDim_t nClasses = 200;
+
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.5f);
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+
+  CrossEntropyLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
 }
 
 TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
@@ -143,6 +163,26 @@ TEST(CudaLossTest, BceRandomPrediction) {
   ASSERT_NEAR((*result)[0], std::log(2.0f), delta);
 }
 
+TEST(CudaLossTest, BceForwardLarge) {
+  constexpr tensorDim_t nSamples = 10000;
+
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.5f);
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.7f);
+  ypredCpu->setRequiresGrad(true);
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+  ypredGpu->setRequiresGrad(true);
+
+  BceLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
+}
+
 TEST(CudaLossTest, BceThrowsOnDimMismatch) {
   auto y = TensorFunctions::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
@@ -190,6 +230,24 @@ TEST(CudaLossTest, RmseForward) {
   auto result = loss(y, ypred);
 
   ASSERT_NEAR((*result)[0], 0.5f, delta);
+}
+
+TEST(CudaLossTest, RmseForwardLarge) {
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  ypredCpu->setRequiresGrad(true);
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+  ypredGpu->setRequiresGrad(true);
+
+  RmseLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
 }
 
 TEST(CudaLossTest, RmsePerfectPrediction) {
