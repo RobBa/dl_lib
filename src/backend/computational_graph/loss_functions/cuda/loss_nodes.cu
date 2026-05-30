@@ -30,17 +30,17 @@ namespace {
   /**
    * @brief Does what you think it does.
    */
-  __global__ void bceBackwardKernel(ftype* const res, const ftype* const yPred, const ftype* const yTrue, const tensorSize_t size) {
+  __global__ void bceBackwardKernel(ftype* const res, const ftype* const yPred, const ftype* const yTrue, const ftype bSize, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
     }
 
-    auto yi = yTrue[gid];
-    auto yiHat = yPred[gid];
+    const auto yi = yTrue[gid];
+    const auto yiHat = yPred[gid];
 
-    auto g = -yi / cudaMax<ftype>(yiHat, EPS_BCE) + (1 - yi) / cudaMax<ftype>(1 - yiHat, EPS_BCE);
-    res[gid] = g;
+    const auto g = -yi / cudaMax<ftype>(yiHat, EPS_BCE) + (1 - yi) / cudaMax<ftype>(1 - yiHat, EPS_BCE);
+    res[gid] = g / bSize;
   }
 
   /**
@@ -55,10 +55,10 @@ namespace {
       return;
     }
 
-    auto y = yTrue[gid];
-    auto s = cudaSigmoid(logits[gid]);
+    const auto y = yTrue[gid];
+    const auto s = cudaSigmoid(logits[gid]);
 
-    auto g = s - y;
+    const auto g = s - y;
     res[gid] = g / bSize;
   }
 
@@ -73,7 +73,7 @@ namespace {
       return;
     }
 
-    auto g = -yTrue[gid] / cudaMax<ftype>(yPred[gid], EPS_CROSSENTROPY);
+    const auto g = -yTrue[gid] / cudaMax<ftype>(yPred[gid], EPS_CROSSENTROPY);
     res[gid] = g / nSamples;
   }
 
@@ -115,7 +115,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    bceBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), yTrue.getSize());
+    bceBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), yPred.getDims()[0], yTrue.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 

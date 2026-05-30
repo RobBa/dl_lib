@@ -46,23 +46,17 @@ namespace {
    * @brief Forward BCE loss.
    */
   __global__ void bceLossKernel(ftype* const res, const ftype* const y, const ftype* const ypred, tensorSize_t size) {
-    int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid >= size)
-      return;
+    const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+    const int tid = threadIdx.x;
 
-    int tid = threadIdx.x;
     extern __shared__ ftype smem[];
+    const ftype tmp = gid < size ? bce<ftype>(y[gid], ypred[gid]) : 0;
+    smem[tid] = tmp;
+    __syncthreads();
 
-    // pre-load first round
-    {
-      int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-      smem[tid] = bce<ftype>(y[i], ypred[i]) + bce<ftype>(y[i + blockDim.x], ypred[i + blockDim.x]);
-      __syncthreads();
-    }
-
-    for(tensorSize_t i = blockDim.x / 2; i >= 64; i >>= 1){
-      if(tid < i) {
-        smem[tid] += smem[tid + i];
+    for(tensorSize_t offset = blockDim.x / 2; offset > 32; offset >>= 1){
+      if(tid < offset) {
+        smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
@@ -86,7 +80,7 @@ namespace {
         sdata[tid] += sdata[tid + 2];
       }
       if(gid + 1 < size) {
-        sdata[0] = (sdata[0] + sdata[1]) / size;
+        sdata[tid] += sdata[tid + 1];
       }
     }
 
@@ -115,23 +109,19 @@ namespace {
    * @param logits Forward logits.
    */
   __global__ void bceSigmoidLossKernel(ftype* const res, const ftype* const y, const ftype* const logits, tensorSize_t size) {
-    int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid >= size)
-      return;
-    
-    int tid = threadIdx.x;
+    const int gid = blockDim.x * blockIdx.x + threadIdx.x;    
+    const int tid = threadIdx.x;
+
     extern __shared__ ftype smem[];
 
     // pre-load first round
-    {
-      int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-      smem[tid] = bceSimplified<ftype>(y[i], logits[i]) + bceSimplified<ftype>(y[i + blockDim.x], logits[i + blockDim.x]);
-      __syncthreads();
-    }
+    const ftype tmp = gid < size ? bceSimplified<ftype>(y[gid], logits[gid]) : 0;
+    smem[tid] = tmp;
+    __syncthreads();
 
-    for(tensorSize_t i = blockDim.x / 2; i >= 64; i >>= 1){
-      if(tid < i) {
-        smem[tid] += smem[tid + i];
+    for(tensorSize_t offset = blockDim.x / 2; offset > 32; offset >>= 1){
+      if(tid < offset) {
+        smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
@@ -155,7 +145,7 @@ namespace {
         sdata[tid] += sdata[tid + 2];
       }
       if(gid + 1 < size) {
-        sdata[0] = (sdata[0] + sdata[1]) / size;
+        sdata[tid] += sdata[tid + 1];
       }
     }
 
@@ -186,9 +176,8 @@ namespace {
 
     extern __shared__ ftype smem[];
 
-    if(gid < size) {
-      smem[tid] = crossEntropy<ftype>(y[gid], yPred[gid]);
-    }
+    const ftype tmp = gid < size ? crossEntropy<ftype>(y[gid], yPred[gid]) : 0;
+    smem[tid] = tmp;
     __syncthreads();
 
     for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
@@ -302,10 +291,8 @@ namespace {
     const int gid = blockIdx.x * blockDim.x + tid;
 
     extern __shared__ ftype smem[];
-    smem[tid] = diffPow(y[gid], yPred[gid]);
-    if(gid + blockDim.x < size) {
-      smem[tid] += diffPow(y[gid + blockDim.x], yPred[gid + blockDim.x]);
-    }
+    const ftype tmp = gid < size ? diffPow(y[gid], yPred[gid]) : 0;
+    smem[tid] = tmp;
     __syncthreads();
 
     for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
@@ -361,7 +348,7 @@ namespace {
 namespace cuda_impl {
   void bceLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (y.getSize() + threadsPerBlock - 1) / (threadsPerBlock * 2);
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     if(blocks > 1) {
       // two pass solution
@@ -369,7 +356,7 @@ namespace cuda_impl {
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
 
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
-          tmp, y.getData(), yPred.getData(), y.getDims()[0]);
+          tmp, y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
       // do a sum over the residual array
@@ -381,7 +368,7 @@ namespace cuda_impl {
     }
     else {
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
-          res.getData(), y.getData(), yPred.getData(), y.getDims()[0]);
+          res.getData(), y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
     }
 
@@ -392,7 +379,7 @@ namespace cuda_impl {
 
   void bceSigmoidLoss(Tensor& res, const Tensor& y, const Tensor& logits) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (y.getSize() + threadsPerBlock - 1) / (threadsPerBlock * 2);
+    const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     if(blocks > 1) {
       // we do two passes at max
@@ -400,7 +387,7 @@ namespace cuda_impl {
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
 
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
-          tmp, y.getData(), logits.getData(), y.getDims()[0]);
+          tmp, y.getData(), logits.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
       // do a sum over the residual array
@@ -412,7 +399,7 @@ namespace cuda_impl {
     }
     else {
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
-          res.getData(), y.getData(), logits.getData(), y.getDims()[0]);
+          res.getData(), y.getData(), logits.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
     }
 
@@ -421,27 +408,22 @@ namespace cuda_impl {
     cudaErrchk(cudaDeviceSynchronize());
   }
 
-  void crossEntropyLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
-    constexpr int maxThreadsPerBlock = 256;
-    
-    const tensorSize_t stride = y.getDims()[-1];
-    const tensorSize_t nSamples = y.getSize() / stride;
-
-    if(y.getSize() <= maxThreadsPerBlock) {
-
+  void crossEntropyLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {    
+    if(y.getSize() <= 256) {
       int threadsPerBlock = 1;
-      while(threadsPerBlock < y.getSize()) threadsPerBlock <<= 1;
-
+      while(threadsPerBlock < y.getSize()) threadsPerBlock <<= 1; // < 512 threads
+      
       crossEntropyLossKernelOneBlock<<<1, threadsPerBlock, y.getSize() * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      const int blocks = (y.getSize() + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
+      constexpr int threadsPerBlock = 256;
+      const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
       ftype* tmp;
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
 
-      crossEntropyLossKernelOneBlock<<<blocks, maxThreadsPerBlock, maxThreadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
+      crossEntropyLossKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
       // do a sum over the residual array
@@ -453,6 +435,8 @@ namespace cuda_impl {
     }
 
     // loss = -loss / nBatches
+    const tensorSize_t stride = y.getDims()[-1];
+    const tensorSize_t nSamples = y.getSize() / stride;
     divideScalarKernel<<<1, 1>>>(res.getData(), -1 * static_cast<ftype>(nSamples));
     cudaErrchk(cudaDeviceSynchronize());
   }
@@ -518,31 +502,24 @@ namespace cuda_impl {
     cudaErrchk(cudaFree(maxValues));
   }
 
-  void rmseLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
-    constexpr int maxThreadsPerBlock = 256;
-    
+  void rmseLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {    
     const auto nSamples = y.getSize();
 
-    if(nSamples * 2 <= maxThreadsPerBlock) {
-      // ceil(y.getSize() / 2)
-      const int sizeOverTwo = (y.getSize() + 1) / 2;
-      assert(sizeOverTwo > 0);
-
+    if(nSamples <= 256) {
       int threadsPerBlock = 1;
-      while(threadsPerBlock < sizeOverTwo) threadsPerBlock <<= 1;
-      threadsPerBlock = max(1, threadsPerBlock >> 1);
-      assert(threadsPerBlock >= y.getSize() / 2);
+      while(threadsPerBlock < nSamples) threadsPerBlock <<= 1; // < 512 threads
       
       rmseKernelOneBlock<<<1, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      const int blocks = (nSamples + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
+      constexpr int threadsPerBlock = 256;
+      const int blocks = (nSamples + threadsPerBlock - 1) / threadsPerBlock;
 
       ftype* tmp;
       cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
 
-      rmseKernelOneBlock<<<blocks, maxThreadsPerBlock, maxThreadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
+      rmseKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
       // do a sum over the residual array
@@ -553,7 +530,7 @@ namespace cuda_impl {
       cudaErrchk(cudaFree(tmp));
     }
 
-    normalizeRmse<ftype><<<1, 1>>>(res.getData(), nSamples);
+    normalizeRmse<ftype><<<1, 1>>>(res.getData(), static_cast<ftype>(nSamples));
     cudaErrchk(cudaDeviceSynchronize());
   }
 }

@@ -43,7 +43,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   switch(y->getDevice()) {
     case Device::CPU: 
     {
-      auto bce = [](ftype y, ftype ypred){
+      auto bce = [](const ftype y, const ftype ypred){
         return y * log(std::max(ypred, EPS_BCE)) + (1 - y) * log(std::max(1-ypred, EPS_BCE));
       };
 

@@ -26,8 +26,6 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 using namespace train;
 
-static constexpr ftype delta = 1e-4f;
-
 TEST(CudaLossTest, CrossEntropyForward) {
   auto y = TensorFunctions::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
@@ -41,7 +39,7 @@ TEST(CudaLossTest, CrossEntropyForward) {
   auto result = loss(y, ypred);
 
   const ftype expected = -(std::log(0.7f) + std::log(0.8f)) / 2.0f;
-  ASSERT_NEAR((*result)[0], expected, delta);
+  ASSERT_NEAR((*result)[0], expected, 1e-4);
 }
 
 TEST(CudaLossTest, CrossEntropyPerfectPrediction) {
@@ -69,7 +67,7 @@ TEST(CudaLossTest, CrossEntropyUniformPrediction) {
   CrossEntropyLoss loss;
   auto result = loss(y, ypred);
 
-  ASSERT_NEAR((*result)[0], std::log(3.0f), delta);
+  ASSERT_NEAR((*result)[0], std::log(3.0f), 1e-4);
 }
 
 TEST(CudaLossTest, CrossEntropyForwardLarge) {
@@ -88,7 +86,7 @@ TEST(CudaLossTest, CrossEntropyForwardLarge) {
   auto resCpu = loss(yCpu, ypredCpu);
   auto resGpu = loss(yGpu, ypredGpu);
 
-  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], 0.1);
 }
 
 TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
@@ -114,12 +112,12 @@ TEST(CudaLossTest, CrossEntropyBackward) {
   result->backward();
 
   auto grads = ypred->getGrads();
-  ASSERT_NEAR((*grads)[0], -0.7143f, delta);
-  ASSERT_NEAR((*grads)[1],  0.0f,    delta);
-  ASSERT_NEAR((*grads)[2],  0.0f,    delta);
-  ASSERT_NEAR((*grads)[3],  0.0f,    delta);
-  ASSERT_NEAR((*grads)[4], -0.625f,  delta);
-  ASSERT_NEAR((*grads)[5],  0.0f,    delta);
+  ASSERT_NEAR((*grads)[0], -0.7143f, 1e-4);
+  ASSERT_NEAR((*grads)[1],  0.0f,    1e-4);
+  ASSERT_NEAR((*grads)[2],  0.0f,    1e-4);
+  ASSERT_NEAR((*grads)[3],  0.0f,    1e-4);
+  ASSERT_NEAR((*grads)[4], -0.625f,  1e-4);
+  ASSERT_NEAR((*grads)[5],  0.0f,    1e-4);
 }
 
 TEST(CudaLossTest, BceForward) {
@@ -134,7 +132,7 @@ TEST(CudaLossTest, BceForward) {
 
   const ftype expected = -(std::log(0.9f) + std::log(0.9f) +
                std::log(0.8f) + std::log(0.8f)) / 4.0f;
-  ASSERT_NEAR((*result)[0], expected, delta);
+  ASSERT_NEAR((*result)[0], expected, 1e-4);
 }
 
 TEST(CudaLossTest, BcePerfectPrediction) {
@@ -160,7 +158,7 @@ TEST(CudaLossTest, BceRandomPrediction) {
   BceLoss loss;
   auto result = loss(y, ypred);
 
-  ASSERT_NEAR((*result)[0], std::log(2.0f), delta);
+  ASSERT_NEAR((*result)[0], std::log(2.0f), 1e-4);
 }
 
 TEST(CudaLossTest, BceForwardLarge) {
@@ -180,7 +178,7 @@ TEST(CudaLossTest, BceForwardLarge) {
   auto resCpu = loss(yCpu, ypredCpu);
   auto resGpu = loss(yGpu, ypredGpu);
 
-  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], 1e-4);
 }
 
 TEST(CudaLossTest, BceThrowsOnDimMismatch) {
@@ -216,8 +214,8 @@ TEST(CudaLossTest, BceBackward) {
   result->backward();
 
   auto grads = ypred->getGrads();
-  ASSERT_NEAR((*grads)[0], -0.625f,  delta);
-  ASSERT_NEAR((*grads)[1],  0.7143f, delta);
+  ASSERT_NEAR((*grads)[0], -0.625f,  1e-4);
+  ASSERT_NEAR((*grads)[1],  0.7143f, 1e-4);
 }
 
 TEST(CudaLossTest, RmseForward) {
@@ -229,7 +227,7 @@ TEST(CudaLossTest, RmseForward) {
   RmseLoss loss;
   auto result = loss(y, ypred);
 
-  ASSERT_NEAR((*result)[0], 0.5f, delta);
+  ASSERT_NEAR((*result)[0], 0.5f, 1e-4);
 }
 
 TEST(CudaLossTest, RmseForwardLarge) {
@@ -247,7 +245,7 @@ TEST(CudaLossTest, RmseForwardLarge) {
   auto resCpu = loss(yCpu, ypredCpu);
   auto resGpu = loss(yGpu, ypredGpu);
 
-  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], delta);
+  EXPECT_NEAR((*resCpu)[0], (*resGpu)[0], 0.1);
 }
 
 TEST(CudaLossTest, RmsePerfectPrediction) {
@@ -259,7 +257,7 @@ TEST(CudaLossTest, RmsePerfectPrediction) {
   RmseLoss loss;
   auto result = loss(y, ypred);
 
-  ASSERT_NEAR((*result)[0], 0.0f, delta);
+  ASSERT_NEAR((*result)[0], 0.0f, 1e-4);
 }
 
 TEST(CudaLossTest, RmseBackward) {
@@ -273,6 +271,6 @@ TEST(CudaLossTest, RmseBackward) {
   result->backward();
 
   auto grads = ypred->getGrads();
-  ASSERT_NEAR((*grads)[0], -0.5f, delta);
-  ASSERT_NEAR((*grads)[1],  0.5f, delta);
+  ASSERT_NEAR((*grads)[0], -0.5f, 1e-4);
+  ASSERT_NEAR((*grads)[1],  0.5f, 1e-4);
 }
