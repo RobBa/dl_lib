@@ -20,5 +20,5 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 namespace cuda_impl {
   void sgdStep(Tensor& param, const Tensor& grad, ftype lr);
-  void rmspropStep(Tensor& param, Tensor& movingAvg, const Tensor& grad, ftype lr, ftype decay, ftype eps);
+  void rmspropStep(Tensor& param, Tensor& movingAvg, const Tensor& grad, ftype lr, ftype decay);
 }

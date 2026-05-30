@@ -43,6 +43,7 @@ if(CMAKE_CUDA_COMPILER)
   find_package(CUDAToolkit REQUIRED)
   target_include_directories(unit_tests_cuda PRIVATE
     ${CUDAToolkit_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/backend
   )
 
   gtest_discover_tests(unit_tests_cuda)

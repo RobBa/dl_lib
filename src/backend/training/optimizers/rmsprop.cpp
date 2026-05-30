@@ -21,7 +21,6 @@ using namespace std;
 using namespace train;
 
 void RmsPropOptimizer::step() {
-  constexpr ftype eps = 1e-8;
   for(const auto& param: params){
     auto tPtr = param.get();
     const auto gPtr = tPtr->getGrads().get();
@@ -30,24 +29,24 @@ void RmsPropOptimizer::step() {
       case Device::CPU: {
         auto vPtr = movingAvg[tPtr].get();
 
-        if(vPtr != nullptr) {
-          for(tensorSize_t i=0; i<gPtr->getSize(); i++){
+        if(vPtr != nullptr) [[likely]] {
+          for(tensorSize_t i = 0; i < gPtr->getSize(); i++){
             auto g = (*gPtr)[i];
-            auto update = decay * (*vPtr)[i] + (1-decay)*g*g;
+            auto update = decay * (*vPtr)[i] + (1 - decay) * g * g;
             vPtr->set(update, i);
           }
         }
-        else {
+        else [[unlikely]] {
           movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), tPtr->getDevice(), false);
           vPtr = movingAvg[tPtr].get();
-          for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
+          for(tensorSize_t i = 0; i < tPtr->getSize(); i++) {
             auto g = (*gPtr)[i];
-            vPtr->set((1-decay)*g*g, i);
+            vPtr->set((1 - decay) * g * g, i);
           }
         }
 
         for(tensorSize_t i=0; i<tPtr->getSize(); i++) {
-          auto update = (*tPtr)[i] - lr * (*gPtr)[i] / ((*vPtr)[i] + eps);
+          auto update = (*tPtr)[i] - lr * (*gPtr)[i] / ((*vPtr)[i] + EPS_RMSPROP);
           tPtr->set(update, i);
         }
         break;
@@ -56,8 +55,9 @@ void RmsPropOptimizer::step() {
       #ifdef __CUDA
         if(movingAvg[tPtr] == nullptr) {
           movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), tPtr->getDevice(), false);
+          movingAvg[tPtr]->reset(0);
         }
-        cuda_impl::rmspropStep(*tPtr, *movingAvg[tPtr], *gPtr, lr, decay, eps);
+        cuda_impl::rmspropStep(*tPtr, *movingAvg[tPtr], *gPtr, lr, decay);
       #else
         __throw_invalid_argument("Attempted to use CUDA tensor");
       #endif
