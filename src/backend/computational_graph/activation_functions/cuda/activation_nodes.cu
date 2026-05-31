@@ -67,10 +67,10 @@ namespace {
     const int tid = threadIdx.x;
 
     const int withinStrideOffset = tid % threadsPerStride;
-    const int strideOffset = (tid / stride) * stride;
+    const int strideOffset = (tid / threadsPerStride) * stride;
 
     const int gid = blockIdx.x * stridesWidthPerBlock + strideOffset + withinStrideOffset;
-    const bool isPadded = (withinStrideOffset >= stride) || (gid > size); // padded threads only exists to align warps with strides
+    const bool isPadded = (withinStrideOffset >= stride) || (gid >= size); // padded threads only exists to align warps with strides
 
     ftype yi = 0;
     const int smemOffset = strideOffset + withinStrideOffset;
@@ -79,7 +79,7 @@ namespace {
     if(!isPadded) {
       yi = softmax[gid];
       smem[smemOffset] = yi;
-      smem[smemOffset + stride] = upstreamGrad[gid];
+      smem[smemOffset + stridesWidthPerBlock] = upstreamGrad[gid];
     }
     __syncthreads();
 
@@ -91,7 +91,7 @@ namespace {
     for(int j = 0; j < stride; j++) {
       // warp alignment -> smem-reads are broadcasted per warp -> no bank conflicts
       ftype yj = smem[strideOffset + j];
-      ftype gj = smem[strideOffset + j + stride];
+      ftype gj = smem[strideOffset + j + stridesWidthPerBlock];
 
       auto jacobian = (withinStrideOffset == j) ? yi * (1 - yj) : -yi * yj;
       grad += gj * jacobian;

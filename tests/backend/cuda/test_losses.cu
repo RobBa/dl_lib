@@ -146,8 +146,8 @@ TEST(CudaLossTest, CrossEntropyBackwardLarge) {
   for(int i = 0; i < ypredCpu->getSize(); i++) {
     EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
       << "Failed at index " << i 
-      << "- GradsCpu[i]: " << (*gradsCpu)[i]
-      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
   }
 }
 
@@ -274,8 +274,8 @@ TEST(CudaLossTest, BceBackwardLarge) {
   for(int i = 0; i < ypredCpu->getSize(); i++) {
     EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
       << "Failed at index " << i 
-      << "- GradsCpu[i]: " << (*gradsCpu)[i]
-      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
   }
 }
 
@@ -359,7 +359,7 @@ TEST(CudaLossTest, RmseBackwardLarge) {
   for(int i = 0; i < ypredCpu->getSize(); i++) {
     EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
       << "Failed at index " << i 
-      << "- GradsCpu[i]: " << (*gradsCpu)[i]
-      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
   }
 }

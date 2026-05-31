@@ -65,7 +65,7 @@ namespace {
    * @brief Reduction kernel that computes the sum over an array within the size of 2 * warpsize at maximum.
    */
   template<int maxoffset>
-  __forceinline__ __device__ void warpSumReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
+  __forceinline__ __device__ void softmaxWarpSumReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
     // TODO: warp shuffle for newer architectures
     if(maxoffset == 32) {
       if(offset + 32 < stride) input[offset] += input[offset + 32];
@@ -111,7 +111,7 @@ namespace {
 
     volatile ftype* const start = smem + (tid / stride) * stride;
     const int offset = gid % stride;
-    warpSumReduce<maxoffset>(start, stride, offset);
+    softmaxWarpSumReduce<maxoffset>(start, stride, offset);
 
     res[gid] = expVal / start[0];
   }

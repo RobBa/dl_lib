@@ -251,6 +251,30 @@ TEST(CudaAutogradTest, SoftmaxBackward) {
   ASSERT_NEAR((*grads)[2], -0.0599, 1e-4);
 }
 
+TEST(CudaAutogradTest, SoftmaxBackwardBatched) {
+  // 4 samples x 3 classes — exercises the one-block path with multiple strides
+  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({4, 3}, 1.0f, true));
+  auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
+  tGpu->setDevice(Device::CUDA);
+
+  module::Softmax sm;
+  auto resCpu = sm(tCpu);
+  auto resGpu = sm(tGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto gradsCpu = tCpu->getGrads();
+  auto gradsGpu = tGpu->getGrads();
+
+  for(int i = 0; i < tCpu->getSize(); i++) {
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+      << "Failed at index " << i 
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+  }
+}
+
 TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   constexpr tensorDim_t testDim = 1300;
   auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({2, 2, testDim}, 2.0f, true));
@@ -261,12 +285,6 @@ TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   auto resPtrCpu = sm(tCpu);
   auto resPtrGpu = sm(tGpu);
 
-  auto upstreamGradCpu = make_shared<Tensor>(TensorFunctions::Ones(tCpu->getDims().toVector()));
-  auto upstreamGradGpu = make_shared<Tensor>(TensorFunctions::Ones(tCpu->getDims().toVector(), Device::CUDA));
-
-  resPtrCpu->setGrads(upstreamGradCpu);
-  resPtrGpu->setGrads(upstreamGradGpu);
-
   resPtrCpu->backward();
   resPtrGpu->backward();
 
@@ -274,7 +292,10 @@ TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   auto gradsGpu = tGpu->getGrads();
 
   for(int i = 0; i < tCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4);
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+      << "Failed at index " << i 
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
   }
 }
 
@@ -389,12 +410,6 @@ TEST(CudaAutogradTest, FfLayerBackwardLarge) {
   auto resCpu = layerCpu(xCpu);
   auto resGpu = layerGpu(xGpu);
 
-  auto upstreamCpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector()));
-  auto upstreamGpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector(), Device::CUDA));
-
-  resCpu->setGrads(upstreamCpu);
-  resGpu->setGrads(upstreamGpu);
-
   resCpu->backward();
   resGpu->backward();
 
@@ -440,12 +455,6 @@ TEST(CudaAutogradTest, FfLayerBackwardWithBiasLarge) {
 
   auto resCpu = layerCpu(xCpu);
   auto resGpu = layerGpu(xGpu);
-
-  auto upstreamCpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector()));
-  auto upstreamGpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector(), Device::CUDA));
-
-  resCpu->setGrads(upstreamCpu);
-  resGpu->setGrads(upstreamGpu);
 
   resCpu->backward();
   resGpu->backward();

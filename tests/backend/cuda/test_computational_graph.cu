@@ -156,7 +156,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
   auto net = makeMulticlassNet(Device::CUDA);
   auto loss = make_shared<train::CrossEntropyLoss>();
   auto optim = make_shared<train::RmsPropOptimizer>(
-    net->parameters(), /*lr=*/0.0001, /*decay=*/0.95);
+    net->parameters(), /*lr=*/0.001, /*decay=*/0.95);
 
   auto trainLoop = train::BaseTrainLoop(
     net, loss, optim, /*epochs=*/2000, /*bsize=*/6);
@@ -165,6 +165,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
 
   auto pred = (*net)(x);
   auto finalLoss = (*loss)(y, pred);
+
 
   EXPECT_LT((*finalLoss)[0], 0.05f)
     << "Network failed to overfit multiclass dataset\n"
@@ -191,7 +192,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
   auto net = makeMulticlassNet2(Device::CUDA);
   auto loss = make_shared<train::CrossEntropySoftmaxLoss>();
   auto optim = make_shared<train::RmsPropOptimizer>(
-    net->parameters(), /*lr=*/0.0001, /*decay=*/0.95);
+    net->parameters(), /*lr=*/0.001, /*decay=*/0.95);
 
   auto trainLoop = train::BaseTrainLoop(
     net, loss, optim, /*epochs=*/2000, /*bsize=*/6);
