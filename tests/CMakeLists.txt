@@ -47,6 +47,18 @@ if(CMAKE_CUDA_COMPILER)
   )
 
   gtest_discover_tests(unit_tests_cuda)
+
+  find_package(Python3 COMPONENTS Interpreter)
+  if(Python3_FOUND)
+    add_test(
+      NAME python_tests_cuda
+      COMMAND ${Python3_EXECUTABLE} -m pytest
+              ${CMAKE_CURRENT_SOURCE_DIR}/python/cuda
+    )
+    set_tests_properties(python_tests_cuda PROPERTIES
+      ENVIRONMENT "PYTHONPATH=${PYTHON_MODULE_DIR}:$ENV{PYTHONPATH}"
+    )
+  endif()
 endif()
 
 find_package(Python3 COMPONENTS Interpreter)
