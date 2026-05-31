@@ -268,8 +268,11 @@ namespace {
       if constexpr (std::is_same_v<T, float>) {
         logExpSum = __logf(expSum);
       }
-      else {
+      else if constexpr (std::is_same_v<T, double>) {
         logExpSum = log(expSum);
+      }
+      else {
+        static_assert(always_false<T>, "Unexpected value for ftype encountered");
       }
       perSampleLoss[blockIdx.x] = maxV + logExpSum - smem[0];
     }

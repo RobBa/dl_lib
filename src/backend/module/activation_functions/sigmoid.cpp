@@ -33,7 +33,7 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
     case Device::CPU: {
       constexpr ftype one = 1.0;
       auto compute = [](ftype x){
-        if(x>=0){
+        if(x >= 0){
           return one / (one + exp(-x));
         }
         auto e = exp(x);

@@ -15,6 +15,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <gtest/gtest.h>
 
+#include "system/sys_functions.h"
+
 class CudaEnvironment : public ::testing::Environment {
 public:
   void SetUp() override {
@@ -29,5 +31,6 @@ public:
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   ::testing::AddGlobalTestEnvironment(new CudaEnvironment());
+  sys::setRandomSeed(42);
   return RUN_ALL_TESTS();
 }

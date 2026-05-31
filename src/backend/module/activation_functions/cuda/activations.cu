@@ -32,34 +32,33 @@ namespace {
    * @brief Kernel for forward ReLU function.
    */
   __global__ void reluKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
 
-    constexpr ftype zero = 0;
-    res[gid] = fmaxf(input[gid], zero);
+    res[gid] = cudaMax<ftype>(input[gid], 0);
   }
 
   /**
    * @brief Kernel for forward Leaky-ReLU function.
    */
   __global__ void leakyReluKernel(ftype* const res, const ftype* const input, const ftype eps, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
 
-    res[gid] = fmaxf(input[gid], eps * input[gid]); // eps < 1
+    res[gid] = cudaMax<ftype>(input[gid], eps * input[gid]); // eps < 1
   }
 
   /**
    * @brief Kernel for forward Sigmoid function.
    */
   __global__ void sigmoidKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
 
-    res[gid] = cudaSigmoid(input[gid]);
+    res[gid] = cudaSigmoid<ftype>(input[gid]);
   }
 
   /**

@@ -56,7 +56,7 @@ namespace {
     }
 
     const auto y = yTrue[gid];
-    const auto s = cudaSigmoid(logits[gid]);
+    const auto s = cudaSigmoid<ftype>(logits[gid]);
 
     const auto g = s - y;
     res[gid] = g / bSize;

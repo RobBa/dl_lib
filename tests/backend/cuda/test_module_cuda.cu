@@ -185,7 +185,7 @@ TEST(CudaActivationTest, SoftmaxForwardNumericalStability) {
   ASSERT_NEAR(rowsum, 1.0, 1e-5);
 }
 
-TEST(CudaActivationTest, SoftmaxMediumLargeInput) {
+TEST(CudaActivationTest, SoftmaxMediumLarge) {
   constexpr tensorDim_t testDim = 190;
   assert(testDim <= 256 && testDim > 64); // see the kernel call 
 
@@ -210,7 +210,7 @@ TEST(CudaActivationTest, SoftmaxMediumLargeInput) {
   }
 }
 
-TEST(CudaActivationTest, SoftmaxLargeInput) {
+TEST(CudaActivationTest, SoftmaxLarge) {
   constexpr tensorDim_t testDim = 1500;
   assert(testDim > 256); // see the kernel call 
 
@@ -364,4 +364,107 @@ TEST(CudaAutogradTest, FfLayerBackwardWithBias) {
   ASSERT_NE(bGrads, nullptr);
   ASSERT_NEAR((*bGrads)[0], 2.0, 1e-5);
   ASSERT_NEAR((*bGrads)[1], 2.0, 1e-5);
+}
+
+TEST(CudaAutogradTest, FfLayerBackwardLarge) {
+  constexpr tensorDim_t inDim = 200;
+  constexpr tensorDim_t outDim = 10;
+
+  auto xCpu = make_shared<Tensor>(TensorFunctions::Gaussian({30, inDim}, 1.0f, true));
+  auto xGpu = make_shared<Tensor>(xCpu->createDeepCopy());
+  xGpu->setDevice(Device::CUDA);
+
+  auto layerCpu = module::FfLayer(inDim, outDim, Device::CPU, false, true);
+  auto layerGpu = module::FfLayer(inDim, outDim, Device::CUDA, false, true);
+
+  // give both layers identical weights
+  auto wCpu = layerCpu.getWeights();
+  auto wGpu = layerGpu.getWeights();
+  for(tensorSize_t i = 0; i < wCpu->getSize(); i++) {
+    const ftype val = 1.0f / inDim;
+    wCpu->set(val, i);
+    wGpu->set(val, i);
+  }
+
+  auto resCpu = layerCpu(xCpu);
+  auto resGpu = layerGpu(xGpu);
+
+  auto upstreamCpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector()));
+  auto upstreamGpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector(), Device::CUDA));
+
+  resCpu->setGrads(upstreamCpu);
+  resGpu->setGrads(upstreamGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto xGradsCpu = xCpu->getGrads();
+  auto xGradsGpu = xGpu->getGrads();
+  for(int i = 0; i < xCpu->getSize(); i++) {
+    EXPECT_NEAR((*xGradsCpu)[i], (*xGradsGpu)[i], 1e-4);
+  }
+
+  auto wGradsCpu = layerCpu.getWeights()->getGrads();
+  auto wGradsGpu = layerGpu.getWeights()->getGrads();
+  for(int i = 0; i < wCpu->getSize(); i++) {
+    EXPECT_NEAR((*wGradsCpu)[i], (*wGradsGpu)[i], 1e-4);
+  }
+}
+
+TEST(CudaAutogradTest, FfLayerBackwardWithBiasLarge) {
+  constexpr tensorDim_t inDim = 200;
+  constexpr tensorDim_t outDim = 10;
+
+  auto xCpu = make_shared<Tensor>(TensorFunctions::Gaussian({30, inDim}, 1.0f, true));
+  auto xGpu = make_shared<Tensor>(xCpu->createDeepCopy());
+  xGpu->setDevice(Device::CUDA);
+
+  auto layerCpu = module::FfLayer(inDim, outDim, Device::CPU, true, true);
+  auto layerGpu = module::FfLayer(inDim, outDim, Device::CUDA, true, true);
+
+  // give both layers identical weights and biases
+  auto wCpu = layerCpu.getWeights();
+  auto wGpu = layerGpu.getWeights();
+  for(tensorSize_t i = 0; i < wCpu->getSize(); i++) {
+    const ftype val = 1.0f / inDim;
+    wCpu->set(val, i);
+    wGpu->set(val, i);
+  }
+
+  auto bCpu = layerCpu.getBias();
+  auto bGpu = layerGpu.getBias();
+  for(tensorSize_t i = 0; i < bCpu->getSize(); i++) {
+    bCpu->set(0.1f, i);
+    bGpu->set(0.1f, i);
+  }
+
+  auto resCpu = layerCpu(xCpu);
+  auto resGpu = layerGpu(xGpu);
+
+  auto upstreamCpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector()));
+  auto upstreamGpu = make_shared<Tensor>(TensorFunctions::Ones(resCpu->getDims().toVector(), Device::CUDA));
+
+  resCpu->setGrads(upstreamCpu);
+  resGpu->setGrads(upstreamGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto xGradsCpu = xCpu->getGrads();
+  auto xGradsGpu = xGpu->getGrads();
+  for(int i = 0; i < xCpu->getSize(); i++) {
+    EXPECT_NEAR((*xGradsCpu)[i], (*xGradsGpu)[i], 1e-4);
+  }
+
+  auto wGradsCpu = layerCpu.getWeights()->getGrads();
+  auto wGradsGpu = layerGpu.getWeights()->getGrads();
+  for(int i = 0; i < wCpu->getSize(); i++) {
+    EXPECT_NEAR((*wGradsCpu)[i], (*wGradsGpu)[i], 1e-4);
+  }
+
+  auto bGradsCpu = layerCpu.getBias()->getGrads();
+  auto bGradsGpu = layerGpu.getBias()->getGrads();
+  for(int i = 0; i < bCpu->getSize(); i++) {
+    EXPECT_NEAR((*bGradsCpu)[i], (*bGradsGpu)[i], 1e-4);
+  }
 }

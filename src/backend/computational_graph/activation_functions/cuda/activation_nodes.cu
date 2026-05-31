@@ -23,8 +23,10 @@ namespace {
    * @brief Relu backward kernel.
    */
   __global__ void reluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size) return;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid >= size) {
+      return;
+    }
 
     res[gid] =  parent[gid] > 0 ? upstreamGrad[gid] : 0;
   }
@@ -33,8 +35,10 @@ namespace {
    * @brief Leaky relu backward kernel.
    */
   __global__ void leakyReluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const ftype eps, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size) return;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid >= size) {
+      return;
+    }
 
     res[gid] = parent[gid] > 0 ? upstreamGrad[gid] : eps * upstreamGrad[gid];
   }
@@ -43,20 +47,13 @@ namespace {
    * @brief Sigmoid backward kernel, optimized by using the forward sigmoid.
    */
   __global__ void sigmoidBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const sigmoid, const tensorSize_t size) {
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size) return;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid >= size) {
+      return;
+    }
 
     ftype si = sigmoid[gid];
     res[gid] = si * (1 - si) * upstreamGrad[gid];
-  }
-
-  __global__ void softmaxBackwardKernelOneWarp(ftype* const res, const ftype* const softmax, const ftype* const upstreamGrad, 
-                                                const tensorSize_t stride, tensorSize_t size) {
-    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size)
-      return;
-
-    const int tid = threadIdx.x;
   }
 
   /**
@@ -70,10 +67,10 @@ namespace {
     const int tid = threadIdx.x;
 
     const int withinStrideOffset = tid % threadsPerStride;
-    const bool isPadded = withinStrideOffset >= stride; // padded threads only exists to align warps with strides
-
     const int strideOffset = (tid / stride) * stride;
+
     const int gid = blockIdx.x * stridesWidthPerBlock + strideOffset + withinStrideOffset;
+    const bool isPadded = (withinStrideOffset >= stride) || (gid > size); // padded threads only exists to align warps with strides
 
     ftype yi = 0;
     const int smemOffset = strideOffset + withinStrideOffset;
@@ -86,7 +83,7 @@ namespace {
     }
     __syncthreads();
 
-    if(isPadded || gid > size) {
+    if(isPadded) {
       return;
     }
 
@@ -122,7 +119,7 @@ namespace {
 
     ftype grad = 0;
     for(int offset = 0; offset < stride; offset += blockDim.x) {
-      // load int smem
+      // load into smem
       {
         const int j = offset + tid;
         if(j < stride) {
