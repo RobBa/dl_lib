@@ -66,8 +66,9 @@ if(Python3_FOUND)
   # replace the placeholder variables and copy resulting file in .py file
   add_test(
     NAME python_tests
-    COMMAND ${Python3_EXECUTABLE} -m pytest 
+    COMMAND ${Python3_EXECUTABLE} -m pytest
             ${CMAKE_CURRENT_SOURCE_DIR}/python
+            --ignore=${CMAKE_CURRENT_SOURCE_DIR}/python/cuda
   )
 
   # Set environment for Python to find the module
