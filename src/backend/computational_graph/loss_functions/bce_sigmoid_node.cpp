@@ -33,7 +33,7 @@ vector< shared_ptr<Tensor> > BceSigmoidNode::backward(const Tensor& upstreamGrad
     case Device::CPU: {
       auto sigmoid = [](ftype x){
         constexpr ftype one = 1.0;
-        if(x>=0){
+        if(x >= 0) {
           return one / (one + exp(-x));
         }
         auto e = exp(x);

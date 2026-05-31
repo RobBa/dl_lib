@@ -93,10 +93,10 @@ namespace {
   __forceinline__ __device__ T bceSimplified(T y, T logit) {
     constexpr T zero = 0;
     if constexpr (std::is_same_v<T, float>) {
-      return cudaMax<T>(logit, zero) - logit * y + __logf(1 + __expf(abs(logit)));
+      return cudaMax<T>(logit, zero) - logit * y + __logf(1 + __expf(-abs(logit)));
     }
     else if constexpr (std::is_same_v<T, double>) {
-      return cudaMax<T>(logit, zero) - logit * y + log(1 + exp(abs(logit)));
+      return cudaMax<T>(logit, zero) - logit * y + log(1 + exp(-abs(logit)));
     }
     else {
       static_assert(always_false<T>, "Unexpected value for ftype");

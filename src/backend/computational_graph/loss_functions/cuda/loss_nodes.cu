@@ -123,7 +123,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (logits.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits.getDims()[0], res.getSize());
+    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits.getDims()[0], logits.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
