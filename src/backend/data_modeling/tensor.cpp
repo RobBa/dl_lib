@@ -942,7 +942,7 @@ Device Tensor::getDevice() const noexcept {
  * @param high Upper idx, non-inclusive bound.
  * @return Tensor The slices tensor.
  */
-Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) {
+Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
   if(high<=low){
     __throw_invalid_argument("Upper bound most be larger than lower bound.");
   }
@@ -963,7 +963,7 @@ Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) {
  * @param indices A list of indices
  * @return Tensor The result.
  */
-Tensor Tensor::getSlice(span<const tensorDim_t> indices) {
+Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
   assert(indices.size()>0);
 
   makeContiguous();

@@ -268,8 +268,8 @@ public:
     }
   }
 
-  Tensor getSlice(tensorSize_t low, tensorSize_t high);
-  Tensor getSlice(std::span<const tensorDim_t> indices);
+  Tensor getSlice(tensorSize_t low, tensorSize_t high) const;
+  Tensor getSlice(std::span<const tensorDim_t> indices) const;
 
   // these two should not be exposed to the python interface
   static void setDefaultDevice(const Device d) noexcept;
