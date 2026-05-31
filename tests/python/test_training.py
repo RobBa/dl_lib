@@ -77,7 +77,7 @@ class TestOverfitBinary:
     loss_fn = BceWithSigmoid()
     optim = SGD(net.parameters(), 0.05)
 
-    final_loss = train(net, loss_fn, optim, x, y, epochs=2000)
+    final_loss = train(net, loss_fn, optim, x, y, epochs=3000)
 
     assert final_loss.getitem(0) < 0.05, \
       f"SGD failed to overfit XOR, loss={final_loss.getitem(0)}"
@@ -86,9 +86,9 @@ class TestOverfitBinary:
     x, y = make_xor_data()
     net = make_binary_net()
     loss_fn = BceWithSigmoid()
-    optim = RmsProp(net.parameters(), 0.0001, 0.95)
+    optim = RmsProp(net.parameters(), 0.001, 0.95)
 
-    final_loss = train(net, loss_fn, optim, x, y, epochs=5000)
+    final_loss = train(net, loss_fn, optim, x, y, epochs=3000)
 
     assert final_loss.getitem(0) < 0.05, \
       f"RmsProp failed to overfit XOR, loss={final_loss.getitem(0)}"
@@ -97,9 +97,9 @@ class TestOverfitBinary:
     x, y = make_multiclass_data()
     net = make_multiclass_net()
     loss_fn = CrossEntropyWithSoftmax()
-    optim = RmsProp(net.parameters(), 0.0001, 0.95)
+    optim = RmsProp(net.parameters(), 0.001, 0.95)
 
-    final_loss = train(net, loss_fn, optim, x, y, epochs=2000)
+    final_loss = train(net, loss_fn, optim, x, y, epochs=3000)
 
     assert final_loss.getitem(0) < 0.05, \
         f"RmsProp failed to overfit multiclass, loss={final_loss.getitem(0)}"

@@ -406,8 +406,8 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
     }
 
-    // loss = -loss / nBatches
-    divideScalarKernel<<<1, 1>>>(res.getData(), -1 * static_cast<ftype>(y.getDims()[0]));
+    // loss = loss / nBatches
+    divideScalarKernel<<<1, 1>>>(res.getData(), static_cast<ftype>(y.getDims()[0]));
     cudaErrchk(cudaDeviceSynchronize());
   }
 

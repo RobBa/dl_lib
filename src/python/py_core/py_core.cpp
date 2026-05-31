@@ -164,20 +164,20 @@ BOOST_PYTHON_MODULE(_core)
         
     // static creation methods
     .def("ones", WRAP_FREE_FUNC_1(Py_DataModeling::Ones0, std::vector<tensorDim_t>))
-    .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device))
     .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones2, std::vector<tensorDim_t>, const bool))
+    .def("ones", WRAP_FREE_FUNC_2(Py_DataModeling::Ones1, std::vector<tensorDim_t>, Device))
     .def("ones", WRAP_FREE_FUNC_3(Py_DataModeling::Ones3, std::vector<tensorDim_t>, Device, const bool))
     .staticmethod("ones")
 
     .def("zeros", WRAP_FREE_FUNC_1(Py_DataModeling::Zeros0, std::vector<tensorDim_t>))
-    .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device))
     .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros2, std::vector<tensorDim_t>, const bool))
+    .def("zeros", WRAP_FREE_FUNC_2(Py_DataModeling::Zeros1, std::vector<tensorDim_t>, Device))
     .def("zeros", WRAP_FREE_FUNC_3(Py_DataModeling::Zeros3, std::vector<tensorDim_t>, Device, const bool))
     .staticmethod("zeros")
 
     .def("gauss", WRAP_FREE_FUNC_2(Py_DataModeling::Gaussian0, std::vector<tensorDim_t>, ftype))
-    .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, ftype, Device))
     .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian2, std::vector<tensorDim_t>, ftype, const bool))
+    .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, ftype, Device))
     .def("gauss", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, ftype, Device, const bool))
     .staticmethod("gauss")
 
