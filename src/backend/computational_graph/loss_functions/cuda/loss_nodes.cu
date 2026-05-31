@@ -104,7 +104,7 @@ namespace {
     const ftype yiHat = yPred[gid];
 
     const ftype denom = rmse * bSize + EPS_RMSE;
-    const ftype g = (yiHat-yi) / denom;
+    const ftype g = (yiHat - yi) / denom;
 
     res[gid] = g;
   }

@@ -120,6 +120,37 @@ TEST(CudaLossTest, CrossEntropyBackward) {
   ASSERT_NEAR((*grads)[5],  0.0f,    1e-4);
 }
 
+TEST(CudaLossTest, CrossEntropyBackwardLarge) {
+  constexpr tensorDim_t nSamples = 500;
+  constexpr tensorDim_t nClasses = 200;
+
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}) * 0.5f);
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+
+  CrossEntropyLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto gradsCpu = ypredCpu->getGrads();
+  auto gradsGpu = ypredGpu->getGrads();
+  gradsGpu->setDevice(Device::CPU);
+
+  for(int i = 0; i < ypredCpu->getSize(); i++) {
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+      << "Failed at index " << i 
+      << "- GradsCpu[i]: " << (*gradsCpu)[i]
+      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+  }
+}
+
 TEST(CudaLossTest, BceForward) {
   auto y = TensorFunctions::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, Device::CUDA, false);
@@ -218,6 +249,36 @@ TEST(CudaLossTest, BceBackward) {
   ASSERT_NEAR((*grads)[1],  0.7143f, 1e-4);
 }
 
+TEST(CudaLossTest, BceBackwardLarge) {
+  constexpr tensorDim_t nSamples = 10000;
+
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.5f);
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}, Device::CPU, true) * 0.7f);
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+
+  BceLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto gradsCpu = ypredCpu->getGrads();
+  auto gradsGpu = ypredGpu->getGrads();
+  gradsGpu->setDevice(Device::CPU);
+
+  for(int i = 0; i < ypredCpu->getSize(); i++) {
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+      << "Failed at index " << i 
+      << "- GradsCpu[i]: " << (*gradsCpu)[i]
+      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+  }
+}
+
 TEST(CudaLossTest, RmseForward) {
   auto y = TensorFunctions::makeSharedTensor(
     {3}, {1.0, 2.0, 3.0}, Device::CUDA, false);
@@ -273,4 +334,32 @@ TEST(CudaLossTest, RmseBackward) {
   auto grads = ypred->getGrads();
   ASSERT_NEAR((*grads)[0], -0.5f, 1e-4);
   ASSERT_NEAR((*grads)[1],  0.5f, 1e-4);
+}
+
+TEST(CudaLossTest, RmseBackwardLarge) {
+  auto yCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
+  yGpu->setDevice(Device::CUDA);
+
+  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f, true));
+  auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
+  ypredGpu->setDevice(Device::CUDA);
+
+  RmseLoss loss;
+  auto resCpu = loss(yCpu, ypredCpu);
+  auto resGpu = loss(yGpu, ypredGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto gradsCpu = ypredCpu->getGrads();
+  auto gradsGpu = ypredGpu->getGrads();
+  gradsGpu->setDevice(Device::CPU);
+
+  for(int i = 0; i < ypredCpu->getSize(); i++) {
+    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+      << "Failed at index " << i 
+      << "- GradsCpu[i]: " << (*gradsCpu)[i]
+      << "- GradsGpu[i]: " << (*gradsGpu)[i];
+  }
 }

@@ -33,7 +33,7 @@ vector< shared_ptr<Tensor> > RmseNode::backward(const Tensor& upstreamGrad) {
     case Device::CPU: 
     {
       const ftype bSize = yPred->getDims()[0];
-      for(tensorSize_t i = 0; i < yPred->getDims()[0]; i++){
+      for(tensorSize_t i = 0; i < yPred->getSize(); i++){
         auto yi = (*yTrue)[i];
         auto yiHat = (*yPred)[i];
 

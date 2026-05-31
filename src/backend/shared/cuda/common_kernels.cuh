@@ -19,7 +19,8 @@ namespace cuda_impl {
   __device__ __forceinline__ ftype cudaMax(const ftype a, const ftype b) {
     if constexpr (std::is_same_v<T, float>) {
       return fmaxf(a, b);
-    } else if constexpr (std::is_same_v<T, double>) {
+    } 
+    else if constexpr (std::is_same_v<T, double>) {
         return fmax(a, b);
     }
     else {
@@ -45,11 +46,19 @@ namespace cuda_impl {
     else {
       static_assert(always_false<T>, "Unexpected value for ftype encountered");
     }
-  
-  #ifndef NDEBUG
-    printf("This line should never be reached!");
-  #endif
-    return 0;
+  }
+
+  template<typename T>
+  __device__ __forceinline__ ftype cudaSqrt(const ftype x) {
+    if constexpr (std::is_same_v<T, float>) {
+      return sqrtf(x);
+    } 
+    else if constexpr (std::is_same_v<T, double>) {
+      return sqrt(x);
+    }
+    else {
+      static_assert(always_false<T>, "Unexpected value for ftype encountered");
+    }
   }
 
   /**
