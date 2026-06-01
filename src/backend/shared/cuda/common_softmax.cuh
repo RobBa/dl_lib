@@ -66,7 +66,7 @@ namespace cuda_impl {
    * Reduction via warp reduce. res has the maximum values stored.
    */
   template<int maxoffset>
-  static __global__ void findMaxKernelOneWarp(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t size) {
+  static __global__ void findMaxKernelOneWarp(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t nStrides) {
     assert(blockDim.x % 32 == 0);
 
     const int tid = threadIdx.x;
@@ -74,13 +74,13 @@ namespace cuda_impl {
 
     const int strideNumber = gid / 32; // same as warp number
     const int withinStrideOffset = gid % 32; // each warp covers up to 32 elements within a stride
-    const bool isNotPadded = withinStrideOffset < stride && gid < size;
+    const bool isNotPadded = withinStrideOffset < stride && strideNumber < nStrides;
 
     extern __shared__ ftype smem[];
     smem[tid] = isNotPadded ? input[strideNumber * stride + withinStrideOffset] : -INFINITY; // TODO: is this memory access pattern bad?
     __syncthreads();
 
-    if(gid >= size) {
+    if(strideNumber >= nStrides) {
       return;
     }
 

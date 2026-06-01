@@ -216,15 +216,15 @@ namespace {
   }
 
   /**
-   * @brief Softmax cross-entropy loss kernel. One block per sample.
+   * @brief Softmax cross-entropy loss kernel. One block per stride.
    */
 
   template<typename T>
-  __global__ void crossEntropySoftmaxLossKernel(ftype* const perSampleLoss, const ftype* const y, const ftype* const logits,
+  __global__ void crossEntropySoftmaxLossKernel(ftype* const perStrideLoss, const ftype* const y, const ftype* const logits,
                                                 const ftype* const maxValues, const tensorSize_t stride) {
     const int tid  = threadIdx.x;
     const int tid2 = tid + blockDim.x;
-    const int sampleBase = blockIdx.x * stride;
+    const int strideBase = blockIdx.x * stride;
     const ftype maxV = maxValues[blockIdx.x];
 
     extern __shared__ ftype smem[];
@@ -233,13 +233,14 @@ namespace {
     const bool inBounds1 = (tid2 < stride);
 
     constexpr ftype zero = 0;
-    ftype e0  = inBounds0 ? stableExp<T>(logits[sampleBase + tid],  maxV) : zero;
-    ftype yz0 = inBounds0 ? y[sampleBase + tid]  * logits[sampleBase + tid]  : zero;
-    ftype e1  = inBounds1 ? stableExp<T>(logits[sampleBase + tid2], maxV) : zero;
-    ftype yz1 = inBounds1 ? y[sampleBase + tid2] * logits[sampleBase + tid2] : zero;
+    ftype e0 = inBounds0 ? stableExp<T>(logits[strideBase + tid],  maxV) : zero;
+    ftype e1 = inBounds1 ? stableExp<T>(logits[strideBase + tid2], maxV) : zero;
 
-    // Phase 1: reduce exp sum across stride (smem has 2 * blockDim.x slots)
-    smem[tid]  = e0;
+    ftype yz0 = inBounds0 ? y[strideBase + tid]  * logits[strideBase + tid] : zero;
+    ftype yz1 = inBounds1 ? y[strideBase + tid2] * logits[strideBase + tid2] : zero;
+
+    // reduce exp sum across stride
+    smem[tid] = e0;
     smem[tid2] = e1;
     __syncthreads();
 
@@ -274,7 +275,7 @@ namespace {
       else {
         static_assert(always_false<T>, "Unexpected value for ftype encountered");
       }
-      perSampleLoss[blockIdx.x] = maxV + logExpSum - smem[0];
+      perStrideLoss[blockIdx.x] = maxV + logExpSum - smem[0];
     }
   }
 
@@ -462,19 +463,19 @@ namespace cuda_impl {
       const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
 
       if(stride <= 2) {
-        findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+        findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 4) {
-        findMaxKernelOneWarp<2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+        findMaxKernelOneWarp<2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 8) {
-        findMaxKernelOneWarp<4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+        findMaxKernelOneWarp<4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 16) {
-        findMaxKernelOneWarp<8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+        findMaxKernelOneWarp<8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 32) {
-        findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+        findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       cudaErrchk(cudaDeviceSynchronize());
     }
@@ -496,19 +497,19 @@ namespace cuda_impl {
     while(threadsPerBlock * 2 < stride) threadsPerBlock <<= 1;
     threadsPerBlock = max(1, threadsPerBlock);
 
-    ftype* perSampleLoss;
-    cudaErrchk(cudaMalloc(&perSampleLoss, nStrides * sizeof(ftype)));
+    ftype* perStrideLoss;
+    cudaErrchk(cudaMalloc(&perStrideLoss, nStrides * sizeof(ftype)));
 
     crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
-      perSampleLoss, y.getData(), yPred.getData(), maxValues, stride);
+      perStrideLoss, y.getData(), yPred.getData(), maxValues, stride);
     cudaErrchk(cudaDeviceSynchronize());
 
-    thrust::device_ptr<ftype> lossPtr(perSampleLoss);
+    thrust::device_ptr<ftype> lossPtr(perStrideLoss);
     thrust::device_ptr<ftype> resPtr(res.getData());
     resPtr[0] = thrust::reduce(lossPtr, lossPtr + nStrides, static_cast<ftype>(0), thrust::plus<ftype>())
                 / static_cast<ftype>(nStrides);
 
-    cudaErrchk(cudaFree(perSampleLoss));
+    cudaErrchk(cudaFree(perStrideLoss));
     cudaErrchk(cudaFree(maxValues));
   }
 

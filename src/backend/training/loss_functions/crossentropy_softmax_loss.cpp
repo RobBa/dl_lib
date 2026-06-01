@@ -43,10 +43,10 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
   switch(y->getDevice()) {
     case Device::CPU: {
       const tensorSize_t stride = logits->getDims()[-1];
-      const tensorSize_t nSamples = logits->getSize() / stride;
+      const tensorSize_t nStrides = logits->getSize() / stride;
 
       // pre-compute exponents and max-values, centering each slice for numerical stability
-      vector<ftype> maxValues(nSamples);
+      vector<ftype> maxValues(nStrides);
       Tensor tmp(logits->getDims(), logits->getDevice(), false);
       tensorSize_t offset = 0;
       while(offset < logits->getSize()) {
@@ -63,6 +63,7 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
 
         offset += stride;
       }
+
       ftype loss = 0;
 
       /**
@@ -79,9 +80,8 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
 
         const tensorSize_t j = start / stride;
         for(tensorSize_t i = start; i < start + stride; i++) {
-          if((*y)[i]>0){ // y either zero or one
-            loss += -(*logits)[i] + maxValues[j] + lsum;
-          }
+          // y[i] is one-hot encoded
+          loss += (*y)[i] * (-(*logits)[i] + maxValues[j] + lsum);
         }
       };
 
@@ -91,7 +91,7 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
         offset += stride;
       }
 
-      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / static_cast<ftype>(nSamples)}, y->getDevice(), true);
+      res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / static_cast<ftype>(nStrides)}, y->getDevice(), true);
       break;
     }
     case Device::CUDA:

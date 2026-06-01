@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 
-from dl_lib import Tensor, fromNumpy, toNumpy
+from dl_lib import Tensor, Device, fromNumpy, toNumpy
 from dl_lib.nn import Sequential, FfLayer
 from dl_lib.nn.activation import LeakyReLU
 from dl_lib.train.loss import CrossEntropyWithSoftmax
@@ -20,7 +20,7 @@ from dl_lib.train.optim import RmsProp
 def load_mnist():
     print("Loading MNIST...")
     mnist = fetch_openml("mnist_784", version=1, as_frame=False)
-    x = mnist.data.astype(np.float32) / 255.0  # normalize to [0,1]
+    x = mnist.data.astype(np.float32) / 255.0
     y = mnist.target.astype(np.int32)
     return x, y
 
@@ -46,36 +46,26 @@ def make_batches(x, y, batch_size, shuffle=True):
 
 def make_net():
     net = Sequential()
-    net.append(FfLayer(784, 256))
+    net.append(FfLayer(784, 256, Device.CUDA))
     net.append(LeakyReLU(0.01))
-    net.append(FfLayer(256, 128))
+    net.append(FfLayer(256, 128, Device.CUDA))
     net.append(LeakyReLU(0.01))
-    net.append(FfLayer(128, 10))
+    net.append(FfLayer(128, 10, Device.CUDA))
     return net
-
-
-# ─── debugging ────────────────────────────────────────────────────────────────
-
-def print_weight_stats(net, batch_num):
-    for i, p in enumerate(net.parameters()):
-        p_np = toNumpy(p)
-        print(
-            f"Param {i}: min={p_np.min():.4f} max={p_np.max():.4f} "
-            f"mean={p_np.mean():.4f} std={p_np.std():.4f}"
-        )
 
 
 # ─── training ────────────────────────────────────────────────────────────────
 
 def train_epoch(net, loss_fn, optim, x, y, batch_size=64):
-    #print_weight_stats(net, 0)
-
     total_loss = 0.0
     n_batches = 0
     max_batches = math.ceil(x.shape[0] / batch_size)
     for xb, yb in make_batches(x, y, batch_size):
         xTensor = fromNumpy(xb)
+        xTensor.device = Device.CUDA
+
         yTensor = fromNumpy(yb)
+        yTensor.device = Device.CUDA
 
         pred = net.forward(xTensor)
         loss = loss_fn(yTensor, pred)
@@ -89,21 +79,22 @@ def train_epoch(net, loss_fn, optim, x, y, batch_size=64):
         n_batches += 1
         if n_batches == 1 or n_batches % 10 == 0:
             print(f"Batch {n_batches} / {max_batches}, loss {loss.getitem(0)}")
-        #print_weight_stats(net, n_batches)
 
     return total_loss / n_batches
 
 
-def evaluate(net, x, y_int, batch_size=256):
+def evaluate(net, x, y, batch_size=256):
     correct = 0
     total = 0
-    for xb, yb in make_batches(x, y_int, batch_size, shuffle=False):
+    for xb, yb in make_batches(x, y, batch_size, shuffle=False):
         xTensor = fromNumpy(xb)
+        xTensor.device = Device.CUDA
+
         pred = net.forward(xTensor)
+        pred.device = Device.CPU
         pred_np = toNumpy(pred)
 
         predicted = np.argmax(pred_np, axis=1)
-        
         correct += np.sum(predicted == np.argmax(yb, axis=1))
         total += len(yb)
     return correct / total
@@ -112,7 +103,6 @@ def evaluate(net, x, y_int, batch_size=256):
 # ─── main ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # load and split data
     x, y_int = load_mnist()
     y = to_one_hot(y_int)
 
@@ -122,12 +112,10 @@ if __name__ == "__main__":
 
     print(f"Train: {x_train.shape}, Val: {x_val.shape}")
 
-    # setup
     net = make_net()
     loss_fn = CrossEntropyWithSoftmax()
-    optim = RmsProp(net.parameters(), 0.0001, 0.999)  # lr and decay
+    optim = RmsProp(net.parameters(), 0.0001, 0.999)
 
-    # training loop
     n_epochs = 5
     for epoch in range(n_epochs):
         train_loss = train_epoch(net, loss_fn, optim, x_train, y_train)
