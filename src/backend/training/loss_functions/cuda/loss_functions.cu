@@ -446,29 +446,36 @@ namespace cuda_impl {
 
   void crossEntropySoftmaxLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
     const tensorSize_t stride   = static_cast<tensorSize_t>(yPred.getDims().get(-1));
-    const tensorSize_t nSamples = yPred.getSize() / stride;
+    const tensorSize_t nStrides = yPred.getSize() / stride;
 
     ftype* maxValues;
-    cudaErrchk(cudaMalloc(&maxValues, nSamples * sizeof(ftype)));
+    cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
 
     // Find per-sample max values for numerical stability (mirrors softmax dispatch)
-    static const auto warpSizeT2 = 2 * DeviceProperties::getWarpSize();
-    if(stride <= warpSizeT2) {
-      constexpr int threadsPerBlock = 256;
-      const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    constexpr int warpSize = 32;
+    if(stride <= warpSize) {
+      assert(DeviceProperties::getWarpSize() == 32);
 
-      if(stride == 2)
-        findMaxKernelOneWarp<1><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
-      else if(stride <= 4)
-        findMaxKernelOneWarp<2><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
-      else if(stride <= 8)
-        findMaxKernelOneWarp<4><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
-      else if(stride <= 16)
-        findMaxKernelOneWarp<8><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
-      else if(stride <= 32)
-        findMaxKernelOneWarp<16><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
-      else
-        findMaxKernelOneWarp<32><<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      // each warp does one stride
+      constexpr int threadsPerBlock = 256;
+      constexpr int warpsPerBlock = threadsPerBlock / 32;
+      const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
+
+      if(stride <= 2) {
+        findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      }
+      else if(stride <= 4) {
+        findMaxKernelOneWarp<2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      }
+      else if(stride <= 8) {
+        findMaxKernelOneWarp<4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      }
+      else if(stride <= 16) {
+        findMaxKernelOneWarp<8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      }
+      else if(stride <= 32) {
+        findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, yPred.getSize());
+      }
       cudaErrchk(cudaDeviceSynchronize());
     }
     else if(stride <= 512) {
@@ -476,7 +483,7 @@ namespace cuda_impl {
       while(threadsPerBlock < stride) threadsPerBlock <<= 1;
       threadsPerBlock /= 2;
 
-      findMaxKernelOneBlock<<<nSamples, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
+      findMaxKernelOneBlock<<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
@@ -490,16 +497,16 @@ namespace cuda_impl {
     threadsPerBlock = max(1, threadsPerBlock);
 
     ftype* perSampleLoss;
-    cudaErrchk(cudaMalloc(&perSampleLoss, nSamples * sizeof(ftype)));
+    cudaErrchk(cudaMalloc(&perSampleLoss, nStrides * sizeof(ftype)));
 
-    crossEntropySoftmaxLossKernel<ftype><<<nSamples, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+    crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
       perSampleLoss, y.getData(), yPred.getData(), maxValues, stride);
     cudaErrchk(cudaDeviceSynchronize());
 
     thrust::device_ptr<ftype> lossPtr(perSampleLoss);
     thrust::device_ptr<ftype> resPtr(res.getData());
-    resPtr[0] = thrust::reduce(lossPtr, lossPtr + nSamples, static_cast<ftype>(0), thrust::plus<ftype>())
-                / static_cast<ftype>(nSamples);
+    resPtr[0] = thrust::reduce(lossPtr, lossPtr + nStrides, static_cast<ftype>(0), thrust::plus<ftype>())
+                / static_cast<ftype>(nStrides);
 
     cudaErrchk(cudaFree(perSampleLoss));
     cudaErrchk(cudaFree(maxValues));
