@@ -68,14 +68,16 @@ namespace cuda_impl {
   static __global__ void findMaxKernelOneWarp(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t size) {
     assert(blockDim.x % 32 == 0);
 
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size)
-      return;
-
-    int tid = threadIdx.x;
+    const int tid = threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    const bool isNotPadded = gid < size;
     extern __shared__ ftype smem[];
-    smem[tid] = input[gid];
+    smem[tid] = isNotPadded ? input[gid] : -INFINITY;
     __syncthreads();
+
+    if(!isNotPadded) {
+      return;
+    }
 
     volatile ftype* const start = smem + (tid / stride) * stride;
     const int offset = gid % stride;

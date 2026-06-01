@@ -22,6 +22,7 @@ For some examples on Python interface, see tests/python.
 - **Python Interface**: Seamless integration via Boost.Python
 - **Clean Architecture**: Modular design, maintainable and extensible
 - **CI/CD**: Automated testing with GTest and GitHub Actions
+- **CUDA implementation**: Full end-to-end CUDA implementation for better HW utilization (optimization in progress)
 
 ## Tech Stack
 

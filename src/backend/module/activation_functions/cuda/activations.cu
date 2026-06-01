@@ -330,8 +330,7 @@ namespace cuda_impl {
 
     // TODO: use some static struct here to prevent this guy from keeping on re-allocating memory
     ftype* maxValues;
-    const tensorSize_t nMaxValues = nStrides;
-    cudaErrchk(cudaMalloc(&maxValues, nMaxValues * sizeof(ftype)));
+    cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
 
     static const auto warpSizeT2 = 2 * DeviceProperties::getWarpSize(); // TODO: can this be a problem in a multi-GPU setting?
     if(stride <= warpSizeT2) {
@@ -340,7 +339,7 @@ namespace cuda_impl {
       const int threadsPerBlock = 256;
       const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-      if(stride == 2) {
+      if(stride <= 2) {
         findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, in.getSize());
       }
       else if(stride <= 4) {
