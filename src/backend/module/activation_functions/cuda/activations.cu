@@ -66,6 +66,7 @@ namespace {
    */
   template<int maxoffset>
   __forceinline__ __device__ void softmaxWarpSumReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
+    static_assert(maxoffset > 0 && maxoffset <= 32, "Invalid value for template");
     // TODO: warp shuffle for newer architectures
     if(maxoffset == 32) {
       if(offset + 32 < stride) input[offset] += input[offset + 32];
@@ -88,7 +89,7 @@ namespace {
   }
 
   /**
-   * @brief Numerically stable version of softmax kernel. Just as in findMaxKernelOneWarp we assume that stride <= 2 * warpsize.
+   * @brief Numerically stable version of softmax kernel. Just as in findMaxKernelOneWarp we assume that stride <= warpsize.
    * Numerical stability comes from computing the maximum values per row, see findMaxKernelOneWarp and argument maxValues.
    */
   template<typename T, int maxoffset>
@@ -96,24 +97,28 @@ namespace {
                                              const tensorSize_t stride, const tensorSize_t size) {
     assert(blockDim.x % 32 == 0);
 
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(gid >= size)
-      return;
+    const int tid = threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + tid;
 
-    const auto strideOffset = gid / stride;
-    const auto maxValue = maxValues[strideOffset];
-    ftype expVal = stableExp<ftype>(input[gid], maxValue);
+    const int strideNumber = gid / 32; // same as warp number
+    const int withinStrideOffset = gid % 32; // each warp covers up to 32 elements within a stride
 
-    int tid = threadIdx.x;
-    extern __shared__ ftype smem[]; // can lead to bank conflicts iff std::is_same_v<T, double>
+    const int globalIdx = strideNumber * stride + withinStrideOffset;
+    const bool isNotPadded = withinStrideOffset < stride && globalIdx < size;
+
+    const auto maxValue = maxValues[strideNumber];
+    const ftype expVal = isNotPadded ? stableExp<ftype>(input[globalIdx], maxValue) : 0;
+
+    extern __shared__ ftype smem[];
     smem[tid] = expVal;
     __syncthreads();
 
-    volatile ftype* const start = smem + (tid / stride) * stride;
-    const int offset = gid % stride;
-    softmaxWarpSumReduce<maxoffset>(start, stride, offset);
+    volatile ftype* const start = smem + (tid / 32) * 32;
+    softmaxWarpSumReduce<maxoffset>(start, stride, withinStrideOffset); // TODO: do we need the bounds check here at all?
 
-    res[gid] = expVal / start[0];
+    if(isNotPadded) {
+      res[globalIdx] = expVal / start[0];
+    }
   }
 
   /**
@@ -316,28 +321,28 @@ namespace cuda_impl {
    * at max 512 * 512 = 262144 floating point numbers. If number exceeds this an exception is throws.
    * 
    * For simplicity and for reasons of CUDA efficiency this function is split into 3 segments. 
-   * 1. stride <= 64 -> we use warp level.
-   * 2. stride > 64 && stride < 512 -> we can fit one stride into one block.
+   * 1. stride <= 32 -> we use warp level.
+   * 2. stride > 32 && stride < 512 -> we can fit one stride into one block.
    * 3. stride > 512 -> we have to use two-stage kernel cascading for parallel reduction.
    */
   void softmax(Tensor& res, const Tensor& in) {
     const tensorSize_t stride = static_cast<tensorSize_t>(in.getDims().get(-1));
-    if(stride == 1) {
-      __throw_invalid_argument("Attemped softmax of one element");
-    }
-
     const int nStrides = in.getSize() / stride;
 
     // TODO: use some static struct here to prevent this guy from keeping on re-allocating memory
     ftype* maxValues;
     cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
 
-    static const auto warpSizeT2 = 2 * DeviceProperties::getWarpSize(); // TODO: can this be a problem in a multi-GPU setting?
-    if(stride <= warpSizeT2) {
+    constexpr int warpSize = 32;
+    if(stride <= warpSize) {
       assert(DeviceProperties::getWarpSize() == 32);
 
-      const int threadsPerBlock = 256;
-      const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+      // each warp does one stride
+      constexpr int threadsPerBlock = 256;
+      constexpr int warpsPerBlock = threadsPerBlock / 32;
+      const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
+
+      //cout << "nStrides " << nStrides << " - in " << in << endl;
 
       if(stride <= 2) {
         findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, in.getSize());
@@ -354,12 +359,9 @@ namespace cuda_impl {
       else if(stride <= 32) {
         findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, in.getSize());
       }
-      else if(stride <= 64) {
-        findMaxKernelOneWarp<32> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, in.getSize());
-      }
       cudaErrchk(cudaDeviceSynchronize());
 
-      if(stride == 2) {
+      if(stride <= 2) {
         stableSoftmaxKernelOneWarp<ftype, 1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
                                                 (res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
@@ -377,10 +379,6 @@ namespace cuda_impl {
       }
       else if(stride <= 32) {
         stableSoftmaxKernelOneWarp<ftype, 16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
-      }
-      else if(stride <= 64) {
-        stableSoftmaxKernelOneWarp<ftype, 32> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
                                                 (res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       cudaErrchk(cudaDeviceSynchronize());

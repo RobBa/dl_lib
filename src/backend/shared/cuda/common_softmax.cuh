@@ -39,6 +39,7 @@ namespace cuda_impl {
    */
   template<int maxoffset>
   __forceinline__ __device__ void warpMaxReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
+    static_assert(maxoffset > 0 && maxoffset <= 32, "Invalid value for template");
     // TODO: warp shuffle for newer architectures
     if(maxoffset == 32) {
       if(offset + 32 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 32]);
@@ -61,7 +62,7 @@ namespace cuda_impl {
   }
 
   /**
-   * @brief Here we find the maximum within 'stride'. Assumption: One warp does exactly one element of stride!
+   * @brief Here we find the maximum within a stride. Assumption: One warp does exactly one stride!
    * Reduction via warp reduce. res has the maximum values stored.
    */
   template<int maxoffset>
@@ -69,23 +70,25 @@ namespace cuda_impl {
     assert(blockDim.x % 32 == 0);
 
     const int tid = threadIdx.x;
-    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    const bool isNotPadded = gid < size;
+    const int gid = blockIdx.x * blockDim.x + tid;
+
+    const int strideNumber = gid / 32; // same as warp number
+    const int withinStrideOffset = gid % 32; // each warp covers up to 32 elements within a stride
+    const bool isNotPadded = withinStrideOffset < stride && gid < size;
+
     extern __shared__ ftype smem[];
-    smem[tid] = isNotPadded ? input[gid] : -INFINITY;
+    smem[tid] = isNotPadded ? input[strideNumber * stride + withinStrideOffset] : -INFINITY; // TODO: is this memory access pattern bad?
     __syncthreads();
 
-    if(!isNotPadded) {
+    if(gid >= size) {
       return;
     }
 
-    volatile ftype* const start = smem + (tid / stride) * stride;
-    const int offset = gid % stride;
-    warpMaxReduce<maxoffset>(start, stride, offset);
+    volatile ftype* const start = smem + (tid / 32) * 32;
+    warpMaxReduce<maxoffset>(start, stride, withinStrideOffset);
 
-    // one warp reduces one 'stride'
-    if(offset == 0) {
-      res[tid / 32] = smem[tid];
+    if(withinStrideOffset == 0) {
+      res[strideNumber] = start[0];
     }
   }
 

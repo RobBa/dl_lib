@@ -194,7 +194,8 @@ namespace cuda_impl {
       int threadsPerBlock = 1;
       while(threadsPerBlock < threadsPerStride * stridesPerBlock) threadsPerBlock <<= 1; 
       // threadsPerBlock now larger than threadsPerStride * stridesPerBlock
-      const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+      const int nStrides = softmax.getSize() / stride;
+      const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock;
 
       softmaxBackwardKernelOneBlock<<<blocks, threadsPerBlock, 2 * strideWidthPerBlock * sizeof(ftype)>>>(
           res.getData(), upstreamGrad.getData(), softmax.getData(), stride, strideWidthPerBlock, threadsPerStride, softmax.getSize());

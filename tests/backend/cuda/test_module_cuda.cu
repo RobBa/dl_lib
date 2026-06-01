@@ -185,6 +185,30 @@ TEST(CudaActivationTest, SoftmaxForwardNumericalStability) {
   ASSERT_NEAR(rowsum, 1.0, 1e-5);
 }
 
+TEST(CudaActivationTest, SoftmaxForward64x10) {
+  constexpr tensorDim_t nSamples = 64;
+  constexpr tensorDim_t nClasses = 10;
+  assert(nClasses <= 64); // warp-level kernel path
+
+  auto t = TensorFunctions::Gaussian({nSamples, nClasses}, 1.0f, Device::CUDA);
+  auto tCopy = t.createDeepCopy();
+  tCopy.setDevice(Device::CPU);
+
+  module::Softmax sm;
+  auto resGpu = sm(t);
+  auto resCpu = sm(tCopy);
+
+  resGpu.setDevice(Device::CUDA);
+  for(int i = 0; i < nSamples; i++) {
+    for(int j = 0; j < nClasses; j++) {
+      EXPECT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)
+        << "Mismatch at (" << i << ", " << j << ")"
+        << " cpu=" << resCpu.get(i, j)
+        << " gpu=" << resGpu.get(i, j);
+    }
+  }
+}
+
 TEST(CudaActivationTest, SoftmaxMediumLarge) {
   constexpr tensorDim_t testDim = 190;
   assert(testDim <= 256 && testDim > 64); // see the kernel call 
@@ -270,6 +294,31 @@ TEST(CudaAutogradTest, SoftmaxBackwardBatched) {
   for(int i = 0; i < tCpu->getSize(); i++) {
     EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
       << "Failed at index " << i 
+      << " - GradsCpu[i]: " << (*gradsCpu)[i]
+      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+  }
+}
+
+TEST(CudaLossTest, SoftmaxBackward64x10) {
+  // stride=10 exercises the warp-level forward and one-block backward paths
+  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({64, 10}, 1.0f, true));
+  auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
+  tGpu->setDevice(Device::CUDA);
+
+  module::Softmax sm;
+  auto resCpu = sm(tCpu);
+  auto resGpu = sm(tGpu);
+
+  resCpu->backward();
+  resGpu->backward();
+
+  auto gradsCpu = tCpu->getGrads();
+  auto gradsGpu = tGpu->getGrads();
+  gradsGpu->setDevice(Device::CPU);
+
+  for(int i = 0; i < tCpu->getSize(); i++) {
+    ASSERT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4)
+      << "Failed at index " << i
       << " - GradsCpu[i]: " << (*gradsCpu)[i]
       << " - GradsGpu[i]: " << (*gradsGpu)[i];
   }
