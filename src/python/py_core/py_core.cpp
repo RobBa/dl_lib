@@ -232,7 +232,13 @@ BOOST_PYTHON_MODULE(_core)
     .def("transpose", +[](Tensor& self, int dim1, int dim2) -> std::shared_ptr<Tensor> {
         return std::make_shared<Tensor>(self.transpose(dim1, dim2));
       })
-        
+    .def("permute", &Tensor::permute)
+
+    .def("slice", +[](const Tensor& self, tensorSize_t low, tensorSize_t high) -> std::shared_ptr<Tensor> {
+        return std::make_shared<Tensor>(self.getSlice(low, high));
+      })
+    .def("slice", WRAP_FREE_FUNC_4(&Py_DataModeling::getSliceByIndices, std::vector<tensorDim_t>))
+
     .def("backward", &Tensor::backward)
   ;
 

@@ -140,11 +140,17 @@ namespace Py_DataModeling
   (const std::shared_ptr<Tensor>, ftype)                                              = &(cgraph::div);
 
   // get
-  inline std::shared_ptr<Tensor> (*getItemAsTensor1) 
+  inline std::shared_ptr<Tensor> (*getItemAsTensor1)
   (const std::shared_ptr<Tensor>& t, tensorSize_t idx)                                = &(cgraph::get);
 
-  inline std::shared_ptr<Tensor> (*getItemAsTensor2) 
+  inline std::shared_ptr<Tensor> (*getItemAsTensor2)
   (const std::shared_ptr<Tensor>& t, const std::vector<tensorDim_t>& idx)             = &(cgraph::get);
+
+  // slice
+  inline std::shared_ptr<Tensor> getSliceByIndices(const std::shared_ptr<Tensor>& t,
+                                                    const std::vector<tensorDim_t>& indices) {
+    return std::make_shared<Tensor>(t->getSlice(std::span<const tensorDim_t>(indices)));
+  }
 }
 
 
