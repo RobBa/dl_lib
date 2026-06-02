@@ -151,6 +151,12 @@ namespace Py_DataModeling
                                                     const std::vector<tensorDim_t>& indices) {
     return std::make_shared<Tensor>(t->getSlice(std::span<const tensorDim_t>(indices)));
   }
+
+  // device
+  inline std::shared_ptr<Tensor> toDevice(const std::shared_ptr<Tensor>& t, Device d) {
+    t->setDevice(d);
+    return t;
+  }
 }
 
 

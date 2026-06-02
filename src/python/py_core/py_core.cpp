@@ -135,7 +135,9 @@ BOOST_PYTHON_MODULE(_core)
 
   // classes
   class_<Dimension>("Dimension", no_init)
-    .add_property("list", &Dimension::get)
+    .add_property("list", &Dimension::toVector)
+    .def("__getitem__", &Dimension::get)
+    .def("__len__", &Dimension::nDims)
     .def("__str__", &Py_Util::toString<Dimension>)
     .def("__eq__", Py_DataModeling::dimEquals1)
     .def("__eq__", Py_DataModeling::dimEquals2)
@@ -183,6 +185,7 @@ BOOST_PYTHON_MODULE(_core)
 
     // properties
     .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
+    .def("to", WRAP_FREE_FUNC_4(&Py_DataModeling::toDevice, Device))
     .add_property("dims", make_function(&Tensor::getDims, return_internal_reference<>()))
     .add_property("grads", &Tensor::getGrads)
     .add_property("requiresGrad", &Tensor::getRequiresGrad, &Tensor::setRequiresGrad)

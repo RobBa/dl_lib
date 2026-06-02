@@ -4,6 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "python_lib"))
 
 import math
+import random
 import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
@@ -32,14 +33,10 @@ def to_one_hot(y, n_classes=10):
     return one_hot
 
 
-def make_batches(x, y, batch_size, shuffle=True):
-    n = x.shape[0]
-    indices = np.arange(n)
-    if shuffle:
-        np.random.shuffle(indices)
-    for start in range(0, n, batch_size):
-        batch_idx = indices[start : start + batch_size]
-        yield x[batch_idx], y[batch_idx]
+def to_gpu(np_arr):
+    t = fromNumpy(np_arr)
+    t.device = Device.CUDA
+    return t
 
 
 # ─── network ─────────────────────────────────────────────────────────────────
@@ -56,19 +53,25 @@ def make_net():
 
 # ─── training ────────────────────────────────────────────────────────────────
 
-def train_epoch(net, loss_fn, optim, x, y, batch_size=64):
+def train_epoch(net, loss_fn, optim, x_gpu, y_gpu, batch_size=64):
+    n = x_gpu.dims[0]
+
+    # shuffle both tensors identically on the GPU via a random permutation of row indices
+    indices = list(range(n))
+    random.shuffle(indices)
+    x_shuf = x_gpu.slice(indices)
+    y_shuf = y_gpu.slice(indices)
+
     total_loss = 0.0
     n_batches = 0
-    max_batches = math.ceil(x.shape[0] / batch_size)
-    for xb, yb in make_batches(x, y, batch_size):
-        xTensor = fromNumpy(xb)
-        xTensor.device = Device.CUDA
+    max_batches = math.ceil(n / batch_size)
+    for start in range(0, n, batch_size):
+        end = min(start + batch_size, n)
+        xb = x_shuf.slice(start, end)
+        yb = y_shuf.slice(start, end)
 
-        yTensor = fromNumpy(yb)
-        yTensor.device = Device.CUDA
-
-        pred = net.forward(xTensor)
-        loss = loss_fn(yTensor, pred)
+        pred = net.forward(xb)
+        loss = loss_fn(yb, pred)
         loss.backward()
 
         optim.clipGradients(1.0)
@@ -83,21 +86,17 @@ def train_epoch(net, loss_fn, optim, x, y, batch_size=64):
     return total_loss / n_batches
 
 
-def evaluate(net, x, y, batch_size=256):
+def evaluate(net, x_gpu, y_np, batch_size=256):
+    n = x_gpu.dims[0]
     correct = 0
-    total = 0
-    for xb, yb in make_batches(x, y, batch_size, shuffle=False):
-        xTensor = fromNumpy(xb)
-        xTensor.device = Device.CUDA
-
-        pred = net.forward(xTensor)
+    for start in range(0, n, batch_size):
+        end = min(start + batch_size, n)
+        pred = net.forward(x_gpu.slice(start, end))
         pred.device = Device.CPU
         pred_np = toNumpy(pred)
-
         predicted = np.argmax(pred_np, axis=1)
-        correct += np.sum(predicted == np.argmax(yb, axis=1))
-        total += len(yb)
-    return correct / total
+        correct += np.sum(predicted == np.argmax(y_np[start:end], axis=1))
+    return correct / n
 
 
 # ─── main ────────────────────────────────────────────────────────────────────
@@ -112,14 +111,19 @@ if __name__ == "__main__":
 
     print(f"Train: {x_train.shape}, Val: {x_val.shape}")
 
+    # upload once; all batching and shuffling happens on the GPU
+    x_train_gpu = to_gpu(x_train)
+    y_train_gpu = to_gpu(y_train)
+    x_val_gpu   = to_gpu(x_val)
+
     net = make_net()
     loss_fn = CrossEntropyWithSoftmax()
     optim = RmsProp(net.parameters(), 0.0001, 0.999)
 
     n_epochs = 5
     for epoch in range(n_epochs):
-        train_loss = train_epoch(net, loss_fn, optim, x_train, y_train)
-        val_acc = evaluate(net, x_val, y_val)
+        train_loss = train_epoch(net, loss_fn, optim, x_train_gpu, y_train_gpu)
+        val_acc = evaluate(net, x_val_gpu, y_val)
         print(
             f"Epoch {epoch+1}/{n_epochs} "
             f"loss={train_loss:.4f} "
