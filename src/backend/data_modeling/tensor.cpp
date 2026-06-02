@@ -948,11 +948,12 @@ Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
   }
 
   makeContiguous();
-  
+
+  const tensorSize_t stride = dims.getStride(0);
   auto resDims = dims.toVector();
   resDims[0] = high-low;
   Tensor res(std::move(resDims), values->getDevice(), false);
-  values->copyValues(*res.values, low, high, 0);
+  values->copyValues(*res.values, low * stride, high * stride, 0);
   return res;
 }
 
