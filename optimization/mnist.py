@@ -127,10 +127,11 @@ if __name__ == "__main__":
 
     times = []
     n_epochs = 5
+    BATCH_COUNT = 50
     for epoch in range(n_epochs):
         
         start = time.perf_counter()
-        train_loss = train_epoch(net, loss_fn, optim, x_train_t, y_train_t, max_batch_count=10)
+        train_loss = train_epoch(net, loss_fn, optim, x_train_t, y_train_t, max_batch_count=BATCH_COUNT)
         elapsed = time.perf_counter() - start
         print(f"Elapsed time CPU: {elapsed:.4f}s")
 

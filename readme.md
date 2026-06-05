@@ -43,6 +43,8 @@ Roadmap:
 - [x] Optimizers and training framework
 - [x] MNIST example
 - [x] CUDA mode for operations
+- [ ] CUDA optimization for optimal run-times
+- [ ] CPU optimization for optimal run-times
 - [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
 - [ ] Docker deployment example
