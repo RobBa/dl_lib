@@ -62,7 +62,7 @@ namespace {
     }
 
     // TODO: warp shuffles
-    volatile ftype* sdata = smem;
+    volatile ftype* const sdata = smem;
     if(tid < 32) {
       if(gid + 32 < size) {
         sdata[tid] += sdata[tid + 32];
@@ -127,7 +127,7 @@ namespace {
     }
 
     // TODO: warp shuffles
-    volatile ftype* sdata = smem;
+    volatile ftype* const sdata = smem;
     if(tid < 32) {
       if(gid + 32 < size) {
         sdata[tid] += sdata[tid + 32];
@@ -188,7 +188,7 @@ namespace {
     }
 
     // TODO: warp shuffle again
-    volatile ftype* sdata = smem;
+    volatile ftype* const sdata = smem;
     if(tid < 32) {
       if(gid + 32 < size) {
         sdata[tid] += sdata[tid + 32];
@@ -307,7 +307,7 @@ namespace {
     }
 
     // TODO: warp shuffle again
-    volatile ftype* sdata = smem;
+    volatile ftype* const sdata = smem;
     if(tid < 32) {
       if(gid + 32 < size) {
         sdata[tid] += sdata[tid + 32];

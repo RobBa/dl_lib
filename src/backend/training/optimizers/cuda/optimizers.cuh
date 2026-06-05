@@ -18,7 +18,12 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "utility/global_params.h"
 #include "data_modeling/tensor.h"
 
+#include <vector>
+#include <memory>
+
 namespace cuda_impl {
+  void clipGradients(const std::vector< std::shared_ptr<Tensor> >& params, ftype maxNorm);
+
   void sgdStep(Tensor& param, const Tensor& grad, ftype lr);
   void rmspropStep(Tensor& param, Tensor& movingAvg, const Tensor& grad, ftype lr, ftype decay);
 }

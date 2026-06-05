@@ -14,7 +14,13 @@
 #include "data_modeling/tensor_functions.h"
 
 #include <cmath>
+#include <stdexcept>
 
+#ifdef __CUDA
+#include "training/optimizers/cuda/optimizers.cuh"
+#endif
+
+using namespace std;
 using namespace train;
 
 void OptimizerBase::zeroGrad() noexcept
@@ -29,34 +35,48 @@ void OptimizerBase::zeroGrad() noexcept
 
 void OptimizerBase::clipGradients(ftype maxNorm) noexcept
 {
-  // compute global L2 norm across all parameters
-  ftype totalNorm = 0.0f;
-  for (const auto &param : params)
-  {
-    auto grads = param->getGrads();
-    if (!grads)
-      continue;
-    for (tensorSize_t i = 0; i < grads->getSize(); i++)
+  switch(params[0]->getDevice()) {
+    case Device::CPU:
     {
-      auto g = (*grads)[i];
-      totalNorm += g * g;
-    }
-  }
-  totalNorm = std::sqrt(totalNorm);
-
-  if (totalNorm > maxNorm)
-  {
-    constexpr ftype eps = 1e-6;
-    const ftype scale = maxNorm / (totalNorm + eps);
-    for (const auto &param : params)
-    {
-      auto grads = param->getGrads();
-      if (!grads)
-        continue;
-      for (tensorSize_t i = 0; i < grads->getSize(); i++)
+      // compute global L2 norm across all parameters
+      ftype totalNorm = 0.0f;
+      for (const auto &param : params)
       {
-        grads->set((*grads)[i] * scale, i);
+        auto grads = param->getGrads();
+        if (!grads)
+          continue;
+        for (tensorSize_t i = 0; i < grads->getSize(); i++)
+        {
+          auto g = (*grads)[i];
+          totalNorm += g * g;
+        }
+      }
+      totalNorm = std::sqrt(totalNorm);
+
+      if (totalNorm > maxNorm)
+      {
+        const ftype scale = maxNorm / (totalNorm + EPS_OPTIM_GRADCLIP);
+        for (const auto &param : params)
+        {
+          auto grads = param->getGrads();
+          if (!grads)
+            continue;
+          for (tensorSize_t i = 0; i < grads->getSize(); i++)
+          {
+            grads->set((*grads)[i] * scale, i);
+          }
+        }
       }
     }
+    break;
+    case Device::CUDA:
+    {
+    #ifdef __CUDA
+      cuda_impl::clipGradients(params, maxNorm);
+    #else
+      __throw_invalid_argument("Not compiled with CUDA.");
+    #endif
+    }
+    break;
   }
 }

@@ -65,6 +65,67 @@ namespace cuda_impl {
    * @brief For single normalization, e.g. when normalizing with batch-size.
    */
   static __global__ void divideScalarKernel(ftype* const val, const ftype divisor) {
+    assert(blockDim.x == 1 && gridDim.x == 1);
     val[0] /= divisor;
+  }
+
+  /**
+   * @brief A simple small reduction kernel that sums over an array, returning the 
+   * sum in the inOut parameter. Assumes that input and output fit in one block! 
+   * Also, assumes that blockDim.x < inputSize, since each thread sums up 
+   * to two elements. input and output are allowed to be the same array.
+   * 
+   * 
+   * @param output The output where the sum over input will be written into. 
+   * Result written to ouput[ix]
+   * @param idx The idx to write to.
+   * @param inputSize Size of the input for boundary checks.
+   */
+  static __global__ void sumReduceKernel(ftype* const output, const ftype* const input, const int idx, const tensorSize_t inputSize) {
+    assert_debug(gridDim.x == 1, "This kernel can only be launched in one block");
+    assert_debug(blockDim.x <= inputSize, "blockDim.x must be less or equal than size");
+
+    const int tid = threadIdx.x;
+    const int gid = blockIdx.x * blockDim.x + tid;
+
+    extern __shared__ ftype smem[]; 
+    const ftype x1 = gid < inputSize ? input[gid] : 0;
+    const ftype x2 = gid + blockDim.x < inputSize ? input[gid + blockDim.x] : 0;
+    smem[tid] = x1 + x2;
+    __syncthreads();
+
+    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
+      if(tid < offset) {
+        smem[tid] += smem[tid + offset];
+      }
+      __syncthreads();
+    }
+
+    // TODO: warp shuffle
+    volatile ftype* const sdata = smem;
+    if(tid < 32) {
+      if(tid + 32 < inputSize) {
+        sdata[tid] += sdata[tid + 32];
+      }
+      if(tid + 16 < inputSize) {
+        sdata[tid] += sdata[tid + 16];
+      }
+      if(tid + 8 < inputSize) {
+        sdata[tid] += sdata[tid + 8];
+      }
+      if(tid + 4 < inputSize) {
+        sdata[tid] += sdata[tid + 4];
+      }
+      if(tid + 2 < inputSize) {
+        sdata[tid] += sdata[tid + 2];
+      }
+      if(tid + 1 < inputSize) {
+        sdata[tid] += sdata[tid + 1];
+      }
+    }
+
+    if(tid == 0) {
+      output[idx] = sdata[0];
+    }
   }
 }

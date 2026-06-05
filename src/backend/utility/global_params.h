@@ -57,6 +57,7 @@ constexpr ftype EPS_CROSSENTROPY = 1e-5;
 constexpr ftype EPS_BCE = 1e-5;
 constexpr ftype EPS_RMSE = 1e-9;
 constexpr ftype EPS_RMSPROP = 1e-8;
+constexpr ftype EPS_OPTIM_GRADCLIP = 1e-6;
 
 // ----------------- Default values ------------------------
 

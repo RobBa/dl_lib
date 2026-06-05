@@ -28,7 +28,7 @@ namespace{
    */
   __global__ void elementwiseaddKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid>=size)
+    if(gid >= size)
       return;
     
     res[gid] = left[gid] + right[gid];
@@ -52,7 +52,7 @@ namespace{
    */
   __global__ void elementwisemulKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid>=size)
+    if(gid >= size)
       return;
     
     res[gid] = left[gid] * right[gid];
@@ -63,7 +63,7 @@ namespace{
    */
   __global__ void scalaraddKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid>=size)
+    if(gid >= size)
       return;
     
     res[gid] = left[gid] + scalar;
@@ -74,7 +74,7 @@ namespace{
    */
   __global__ void scalarmulKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
-    if(gid>=size)
+    if(gid >= size)
       return;
     
     res[gid] = left[gid] * scalar;
