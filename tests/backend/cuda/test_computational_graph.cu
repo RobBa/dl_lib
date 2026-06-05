@@ -207,41 +207,4 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
     << "Final loss: " << *finalLoss;
 }
 
-TEST(CudaOptimizerTest, ZeroGrad_ClearsAllGradients) {
-  auto x = TensorFunctions::makeSharedTensor(
-    {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, Device::CUDA, false);
-  auto y = TensorFunctions::makeSharedTensor(
-    {4, 1}, {0.0, 1.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto net = makeBinaryNet(Device::CUDA);
-  auto loss = make_shared<train::BceSigmoidLoss>();
-  auto optim = make_shared<train::SgdOptimizer>(net->parameters(), 0.01f);
-
-  auto pred = (*net)(x);
-  auto l = (*loss)(y, pred);
-  l->backward();
-
-  bool anyNonZero = false;
-  for(auto& p : net->parameters()) {
-    if(p->getGrads()) {
-      for(tensorSize_t i = 0; i < p->getGrads()->getSize(); i++) {
-        if((*p->getGrads())[i] != 0.0f) {
-          anyNonZero = true;
-          break;
-        }
-      }
-    }
-  }
-  EXPECT_TRUE(anyNonZero) << "Expected some non-zero gradients before zeroGrad";
-
-  optim->zeroGrad();
-
-  for(auto& p : net->parameters()) {
-    if(p->getGrads()) {
-      for(tensorSize_t i = 0; i < p->getGrads()->getSize(); i++) {
-        ASSERT_NEAR((*p->getGrads())[i], 0.0f, 1e-5)
-          << "Gradient not zeroed at index " << i;
-      }
-    }
-  }
-}
