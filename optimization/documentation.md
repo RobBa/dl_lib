@@ -19,7 +19,14 @@ Here we found that some of the operations were not implemented in CUDA.
 This lead to many memcopies with just a single element, stalling the CUDA
 pipeline heavily. Solutoin is to bring those operations onto the GPU as well.
 
+### After fix times
+
+CPU: 0.4464s
+GPU: 0.5023s
+
 # Stage two
+
+### Before fix times
 
 5 epochs, 50 batches per epoch, median values: 
 
@@ -46,3 +53,8 @@ Looking at the timeline we see that there happens a lot of device-to-device memc
 executions, then the memcopies again. It appears that the slicing operations in the shuffling for training absorb
 lots of run-time before anything can happen. We will try a separate kernel that first aligns all data before copying
 fractured memory.
+
+### After fix times
+
+CPU: 0.4464s
+*CUDA*: 0.1635s
