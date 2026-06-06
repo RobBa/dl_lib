@@ -165,10 +165,11 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tenso
 
   switch(device){
     case Device::CPU: {
+      // TODO: multithreading
       tensorSize_t targetOffset = 0;
       for(tensorDim_t idx: indices){
         tensorSize_t thisOffset = idx * sizeOfDim;
-        copyValues(target, thisOffset, thisOffset+sizeOfDim, targetOffset);
+        copyValues(target, thisOffset, thisOffset + sizeOfDim, targetOffset);
         targetOffset += sizeOfDim;
       }
       break; 
@@ -179,7 +180,7 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tenso
         tensorSize_t targetOffset = 0;
         for(tensorDim_t idx: indices){
           tensorSize_t thisOffset = idx * sizeOfDim;
-          copyValues(target, thisOffset, thisOffset+sizeOfDim, targetOffset);
+          copyValues(target, thisOffset, thisOffset + sizeOfDim, targetOffset);
           targetOffset += sizeOfDim;
         }
         cudaErrchk(cudaDeviceSynchronize());
@@ -970,9 +971,20 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
   makeContiguous();
   auto resDims = dims.toVector();
   resDims[0] = indices.size();
-
   Tensor res(std::move(resDims), values->getDevice(), false);
-  values->copyValues(*res.values, indices, res.getDims().getStride(0));
+
+  switch(res.getDevice()) {
+    case Device::CPU:
+      values->copyValues(*res.values, indices, res.getDims().getStride(0));
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cuda_impl::getSlice(res, *this, indices);
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+  }
+  
   return res;
 }
 

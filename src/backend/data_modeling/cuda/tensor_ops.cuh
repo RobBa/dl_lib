@@ -18,6 +18,8 @@ static_assert(false, "File should not be included without CUDA enabled");
 #include "utility/global_params.h"
 #include "data_modeling/dim_type.h"
 
+#include <span>
+
 class Tensor;
 
 namespace cuda_impl {
@@ -36,4 +38,5 @@ namespace cuda_impl {
   void scalarFill(Tensor& t, ftype value);
 
   void createContiguousCopy(Tensor& res, const Tensor& src);
+  void getSlice(Tensor& res, const Tensor& src, std::span<const tensorDim_t> idx);
 }

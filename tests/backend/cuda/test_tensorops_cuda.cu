@@ -441,3 +441,42 @@ TEST(CudaTensorOpsTest, MatrixTranspose3) {
     }
   }
 }
+TEST(CudaTensorOpsTest, SliceRange_CorrectRowsAndDims) {
+  auto t = Tensor({5, 3}, {
+     1.0f,  2.0f,  3.0f,
+     4.0f,  5.0f,  6.0f,
+     7.0f,  8.0f,  9.0f,
+    10.0f, 11.0f, 12.0f,
+    13.0f, 14.0f, 15.0f,
+  }, Device::CUDA);
+
+  auto s = t.getSlice(1, 4); // rows 1,2,3
+
+  ASSERT_EQ(s.getDims(), Dimension({3, 3}));
+  ASSERT_NEAR(s.get(0, 0),  4.0f, 1e-4f);
+  ASSERT_NEAR(s.get(0, 2),  6.0f, 1e-4f);
+  ASSERT_NEAR(s.get(1, 1),  8.0f, 1e-4f);
+  ASSERT_NEAR(s.get(2, 0), 10.0f, 1e-4f);
+  ASSERT_NEAR(s.get(2, 2), 12.0f, 1e-4f);
+}
+
+TEST(CudaTensorOpsTest, SliceIndices_CorrectRowsAndOrder) {
+  auto t = Tensor({5, 3}, {
+     1.0f,  2.0f,  3.0f,
+     4.0f,  5.0f,  6.0f,
+     7.0f,  8.0f,  9.0f,
+    10.0f, 11.0f, 12.0f,
+    13.0f, 14.0f, 15.0f,
+  }, Device::CUDA);
+
+  std::vector<tensorDim_t> idx = {4, 0, 2};
+  auto s = t.getSlice(std::span<const tensorDim_t>(idx));
+
+  ASSERT_EQ(s.getDims(), Dimension({3, 3}));
+  ASSERT_NEAR(s.get(0, 0), 13.0f, 1e-4f);
+  ASSERT_NEAR(s.get(0, 2), 15.0f, 1e-4f);
+  ASSERT_NEAR(s.get(1, 0),  1.0f, 1e-4f);
+  ASSERT_NEAR(s.get(1, 2),  3.0f, 1e-4f);
+  ASSERT_NEAR(s.get(2, 0),  7.0f, 1e-4f);
+  ASSERT_NEAR(s.get(2, 2),  9.0f, 1e-4f);
+}

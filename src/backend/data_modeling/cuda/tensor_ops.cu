@@ -22,6 +22,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include <thrust/fill.h>
 #include <thrust/device_ptr.h>
 
+using namespace std;
+
 namespace{
   /**
    * @brief Kernel for simple elementwise addition.
@@ -152,7 +154,7 @@ namespace{
    * @param ndim Number of dimension of both src and dst.
    * @param size Total size of both src and dst.
    */
-  __global__ void createContiguousCopyKernel(ftype* dst, const ftype* const src, const tensorSize_t* const strides,
+  __global__ void createContiguousCopyKernel(ftype* const dst, const ftype* const src, const tensorSize_t* const strides,
                                              const tensorDim_t* const dims, const int ndims, const tensorSize_t size)
   {
     const tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -168,22 +170,44 @@ namespace{
     }
     dst[flatIdx] = src[srcOffset];
   }
+
+  /**
+   * @brief Copies the elements of the given slices from src to res. Assumes that the dimension to slice over
+   * is the first one currently!
+   * 
+   * @param idx The indices of the dimension in src.
+   */
+  __global__ void getSliceKernel(ftype* res, const ftype* const src, const tensorDim_t* const idx,
+                                 const tensorSize_t sizeOfDim, const tensorSize_t resSize) {
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid >= resSize) {
+      return;
+    }
+
+    const int strideNumber = gid / sizeOfDim;
+    const int withinStrideIdx = gid % sizeOfDim;
+
+    const int srcIdx = idx[strideNumber] * sizeOfDim + withinStrideIdx;
+    const int resIdx = strideNumber * sizeOfDim + withinStrideIdx;
+    
+    res[resIdx] = src[srcIdx];
+  }
 }
 
 namespace cuda_impl {
   void scalaradd(Tensor& res, const Tensor& src, ftype scalar) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalaraddKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    scalaraddKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void scalarmul(Tensor& res, const Tensor& src, ftype scalar) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalarmulKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    scalarmulKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
@@ -191,32 +215,32 @@ namespace cuda_impl {
     const auto size = res.getSize();
 
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    broadcastaddKernel<<<blocksPerGrid, threadsPerBlock>>>(
+    broadcastaddKernel<<<blocks, threadsPerBlock>>>(
       res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    elementwiseaddKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    elementwiseaddKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    elementwisemulKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    elementwisemulKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
     cudaErrchk(cudaDeviceSynchronize());
   }
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right) {
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
     
     // sizes of the 2D matrices respectively
     const tensorSize_t leftSize = left.getDims().get(-1) * left.getDims().get(-2); 
@@ -229,8 +253,8 @@ namespace cuda_impl {
 
     while(leftOffset < left.getSize()){
       //const auto smemSize = min(resSize, threadsPerBlock) * sizeof(ftype);
-      //matMul2DKernel<<<blocksPerGrid, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-      matMul2DKernel<<<blocksPerGrid, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+      //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
+      matMul2DKernel<<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
                                                          left.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
 
       leftOffset += leftSize;
@@ -262,14 +286,30 @@ namespace cuda_impl {
   }
 
   void createContiguousCopy(Tensor& res, const Tensor& src) {
-    assert(res.getSize()==src.getSize());
+    assert(res.getSize() == src.getSize());
 
     const auto size = src.getSize();
     constexpr int threadsPerBlock = 256;
-    const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    createContiguousCopyKernel<<<blocksPerGrid, threadsPerBlock>>>(
+    createContiguousCopyKernel<<<blocks, threadsPerBlock>>>(
       res.getData(), src.getData(), src.getDims().getStrides().data(), src.getDims().data(), src.getDims().nDims(), size);
     cudaErrchk(cudaDeviceSynchronize());
+  }
+
+  void getSlice(Tensor& res, const Tensor& src, span<const tensorDim_t> idx) {
+    constexpr int threadsPerBlock = 256;
+    const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
+
+    tensorDim_t* idx_d;
+    cudaErrchk(cudaMalloc(&idx_d, idx.size() * sizeof(tensorDim_t)));
+    const auto sizeOfDim = res.getDims().getStride(0);
+
+    cudaErrchk(cudaMalloc(&idx_d, idx.size() * sizeof(tensorDim_t)));
+    cudaErrchk(cudaMemcpy(idx_d, idx.data(), idx.size() * sizeof(tensorDim_t), cudaMemcpyHostToDevice));
+
+    getSliceKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), idx_d, sizeOfDim, res.getSize());
+    cudaErrchk(cudaDeviceSynchronize());
+    cudaErrchk(cudaFree(idx_d));
   }
 }

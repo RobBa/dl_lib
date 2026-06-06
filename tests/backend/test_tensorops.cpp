@@ -352,3 +352,47 @@ TEST(TensorOpsTest, MatrixTranspose3) {
     }
   }
 }
+
+TEST(TensorOpsTest, SliceRange_CorrectRowsAndDims) {
+  // shape [5, 3], rows are multiples of 10 for easy identification
+  auto t = Tensor({5, 3}, {
+     1.0f,  2.0f,  3.0f,
+     4.0f,  5.0f,  6.0f,
+     7.0f,  8.0f,  9.0f,
+    10.0f, 11.0f, 12.0f,
+    13.0f, 14.0f, 15.0f,
+  });
+
+  auto s = t.getSlice(1, 4); // rows 1,2,3
+
+  ASSERT_EQ(s.getDims(), Dimension({3, 3}));
+  ASSERT_NEAR(s.get(0, 0),  4.0f, 1e-5f);
+  ASSERT_NEAR(s.get(0, 2),  6.0f, 1e-5f);
+  ASSERT_NEAR(s.get(1, 1),  8.0f, 1e-5f);
+  ASSERT_NEAR(s.get(2, 0), 10.0f, 1e-5f);
+  ASSERT_NEAR(s.get(2, 2), 12.0f, 1e-5f);
+}
+
+TEST(TensorOpsTest, SliceIndices_CorrectRowsAndOrder) {
+  auto t = Tensor({5, 3}, {
+     1.0f,  2.0f,  3.0f,
+     4.0f,  5.0f,  6.0f,
+     7.0f,  8.0f,  9.0f,
+    10.0f, 11.0f, 12.0f,
+    13.0f, 14.0f, 15.0f,
+  });
+
+  std::vector<tensorDim_t> idx = {4, 0, 2}; // reverse-pick three rows
+  auto s = t.getSlice(std::span<const tensorDim_t>(idx));
+
+  ASSERT_EQ(s.getDims(), Dimension({3, 3}));
+  // row 0 of result = original row 4
+  ASSERT_NEAR(s.get(0, 0), 13.0f, 1e-5f);
+  ASSERT_NEAR(s.get(0, 2), 15.0f, 1e-5f);
+  // row 1 of result = original row 0
+  ASSERT_NEAR(s.get(1, 0),  1.0f, 1e-5f);
+  ASSERT_NEAR(s.get(1, 2),  3.0f, 1e-5f);
+  // row 2 of result = original row 2
+  ASSERT_NEAR(s.get(2, 0),  7.0f, 1e-5f);
+  ASSERT_NEAR(s.get(2, 2),  9.0f, 1e-5f);
+}
