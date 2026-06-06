@@ -153,43 +153,6 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low
   }
 }
 
-/**
- * @brief Indexed slicing along first dimension.
- * 
- * @param indices The indices of the first dimension.
- * @param sizeOfDim Complete size of the flattened first dimension.
- */
-void Tensor::tensorValues_t::copyValues(tensorValues_t& target, span<const tensorDim_t> indices, 
-                                        const tensorSize_t sizeOfDim) const {
-  assert(target.size >= sizeOfDim * indices.size());
-
-  switch(device){
-    case Device::CPU: {
-      // TODO: multithreading
-      tensorSize_t targetOffset = 0;
-      for(tensorDim_t idx: indices){
-        tensorSize_t thisOffset = idx * sizeOfDim;
-        copyValues(target, thisOffset, thisOffset + sizeOfDim, targetOffset);
-        targetOffset += sizeOfDim;
-      }
-      break; 
-    }
-    case Device::CUDA:
-      #ifdef __CUDA
-        // TODO: we can do streams here, that's why synchronize
-        tensorSize_t targetOffset = 0;
-        for(tensorDim_t idx: indices){
-          tensorSize_t thisOffset = idx * sizeOfDim;
-          copyValues(target, thisOffset, thisOffset + sizeOfDim, targetOffset);
-          targetOffset += sizeOfDim;
-        }
-        cudaErrchk(cudaDeviceSynchronize());
-      #else 
-        __throw_invalid_argument("Not compiled with CUDA");
-      #endif
-      break;
-  }
-}
 
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
   #ifndef __CUDA
@@ -974,9 +937,18 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
   Tensor res(std::move(resDims), values->getDevice(), false);
 
   switch(res.getDevice()) {
-    case Device::CPU:
-      values->copyValues(*res.values, indices, res.getDims().getStride(0));
+    case Device::CPU: 
+    {
+      // TODO: multithreading
+      const tensorSize_t sizeOfDim = res.getDims().getStride(0);
+      tensorSize_t targetOffset = 0;
+      for(tensorDim_t idx : indices){
+        const tensorSize_t srcOffset = idx * sizeOfDim;
+        values->copyValues(*res.values, srcOffset, srcOffset + sizeOfDim, targetOffset);
+        targetOffset += sizeOfDim;
+      }
       break;
+    }
     case Device::CUDA:
       #ifdef __CUDA
         cuda_impl::getSlice(res, *this, indices);

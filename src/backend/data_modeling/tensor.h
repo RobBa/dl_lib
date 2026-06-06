@@ -90,7 +90,6 @@ private:
 
     void copyValues(tensorValues_t& target) const;
     void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
-    void copyValues(tensorValues_t& target, std::span<const tensorDim_t> indices, tensorSize_t sizeOfDim) const;
 
     static void setDefaultDevice(Device d) noexcept;
     static Device getDefaultDevice() noexcept;
