@@ -234,7 +234,7 @@ namespace cuda_impl {
 
         const int threadsPerBlock2 = blocks > threadsPerBlock ? threadsPerBlock * 2 : threadsPerBlock;
         sumReduceKernel<<<1, threadsPerBlock2, 2 * threadsPerBlock2 * sizeof(ftype)>>>(
-                          totalNorm, tmp, paramIdx, grads->getSize());
+                          totalNorm, tmp, paramIdx, blocks);
         cudaErrchk(cudaDeviceSynchronize());
 
         cudaErrchk(cudaFree(tmp));

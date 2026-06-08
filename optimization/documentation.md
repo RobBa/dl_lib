@@ -68,5 +68,27 @@ CPU: 0.4464s
 CPU: 1.7937s
 GPU: 0.1635s
 
-Read: 
-https://docs.nvidia.com/cuda/profiler-users-guide/
+### Solution
+
+We do see that a lot of time is not spent on reordering the data in the 
+makeContiguousCopy CUDA kernel. The only function calling this one right now is the backward matmul pass. To bypass the kernel we implement a CUDA kernel that implicitely indexes based on a transposed flag.
+
+To be consisten with the CPU we do the same with the CPU implementation of matmul.
+
+### After fix times
+
+*CPU*: 1.9847s
+*CUDA*: 0.0704s
+
+**Important**: This has slowed the CPU version down. We will optimize that later after the CUDA optimization.
+
+### Additionally: Fixed out-of-bounds bug
+
+Used compute sanitizer -> memcheck to find out-of-bounds error in one kernel.
+
+# Stage four
+
+5 epochs, 10 batches per epoch, median value:
+
+*CPU*: 1.9847s
+*CUDA*: 0.0704s
