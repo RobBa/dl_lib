@@ -58,3 +58,15 @@ fractured memory.
 
 CPU: 0.4464s
 *CUDA*: 0.1635s
+
+# Stage three
+
+### Before fix times
+
+5 epochs, 50 batches per epoch, median values: 
+
+CPU: 1.7937s
+GPU: 0.1635s
+
+Read: 
+https://docs.nvidia.com/cuda/profiler-users-guide/

@@ -32,7 +32,7 @@ namespace cuda_impl {
   void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right);
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec);
   void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right);
-  void matmul(Tensor& res, const Tensor& left, const Tensor& right);
+  void matmul(Tensor& res, const Tensor& left, const Tensor& right, bool transposeLeft, bool transposeRight);
   void sumOverDims(Tensor& res, const Tensor& input, tensorDim_t dim);
 
   void scalarFill(Tensor& t, ftype value);

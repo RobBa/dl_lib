@@ -426,15 +426,11 @@ ftype* Tensor::getData() const noexcept {
  * The check of whether they do or not is to be performed by the surrounding
  * network class object instance upon construction. 
  */
-Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
-  if(left.dims.get(-1) != right.dims.get(-2)){
-    __throw_runtime_error("Tensor dimensions do not match");
-  }
-
+Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
   // broadcasting
   auto resDims = left.dims.nDims() > right.dims.nDims() ? left.dims.toVector() : right.dims.toVector();
-  resDims[resDims.size() - 2] = left.dims.get(-2); // rows
-  resDims[resDims.size() - 1] = right.dims.get(-1); // cols
+  resDims[resDims.size() - 2] = transposeLeft  ? left.dims.get(-1)  : left.dims.get(-2); // rows
+  resDims[resDims.size() - 1] = transposeRight ? right.dims.get(-2) : right.dims.get(-1); // cols
 
   Tensor res(resDims, left.values->getDevice(), false);
 
@@ -451,7 +447,18 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
       tensorSize_t resOffset = 0;
 
       while(leftOffset < left.getSize()){
-        matMul2DCpu(res, left, right, resOffset, leftOffset, rightOffset);
+        if(!(transposeLeft || transposeRight)) {
+          matMul2DCpu<false, false>(res, left, right, resOffset, leftOffset, rightOffset);
+        }
+        else if(transposeLeft && transposeRight) [[unlikely]] {
+          matMul2DCpu<true, true>(res, left, right, resOffset, leftOffset, rightOffset);
+        }
+        else if(transposeLeft) {
+          matMul2DCpu<true, false>(res, left, right, resOffset, leftOffset, rightOffset);
+        }
+        else if(transposeRight) {
+          matMul2DCpu<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
+        }
         leftOffset += leftSize;
         rightOffset += rightSize;
         resOffset += resSize;
@@ -461,7 +468,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
     }
     case Device::CUDA:
       #ifdef __CUDA
-        cuda_impl::matmul(res, left, right);
+        cuda_impl::matmul(res, left, right, transposeLeft, transposeRight);
       #else
         __throw_invalid_argument("Not compiled with CUDA");
       #endif
@@ -472,46 +479,16 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right) {
 }
 
 /**
- * @brief Name says it all. Inplace operation on res.
+ * @brief Matrix multiplication. Transpose flags are optimizations to avoid a 
+ * physical transpose in memory before the computation. Transposition done on the last two 
+ * dimensions, the dimensions the matmul is executed on.
  */
-void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
-  
-  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
-  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
-  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
-  const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
-
-  for(tensorSize_t lrow = 0; lrow < nRowsLeft; lrow++){
-    const tensorSize_t resRowOffset = resOffset + lrow * nColsRight;
-    const tensorSize_t leftRowOffset = leftOffset + lrow * nColsLeft;
-
-    tensorSize_t rightIdx = rightOffset;
-    // res likely has undefined memory content
-    for(tensorSize_t rrow = 0; rrow < nColsRight; rrow++){
-      res.values->data()[resRowOffset + rrow] = left.values->data()[leftRowOffset] * right.values->data()[rightIdx];
-      rightIdx++;
-    }
-
-    for(tensorSize_t lcol=1; lcol<nColsLeft; lcol++){
-      const auto leftIdx = leftRowOffset + lcol;
-      for(tensorSize_t rrow = 0; rrow < nColsRight; rrow++){
-        res.values->data()[resRowOffset + rrow] += left.values->data()[leftIdx] * right.values->data()[rightIdx];
-        rightIdx++;
-      }
-    }
-  }
-}
-
-/**
- * @brief Matrix multiplication.
- */
-Tensor Tensor::matmul(const Tensor& other) const {
+Tensor Tensor::matmul(const Tensor& other, const bool transposeLeft, const bool transposeRight) const {
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
   
-  return matMulImpl(getContiguous(), other.getContiguous());
+  return matMulImpl(getContiguous(), other.getContiguous(), transposeLeft, transposeRight);
 }
 
 /**
@@ -799,7 +776,8 @@ Tensor Tensor::getContiguous() const {
 }
 
 /**
- * @brief Quick transpose operation.
+ * @brief Quick transpose operation. Important: Does a shallow copy/view. 
+ * Both tensors will point to the same underlying data.
  */
 Tensor Tensor::transpose(int dim1, int dim2) {
   Tensor result = createShallowCopy();

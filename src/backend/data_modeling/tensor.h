@@ -102,7 +102,8 @@ private:
   std::shared_ptr<Tensor> grads = nullptr; // gradients
   std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
 
-  static Tensor matMulImpl(const Tensor& left, const Tensor& right);
+  static Tensor matMulImpl(const Tensor& left, const Tensor& right, bool transposeLeft, bool transposeRight);
+  template<bool transposeLeft, bool transposeRight>
   static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right,
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
@@ -187,7 +188,7 @@ public:
   tensorSize_t getSize() const noexcept;
 
   // Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
-  Tensor matmul(const Tensor& other) const;
+  Tensor matmul(const Tensor& other, bool transposeLeft=false, bool transposeRight=false) const;
 
   Tensor operator+(const Tensor& other) const;
   Tensor add(const Tensor& other) const;
@@ -274,3 +275,38 @@ public:
   static void setDefaultDevice(const Device d) noexcept;
   static Device getDefaultDevice() noexcept;
 };
+
+/**
+ * @brief Name says it all. Inplace operation on res.
+ */
+template<bool transposeLeft, bool transposeRight>
+void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
+  
+  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
+  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
+  const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
+  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
+
+  const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
+  const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
+  const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
+
+  for (tensorSize_t i = 0; i < M; i++) {
+    for (tensorSize_t j = 0; j < N; j++) {
+      ftype sum = 0;
+
+      for (tensorSize_t k = 0; k < K; k++) {
+        tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
+                                             : leftOffset + i * nColsLeft + k;
+        
+        tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
+                                               : rightOffset + k * nColsRight + j;
+
+        sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
+      }
+
+      res.values->data()[resOffset + i * N + j] = sum;
+    }
+  }
+}
