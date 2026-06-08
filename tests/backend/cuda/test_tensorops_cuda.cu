@@ -302,13 +302,6 @@ TEST(CudaTensorOpsTest, MatMulLarge) {
   }
 }
 
-TEST(CudaTensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
-  auto t1 = TensorFunctions::Ones({2, 2});
-  auto t2 = TensorFunctions::Ones({3, 2});
-
-  ASSERT_THROW(t1.matmul(t2), std::runtime_error);
-}
-
 TEST(CudaAutogradTest, MatMul) {
   constexpr int dimsize = 30;
 

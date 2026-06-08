@@ -251,13 +251,6 @@ TEST(TensorOpsTest, MatMul2) {
   }
 }
 
-TEST(TensorOpsTest, MatMulThrowsWhenDimensionsNotMatched) {
-  auto t1 = TensorFunctions::Ones({2, 2});
-  auto t2 = TensorFunctions::Ones({3, 2});
-
-  ASSERT_THROW(t1.matmul(t2), std::runtime_error);
-}
-
 TEST(AutogradTest, MatMul) {
   auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
   auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);

@@ -90,7 +90,8 @@ namespace {
    * @param res The result matrix
    * @param left Left matrix to be multiplied
    * @param right Right matrix to multiply with
-   * @param leftRows n rows of left. Assumes the rows of the transposed transposed matrix if this template overload is called.
+   * @param leftRows n rows of left. !All rows and column params refer to the values as they are in physical 
+   * memory, regardless of transpose!
    * @param rightRows n rows of right. See also leftRows.
    * @param leftCols n columns of left matrix. See also leftRows.
    * @param rightCols n columns of right matrix. See also leftRows.
@@ -98,10 +99,10 @@ namespace {
    */
   template<bool transposeLeft, bool transposeRight>
   __global__ void matMul2DKernel(ftype* const res, 
-                               const ftype* const left, const ftype* const right,
-                               const tensorDim_t leftRows, const tensorDim_t rightRows, 
-                               const tensorDim_t leftCols, const tensorDim_t rightCols, 
-                               const tensorSize_t resSize)
+                                 const ftype* const left, const ftype* const right,
+                                 const tensorDim_t leftRows, const tensorDim_t rightRows, 
+                                 const tensorDim_t leftCols, const tensorDim_t rightCols, 
+                                 const tensorSize_t resSize)
   {
     const int tid = threadIdx.x;
     const int gid = blockDim.x * blockIdx.x + tid;
@@ -113,18 +114,19 @@ namespace {
     //smem[tid] = 0.0f;
     //__syncthreads();
 
-    const int K = leftCols;
-    const int N = rightCols;
-    const int resCol = gid % N;
-    const int resRow = gid / N;
+    const int K = transposeLeft ? leftRows :  leftCols;
+    const int N = transposeRight ? rightRows : rightCols;
+
+    const int i = gid / N;
+    const int j = gid % N;
 
     // C[i, j] = sum_{k=0}^{leftCols} A[i, k] * B[k, j]
     ftype cij = 0;
     for (int k = 0; k < K; k++) {
       //smem[tid] += left[leftBase + k] * right[k * rightCols + resCol];
 
-      int leftIdx = transposeLeft ? k * leftRows + resRow : resRow * leftCols + k;
-      int rightIdx = transposeRight ? resCol * leftCols + k : k * rightCols + resCol;
+      int leftIdx = transposeLeft ? k * leftCols + i : i * leftCols + k;
+      int rightIdx = transposeRight ? j * rightCols + k : k * rightCols + j;
             
       cij += left[leftIdx] * right[rightIdx];
     }
@@ -249,12 +251,13 @@ namespace cuda_impl {
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
     constexpr int threadsPerBlock = 256;
-    const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
     
     // sizes of the 2D matrices respectively
     const tensorSize_t leftSize = left.getDims().get(-1) * left.getDims().get(-2); 
     const tensorSize_t rightSize = right.getDims().get(-1) * right.getDims().get(-2);
-    const tensorSize_t resSize = left.getDims().get(-2) * right.getDims().get(-1);
+    const tensorSize_t resSize = res.getDims().get(-2) * res.getDims().get(-1);
+
+    const int blocks = (resSize + threadsPerBlock - 1) / threadsPerBlock;
 
     tensorSize_t leftOffset = 0;
     tensorSize_t rightOffset = 0;
@@ -269,15 +272,15 @@ namespace cuda_impl {
       }
       if(transposeLeft && transposeRight) [[unlikely]] {
         matMul2DKernel<true, true><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                left.getDims().get(-1), right.getDims().get(-1), left.getDims().get(-2), right.getDims().get(-2), resSize);
+                                                                left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
       else if(transposeLeft) {
         matMul2DKernel<true, false><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                 left.getDims().get(-1), right.getDims().get(-2), left.getDims().get(-2), right.getDims().get(-1), resSize);
+                                                                 left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
       else if(transposeRight) {
         matMul2DKernel<false, true><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                 left.getDims().get(-2), right.getDims().get(-1), left.getDims().get(-1), right.getDims().get(-2), resSize);
+                                                                 left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
 
       leftOffset += leftSize;
