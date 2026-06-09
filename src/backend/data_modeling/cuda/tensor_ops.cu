@@ -16,8 +16,9 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "data_modeling/tensor.h"
 
 #include "tensor_ops.cuh"
-#include "utility/cuda/cuda_common.cuh"
+
 #include "utility/utils.h"
+#include "utility/cuda/cuda_common.cuh"
 
 #include <thrust/fill.h>
 #include <thrust/device_ptr.h>
@@ -268,19 +269,19 @@ namespace cuda_impl {
       //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset,
       if(!(transposeLeft || transposeRight)) {
         matMul2DKernel<false, false><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                  left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
+                                       left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
-      if(transposeLeft && transposeRight) [[unlikely]] {
+      else if(transposeLeft && transposeRight) [[unlikely]] {
         matMul2DKernel<true, true><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
+                                     left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
       else if(transposeLeft) {
         matMul2DKernel<true, false><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                 left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
+                                      left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
       else if(transposeRight) {
         matMul2DKernel<false, true><<<blocks, threadsPerBlock>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset, 
-                                                                 left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
+                                      left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), resSize);
       }
 
       leftOffset += leftSize;

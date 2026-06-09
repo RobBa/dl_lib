@@ -16,7 +16,7 @@ using namespace cgraph;
 
 vector<shared_ptr<Tensor>> MatMulNode::backward(const Tensor& upstreamGrad) {
     assert(!upstreamGrad.getRequiresGrad());
-    // TODO: optimize operators
+    
     return {
         make_shared<Tensor>(upstreamGrad.matmul(*parents[1], false, true)), 
         make_shared<Tensor>(parents[0]->matmul(upstreamGrad, true, false))

@@ -459,6 +459,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
         else if(transposeRight) {
           matMul2DCpu<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
         }
+        
         leftOffset += leftSize;
         rightOffset += rightSize;
         resOffset += resSize;
@@ -820,24 +821,13 @@ void Tensor::reset(const ftype x) noexcept {
  * @brief Populates the tensor with values drawn according to initializer.
  */
 void Tensor::reset(shared_ptr<utility::InitializerBase> init) noexcept {
-  const auto size = values->getSize();
   switch(values->getDevice()) {
     case Device::CPU:
-      for(tensorSize_t i = 0; i < size; i++){
-        values->data()[i] = init->drawNumber();
-      }
+      init->fillRange(values->data(), values->getSize());
       break;
     case Device::CUDA:
       #ifdef __CUDA
-      {
-        auto newValues = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
-        for(tensorSize_t i = 0; i < size; i++){
-          newValues[i] = init->drawNumber();
-        }
-        cudaErrchk(cudaMemcpy(values->data(), newValues, size * sizeof(ftype), cudaMemcpyHostToDevice));
-        free(newValues);
-        // TODO: better initialize directly on GPU
-      }
+        init->fillRangeGpu(values->data(), values->getSize());
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif

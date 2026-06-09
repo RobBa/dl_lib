@@ -16,15 +16,19 @@ static_assert(false, "File should not be included without CUDA enabled");
 #endif // __CUDA
 
 #include "cuda_runtime.h"
-#include "utility/global_params.h"
+#include "curand.h"
+
+#include "shared/global_params.h"
 
 #include <type_traits>
 
 namespace utility {
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);
+  void cuRandAssert(curandStatus_t status, const char *file, int line, bool abort=false);
 }
 
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }
+#define cuRandErrchk(ans) { utility::cuRandAssert((ans), __FILE__, __LINE__); }
 
 namespace cuda_impl {
   struct DeviceProperties final {

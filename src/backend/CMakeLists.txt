@@ -2,6 +2,7 @@ file(GLOB_RECURSE CORE_SOURCES
     computational_graph/*.cpp
     data_modeling/*.cpp
     module/*.cpp
+    shared/*.cpp
     system/*.cpp
     training/*.cpp
     utility/*.cpp
@@ -12,6 +13,7 @@ if(CMAKE_CUDA_COMPILER)
         computational_graph/*.cu
         data_modeling/*.cu
         module/*.cu
+        shared/*.cu
         system/*.cu
         training/*.cu
         utility/*.cu
@@ -44,6 +46,7 @@ if(CMAKE_CUDA_COMPILER)
     )
     target_link_libraries(BackendCore 
         CUDA::cudart
+        CUDA::curand
     )
 endif()
 

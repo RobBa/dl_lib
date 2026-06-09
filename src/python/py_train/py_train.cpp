@@ -11,7 +11,7 @@
 
 #include <boost/python.hpp>
 
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 #include "training/loss_functions/bce_loss.h"
 #include "training/loss_functions/bce_sigmoid_loss.h"

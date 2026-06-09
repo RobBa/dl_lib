@@ -12,7 +12,7 @@
 #pragma once
 
 #include "data_modeling/dim_type.h"
-#include "utility/initializers.h"
+#include "shared/initializers.h"
 
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"

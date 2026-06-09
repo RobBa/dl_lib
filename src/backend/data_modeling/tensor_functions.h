@@ -13,7 +13,7 @@
 #pragma once
 
 #include "tensor.h"
-#include "utility/initializers.h"
+#include "shared/initializers.h"
 
 #include <utility>
 

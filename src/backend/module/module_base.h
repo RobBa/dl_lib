@@ -12,7 +12,7 @@
 #pragma once
 
 #include "data_modeling/tensor.h"
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 #include <optional>
 #include <memory>

@@ -12,7 +12,7 @@
 #pragma once
 
 #include "module/module_base.h"
-#include "utility/initializers.h"
+#include "shared/initializers.h"
 
 #include <optional>
 

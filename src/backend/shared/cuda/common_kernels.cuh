@@ -11,8 +11,14 @@
 
 #pragma once
 
-#include "utility/global_params.h"
+#ifndef __CUDA
+static_assert(false, "File should not be included without CUDA enabled");
+#endif // __CUDA
+
+#include "shared/global_params.h"
 #include "utility/utils.h"
+
+#include <cassert>
 
 namespace cuda_impl {
   template<typename T>
@@ -67,6 +73,18 @@ namespace cuda_impl {
   static __global__ void divideScalarKernel(ftype* const val, const ftype divisor) {
     assert(blockDim.x == 1 && gridDim.x == 1);
     val[0] /= divisor;
+  }
+
+  /**
+   * @brief Multiplication with scalar + an offset.
+   */
+  static __global__ void scalePlusOffsetKernel(ftype* const data, const ftype scale, const ftype shift, const tensorSize_t size) {
+    const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (gid >= size) {
+      return;
+    }
+
+    data[gid] = data[gid] * scale + shift;
   }
 
   /**

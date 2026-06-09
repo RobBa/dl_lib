@@ -12,7 +12,7 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 namespace cgraph {
   class SoftmaxNode final : public GraphNode {

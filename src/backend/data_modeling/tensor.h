@@ -16,8 +16,8 @@
 #include "computational_graph/topological_sort.h"
 #include "computational_graph/graph_node.h"
 
-#include "utility/global_params.h"
-#include "utility/initializers.h"
+#include "shared/global_params.h"
+#include "shared/initializers.h"
 
 #include <memory>
 #include <span>

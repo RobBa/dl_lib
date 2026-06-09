@@ -17,12 +17,38 @@ static_assert(false, "File should not be included without CUDA enabled");
 
 #include <iostream>
 
-void utility::gpuAssert(cudaError_t code, const char *file, int line, bool abort)
-{
+namespace {
+  const char* curandGetErrorString(curandStatus_t status) {
+    switch (status) {
+      case CURAND_STATUS_SUCCESS: return "SUCCESS";
+      case CURAND_STATUS_VERSION_MISMATCH: return "VERSION_MISMATCH";
+      case CURAND_STATUS_NOT_INITIALIZED: return "NOT_INITIALIZED";
+      case CURAND_STATUS_ALLOCATION_FAILED: return "ALLOCATION_FAILED";
+      case CURAND_STATUS_TYPE_ERROR: return "TYPE_ERROR";
+      case CURAND_STATUS_OUT_OF_RANGE: return "OUT_OF_RANGE";
+      case CURAND_STATUS_LENGTH_NOT_MULTIPLE: return "LENGTH_NOT_MULTIPLE";
+      case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED: return "DOUBLE_PRECISION_REQUIRED";
+      case CURAND_STATUS_LAUNCH_FAILURE: return "LAUNCH_FAILURE";
+      case CURAND_STATUS_PREEXISTING_FAILURE: return "PREEXISTING_FAILURE";
+      case CURAND_STATUS_INITIALIZATION_FAILED: return "INITIALIZATION_FAILED";
+      case CURAND_STATUS_ARCH_MISMATCH: return "ARCH_MISMATCH";
+      case CURAND_STATUS_INTERNAL_ERROR: return "INTERNAL_ERROR";
+      default: return "UNKNOWN";
+    }
+  }
+}
+
+void utility::gpuAssert(cudaError_t code, const char *file, int line, bool abort) {
   if (code != cudaSuccess) 
   {
-      //fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
       std::cerr << "GPUassert: " << cudaGetErrorString(code) << " " << file << " " << line << "\n";
       if (abort) exit(code);
+  }
+}
+
+void utility::cuRandAssert(curandStatus_t status, const char *file, int line, bool abort) {
+  if (status != CURAND_STATUS_SUCCESS) { \
+    std::cerr << "CuRandAssert: " << curandGetErrorString(status) << " " << file << " " << line << "\n";
+    if (abort) exit(status);
   }
 }

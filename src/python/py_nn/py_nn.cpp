@@ -12,7 +12,7 @@
 #include "py_nn_util.h"
 #include "python_templates.h"
 #include "custom_converters.h"
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 #include "data_modeling/tensor.h"
 

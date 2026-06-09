@@ -11,9 +11,13 @@
 
 #pragma once
 
+#ifndef __CUDA
+static_assert(false, "File should not be included without CUDA enabled");
+#endif // __CUDA
+
 #include "common_kernels.cuh"
 
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 #include "utility/utils.h"
 
 namespace cuda_impl {

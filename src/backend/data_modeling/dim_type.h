@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 #include <vector>
 #include <array>

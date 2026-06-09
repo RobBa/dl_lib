@@ -18,7 +18,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "shared/cuda/common_kernels.cuh"
 #include "utility/cuda/cuda_common.cuh"
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 #include <type_traits>
 

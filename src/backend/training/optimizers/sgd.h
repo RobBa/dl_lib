@@ -11,7 +11,7 @@
 
 #include "optimizer_base.h"
 
-#include "utility/global_params.h"
+#include "shared/global_params.h"
 
 namespace train {
   class SgdOptimizer final : public OptimizerBase {
