@@ -31,6 +31,6 @@ public:
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   ::testing::AddGlobalTestEnvironment(new CudaEnvironment());
-  sys::setRandomSeed(42);
+  sys::setRandomSeed(43);
   return RUN_ALL_TESTS();
 }

@@ -16,7 +16,7 @@ from dl_lib.train.optim import SGD, RmsProp
 from dl_lib.sys import setSeed
 import pytest
 
-setSeed(42)
+setSeed(43)
 
 def train(net, loss_fn, optim, x, y, epochs):
   for _ in range(epochs):
