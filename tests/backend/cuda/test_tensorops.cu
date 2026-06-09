@@ -1,5 +1,5 @@
 /**
- * @file test_tensorops_cuda.cu
+ * @file test_tensorops.cu
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
  * @brief 
  * @version 0.1
