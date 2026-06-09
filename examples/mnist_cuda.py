@@ -80,7 +80,7 @@ def train_epoch(net, loss_fn, optim, x_gpu, y_gpu, batch_size=64):
 
         total_loss += loss.getitem(0)
         n_batches += 1
-        if n_batches == 1 or n_batches % 10 == 0:
+        if n_batches == 1 or n_batches % 100 == 0:
             print(f"Batch {n_batches} / {max_batches}, loss {loss.getitem(0)}")
 
     return total_loss / n_batches

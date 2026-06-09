@@ -92,3 +92,12 @@ Used compute sanitizer -> memcheck to find out-of-bounds error in one kernel.
 
 *CPU*: 1.9847s
 *CUDA*: 0.0704s
+
+### Solution
+
+We see that the memcopies once again dominate the overall picture. We will tackle them two-fold: 
+
+1. Initialize tensors directly on the GPU, rather than on the CPU and then copying them to the GPU.
+2. Use CUDA streams for async copies.
+3. Other optimizations, e.g. pinned memory perhaps?
+
