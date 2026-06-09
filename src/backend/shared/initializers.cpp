@@ -82,7 +82,7 @@ void UniformXavierInitializer::fillRangeGpu(float* const data, tensorSize_t size
   #ifdef __CUDA
     cuRandErrchk(curandGenerateUniform(cuGen, data, size));
     // reinterpret cast to prevent compiler errors
-    cuda_impl::scaleArr(reinterpret_cast<ftype* const>(data), 2.0f * range, range, size);
+    cuda_impl::scaleArr(reinterpret_cast<ftype* const>(data), 2.0f * range, -range, size);
   #else
     __throw_runtime_error("Not compiled with CUDA");
   #endif
@@ -97,7 +97,7 @@ void UniformXavierInitializer::fillRangeGpu(double* const data, tensorSize_t siz
   #ifdef __CUDA
     cuRandErrchk(curandGenerateUniformDouble(cuGen, data, size));
     // reinterpret cast to prevent compiler errors
-    cuda_impl::scaleArr(reinterpret_cast<ftype* const>(data), 2.0 * range, range, size);
+    cuda_impl::scaleArr(reinterpret_cast<ftype* const>(data), 2.0 * range, -range, size);
   #else
     __throw_runtime_error("Not compiled with CUDA");
   #endif
