@@ -23,6 +23,7 @@
 #include <format>
 
 #ifdef __CUDA
+#include "cuda_runtime.h"
 #include "utility/cuda/cuda_common.cuh"
 #include "data_modeling/cuda/tensor_ops.cuh"
 #endif
@@ -54,37 +55,13 @@ Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other
 
 Tensor::tensorValues_t::~tensorValues_t() noexcept {
   assert(values != nullptr);
-
-  switch(device){
-    case Device::CPU:
-      free(values);
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        cudaErrchk(cudaFree(values));
-      #else
-        std::__throw_invalid_argument("Not compiled with CUDA.");
-      #endif
-      break;
-  }
+  mempool.deallocate(values, device, size);
 }
 
 void Tensor::tensorValues_t::resize(const tensorSize_t size) {
   this->size = size;
-  switch (device) {
-    case Device::CPU:
-      values = static_cast<ftype*>(std::malloc(this->size * sizeof(ftype)));
-      break;
-    case Device::CUDA:
-      #ifdef __CUDA
-        cudaErrchk(cudaMalloc((void**) &values, this->size * sizeof(ftype)));
-      #else
-        std::__throw_invalid_argument("Not compiled with CUDA.");
-      #endif
-      break;
-  }
+  values = mempool.allocate(size, device);
 }
-
 
 /**
  * @brief Copy from pointer into this object.
@@ -97,7 +74,7 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        cudaErrchk(cudaMemcpy(values, src, n*sizeof(ftype), cudaMemcpyDeviceToDevice));
+        cudaErrchk(cudaMemcpy(values, src, n * sizeof(ftype), cudaMemcpyDeviceToDevice));
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -111,7 +88,7 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
  * of memory.
  */
 void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
-  assert(device==target.device && size==target.size);
+  assert(device == target.device && size == target.size);
 
   switch(device){
     case Device::CPU:

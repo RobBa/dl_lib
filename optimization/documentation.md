@@ -1,4 +1,4 @@
-# Stage one
+# Step one
 
 5 epochs, 10 batches per epoch, median value:
 
@@ -24,7 +24,7 @@ pipeline heavily. Solutoin is to bring those operations onto the GPU as well.
 CPU: 0.4464s
 GPU: 0.5023s
 
-# Stage two
+# Step two
 
 ### Before fix times
 
@@ -59,7 +59,7 @@ fractured memory.
 CPU: 0.4464s
 *CUDA*: 0.1635s
 
-# Stage three
+# Step three
 
 ### Before fix times
 
@@ -86,7 +86,7 @@ To be consisten with the CPU we do the same with the CPU implementation of matmu
 
 Used compute sanitizer -> memcheck to find out-of-bounds error in one kernel.
 
-# Stage four
+# Step four
 
 5 epochs, 10 batches per epoch, median value:
 
@@ -98,6 +98,34 @@ Used compute sanitizer -> memcheck to find out-of-bounds error in one kernel.
 We see that the memcopies once again dominate the overall picture. We will tackle them two-fold: 
 
 1. Initialize tensors directly on the GPU, rather than on the CPU and then copying them to the GPU.
-2. Use CUDA streams for async copies.
-3. Other optimizations, e.g. pinned memory perhaps?
+2. Implement a memory pool
 
+### Fix 1: Initialize tensors on GPU
+
+CPU: 1.9847s
+*CUDA*: 0.0699s
+
+Did not influence the hot training path (tensors using this are only defined when at initialization of the network), but still good to have. nsys shows us that we spend less time copying data.
+
+### Fix 2: Implement a memory pool
+
+While this won't do much on the MNIST example, it will become a real bottleneck moving forward to larger tensors, evidenced by the large copy times we already have. To save us lots of refactoring time later on we implement the pool now, which will have a small effect on our profiling in this round, but save us lots of headaches moving forward.
+
+### Afterthought
+
+We want to make sure that no memory leaks appear. Use
+
+```
+compute-sanitizer --tool memcheck [application]
+```
+
+and 
+
+```
+valgrind --leak-check=full [application]
+```
+
+### After fix times
+
+*CPU*: 
+*CUDA*: 

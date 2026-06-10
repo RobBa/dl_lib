@@ -138,4 +138,4 @@ if __name__ == "__main__":
         times.append(elapsed)
 
     median_time = sorted(times)[len(times) // 2]
-    print(f"Median time CPU: {elapsed:.4f}s")
+    print(f"Median time CPU: {median_time:.4f}s")

@@ -13,6 +13,8 @@
 
 #include "dim_type.h"
 #include "device.h"
+#include "memory_pool.h"
+
 #include "computational_graph/topological_sort.h"
 #include "computational_graph/graph_node.h"
 
@@ -54,8 +56,9 @@ private:
   private:
     tensorSize_t size = 0;
     ftype* values = nullptr;
-
     Device device;
+
+    inline static MemoryPool mempool{};
     inline static Device defaultDevice = Device::CPU;
 
   public:
