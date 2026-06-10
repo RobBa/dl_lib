@@ -13,9 +13,10 @@
 static_assert(false, "File should not be compiled without CUDA enabled");
 #endif // __CUDA
 
+#include "tensor_ops.cuh"
 #include "data_modeling/tensor.h"
 
-#include "tensor_ops.cuh"
+#include "shared/memory_pool.h"
 
 #include "utility/utils.h"
 #include "utility/cuda/cuda_common.cuh"
@@ -328,15 +329,13 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    tensorDim_t* idx_d;
-    cudaErrchk(cudaMalloc(&idx_d, idx.size() * sizeof(tensorDim_t)));
-    const auto sizeOfDim = res.getDims().getStride(0);
-
-    cudaErrchk(cudaMalloc(&idx_d, idx.size() * sizeof(tensorDim_t)));
+    tensorDim_t* idx_d = mempool::tensorDimPool.request(Device::CUDA, idx.size());
     cudaErrchk(cudaMemcpy(idx_d, idx.data(), idx.size() * sizeof(tensorDim_t), cudaMemcpyHostToDevice));
 
+    const auto sizeOfDim = res.getDims().getStride(0);
     getSliceKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), idx_d, sizeOfDim, res.getSize());
     cudaErrchk(cudaDeviceSynchronize());
-    cudaErrchk(cudaFree(idx_d));
+
+    mempool::tensorDimPool.giveback(idx_d, Device::CUDA, idx.size());
   }
 }

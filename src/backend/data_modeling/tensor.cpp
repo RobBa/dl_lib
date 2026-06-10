@@ -11,10 +11,11 @@
 
 #include "tensor.h"
 
+#include "shared/memory_pool.h"
+#include "utility/utils.h"
+
 #include "computational_graph/graph_node.h"
 #include "computational_graph/topological_sort.h"
-
-#include "utility/utils.h"
 
 #include <utility>
 #include <limits>
@@ -55,12 +56,12 @@ Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other
 
 Tensor::tensorValues_t::~tensorValues_t() noexcept {
   assert(values != nullptr);
-  mempool.deallocate(values, device, size);
+  mempool::tensorPool.giveback(values, device, size);
 }
 
 void Tensor::tensorValues_t::resize(const tensorSize_t size) {
   this->size = size;
-  values = mempool.allocate(size, device);
+  values = mempool::tensorPool.request(device, size);
 }
 
 /**
@@ -143,10 +144,9 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
     switch(device){
       case Device::CPU:
         if(d == Device::CUDA) {
-          ftype* tmp;
-          cudaErrchk(cudaMalloc((void**) &tmp, size * sizeof(ftype)));
+          ftype* tmp = mempool::tensorPool.request(Device::CUDA, size);
           cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyHostToDevice));
-          free(values);
+          mempool::tensorPool.giveback(values, Device::CPU, size);
           values = tmp;
         }
         else {
@@ -155,9 +155,9 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
         break;
       case Device::CUDA:
         if(d == Device::CPU) {
-          ftype* tmp = static_cast<ftype*>(std::malloc(size * sizeof(ftype)));
+          ftype* tmp = mempool::tensorPool.request(Device::CPU, size);
           cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
-          cudaErrchk(cudaFree(values));
+          mempool::tensorPool.giveback(values, Device::CUDA, size);
           values = tmp;
         }
         else {

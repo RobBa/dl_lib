@@ -18,6 +18,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "shared/cuda/common_kernels.cuh"
 
 #include "shared/global_params.h"
+#include "shared/memory_pool.h"
 
 #include <stack>
 
@@ -202,8 +203,7 @@ namespace cuda_impl {
    * @param param In/out parameter.
    */
   void clipGradients(const std::vector< std::shared_ptr<Tensor> >& params, const ftype maxNorm) {
-    ftype* totalNorm;
-    cudaErrchk(cudaMalloc(&totalNorm, params.size() * sizeof(ftype)));
+    ftype* totalNorm = mempool::tensorPool.request(Device::CUDA, params.size());
     cudaErrchk(cudaMemset(totalNorm, 0, params.size() * sizeof(ftype)));
 
     if(params.size() > 1024) {
@@ -225,8 +225,7 @@ namespace cuda_impl {
 
       // TODO: parallelize both paths with cuda streams
       if(blocks > 1) {
-        ftype* tmp;
-        cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
+        ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
         powerTwoSumKernel<true><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
                                   tmp, grads->getData(), maxNorm, /*sentinel value*/ -1, grads->getSize());
@@ -237,7 +236,7 @@ namespace cuda_impl {
                           totalNorm, tmp, paramIdx, blocks);
         cudaErrchk(cudaDeviceSynchronize());
 
-        cudaErrchk(cudaFree(tmp));
+        mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
       }
       else {
         powerTwoSumKernel<false><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
@@ -268,7 +267,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
     }
 
-    cudaErrchk(cudaFree(totalNorm));
+    mempool::tensorPool.giveback(totalNorm, Device::CUDA, params.size());
   }
 
   void sgdStep(Tensor& param, const Tensor& grads, ftype lr) {

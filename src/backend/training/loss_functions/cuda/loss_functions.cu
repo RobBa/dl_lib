@@ -18,6 +18,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "utility/utils.h"
 #include "utility/cuda/cuda_common.cuh"
 
+#include "shared/memory_pool.h"
 #include "shared/cuda/common_kernels.cuh"
 #include "shared/cuda/common_softmax.cuh"
 
@@ -356,8 +357,7 @@ namespace cuda_impl {
 
     if(blocks > 1) {
       // two pass solution
-      ftype* tmp; // TODO: Keep this guy in memory for an instance
-      cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
+      ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           tmp, y.getData(), yPred.getData(), y.getSize());
@@ -368,7 +368,7 @@ namespace cuda_impl {
       thrust::device_ptr<ftype> resPtr(res.getData());
       resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
 
-      cudaErrchk(cudaFree(tmp));
+      mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
     else {
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
@@ -387,8 +387,7 @@ namespace cuda_impl {
 
     if(blocks > 1) {
       // we do two passes at max
-      ftype* tmp; 
-      cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
+      ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           tmp, y.getData(), logits.getData(), y.getSize());
@@ -399,7 +398,7 @@ namespace cuda_impl {
       thrust::device_ptr<ftype> resPtr(res.getData());
       resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
 
-      cudaErrchk(cudaFree(tmp));
+      mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
     else {
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
@@ -424,8 +423,7 @@ namespace cuda_impl {
       constexpr int threadsPerBlock = 256;
       const int blocks = (y.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-      ftype* tmp;
-      cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
+      ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       crossEntropyLossKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
@@ -435,7 +433,7 @@ namespace cuda_impl {
       thrust::device_ptr<ftype> resPtr(res.getData());
       resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
 
-      cudaErrchk(cudaFree(tmp));
+      mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
 
     // loss = -loss / nBatches
@@ -449,8 +447,7 @@ namespace cuda_impl {
     const tensorSize_t stride   = static_cast<tensorSize_t>(yPred.getDims().get(-1));
     const tensorSize_t nStrides = yPred.getSize() / stride;
 
-    ftype* maxValues;
-    cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
+    ftype* maxValues = mempool::tensorPool.request(Device::CUDA, nStrides);
 
     // Find per-sample max values for numerical stability (mirrors softmax dispatch)
     constexpr int warpSize = 32;
@@ -488,7 +485,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
     }
     else {
-      cudaErrchk(cudaFree(maxValues));
+      mempool::tensorPool.giveback(maxValues, Device::CUDA, nStrides);
       __throw_invalid_argument("crossEntropySoftmaxLoss: stride > 512 not yet supported on CUDA");
     }
 
@@ -497,8 +494,7 @@ namespace cuda_impl {
     while(threadsPerBlock * 2 < stride) threadsPerBlock <<= 1;
     threadsPerBlock = max(1, threadsPerBlock);
 
-    ftype* perStrideLoss;
-    cudaErrchk(cudaMalloc(&perStrideLoss, nStrides * sizeof(ftype)));
+    ftype* perStrideLoss = mempool::tensorPool.request(Device::CUDA, nStrides);
 
     crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
       perStrideLoss, y.getData(), yPred.getData(), maxValues, stride);
@@ -509,8 +505,8 @@ namespace cuda_impl {
     resPtr[0] = thrust::reduce(lossPtr, lossPtr + nStrides, static_cast<ftype>(0), thrust::plus<ftype>())
                 / static_cast<ftype>(nStrides);
 
-    cudaErrchk(cudaFree(perStrideLoss));
-    cudaErrchk(cudaFree(maxValues));
+    mempool::tensorPool.giveback(perStrideLoss, Device::CUDA, nStrides);
+    mempool::tensorPool.giveback(maxValues, Device::CUDA, nStrides);
   }
 
   void rmseLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {    
@@ -527,8 +523,7 @@ namespace cuda_impl {
       constexpr int threadsPerBlock = 256;
       const int blocks = (nSamples + threadsPerBlock - 1) / threadsPerBlock;
 
-      ftype* tmp;
-      cudaErrchk(cudaMalloc(&tmp, blocks * sizeof(ftype)));
+      ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       rmseKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
@@ -538,7 +533,7 @@ namespace cuda_impl {
       thrust::device_ptr<ftype> resPtr(res.getData());
       resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
 
-      cudaErrchk(cudaFree(tmp));
+      mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
 
     normalizeRmse<ftype><<<1, 1>>>(res.getData(), static_cast<ftype>(nSamples));

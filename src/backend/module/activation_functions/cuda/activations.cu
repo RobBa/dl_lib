@@ -15,6 +15,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include "activations.cuh"
 
+#include "shared/memory_pool.h"
 #include "shared/cuda/common_kernels.cuh"
 #include "shared/cuda/common_softmax.cuh"
 
@@ -329,9 +330,7 @@ namespace cuda_impl {
     const tensorSize_t stride = static_cast<tensorSize_t>(in.getDims().get(-1));
     const int nStrides = in.getSize() / stride;
 
-    // TODO: use some static struct here to prevent this guy from keeping on re-allocating memory
-    ftype* maxValues;
-    cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
+    ftype* const maxValues = mempool::tensorPool.request(Device::CUDA, nStrides);
 
     constexpr int warpSize = 32;
     if(stride <= warpSize) {
@@ -416,10 +415,8 @@ namespace cuda_impl {
       const int totalBlocks = nStrides * blocksPerStride;
 
       // intermediate max values: one per block per stride
-      ftype* partialMaxValues;
       const tensorSize_t nPartialMax = totalBlocks;
-      cudaErrchk(cudaMalloc(&maxValues, nStrides * sizeof(ftype)));
-      cudaErrchk(cudaMalloc(&partialMaxValues, nPartialMax * sizeof(ftype)));
+      ftype* partialMaxValues = mempool::tensorPool.request(Device::CUDA, nPartialMax);
 
       // pass 1: reduce each chunk of 512 elements to one partial max
       // launch blocksPerStride blocks per stride
@@ -436,8 +433,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
 
       // same two-pass structure for the sum
-      ftype* partialSums;
-      cudaErrchk(cudaMalloc(&partialSums, nPartialMax * sizeof(ftype)));
+      ftype* partialSums = mempool::tensorPool.request(Device::CUDA, nPartialMax);
 
       stableSoftmaxLargePass1<ftype><<<totalBlocks, maxThreadsPerBlock, 2 * maxThreadsPerBlock * sizeof(ftype)>>>(
                         res.getData(), partialSums, in.getData(), maxValues, stride, blocksPerStride);
@@ -452,10 +448,10 @@ namespace cuda_impl {
       divideKernel<<<nBlocksDivision, maxThreadsPerBlock>>>(res.getData(), partialSums, stride, in.getSize());
       cudaErrchk(cudaDeviceSynchronize());
 
-      cudaErrchk(cudaFree(partialMaxValues));
-      cudaErrchk(cudaFree(partialSums));
+      mempool::tensorPool.giveback(partialMaxValues, Device::CUDA, nPartialMax);
+      mempool::tensorPool.giveback(partialSums, Device::CUDA, nPartialMax);
     }
 
-    cudaErrchk(cudaFree(maxValues));
+    mempool::tensorPool.giveback(maxValues, Device::CUDA, nStrides);
   }
 }
