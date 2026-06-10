@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     times = []
     n_epochs = 5
-    BATCH_COUNT = 50
+    BATCH_COUNT = 500
     for epoch in range(n_epochs):
         
         start = time.perf_counter()

@@ -123,7 +123,7 @@ if __name__ == "__main__":
     optim = RmsProp(net.parameters(), 0.0001, 0.999)
 
     # warm up GPU
-    BATCH_COUNT = 50
+    BATCH_COUNT = 500
     train_epoch(net, loss_fn, optim, x_train_gpu, y_train_gpu, max_batch_count=BATCH_COUNT)
 
     times = []

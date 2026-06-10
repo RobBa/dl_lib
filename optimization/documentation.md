@@ -109,7 +109,10 @@ Did not influence the hot training path (tensors using this are only defined whe
 
 ### Fix 2: Implement a memory pool
 
-While this won't do much on the MNIST example, it will become a real bottleneck moving forward to larger tensors, evidenced by the large copy times we already have. To save us lots of refactoring time later on we implement the pool now, which will have a small effect on our profiling in this round, but save us lots of headaches moving forward.
+While this won't do much on the MNIST example, it will become a real bottleneck moving forward to larger tensors, evidenced by the large copy times we already have. To save us lots of refactoring time later on we implement the pool now, which will have a small effect on our profiling in this round, but save us lots of headaches moving forward. New times: 
+
+*CPU*: 0.4196s
+*CUDA*: 0.0284s
 
 ### Afterthought
 
@@ -127,5 +130,26 @@ valgrind --leak-check=full [application]
 
 ### After fix times
 
-*CPU*: 
-*CUDA*: 
+*CPU*: 0.4196s
+*CUDA*: 0.0284s
+
+### Step five
+
+5 epochs, 500 batches per epoch, median value:
+
+CPU: 18.5311s
+CUDA: 0.4317s
+
+### Comment about screenshot before_step_5_2.png
+
+Here, we increased compute time. Before that we used 5 epochs of 10 batches each, now we increased to 5 epochs of 100 batches each. Thus, the balance would naturally shift toward computation and away from memcopy, which has one large initial frontloading effect from copying the global data to the GPU.
+
+### Solution
+
+We can see that the matmul kernels are taking the vast majority of computation time now, and out of those there is one instance in particular that does that. nsys tells us exactly which overload it is too: 
+
+     61.1       91,460,377        900    101,622.6   50,882.0     1,088    256,551    108,865.6  void <unnamed>::matMul2DKernel<(bool)0, (bool)1>(float *, const float *, const float *, unsigned in…
+     13.8       20,647,353        900     22,941.5   10,016.0     5,888     91,875     21,143.8  void <unnamed>::matMul2DKernel<(bool)0, (bool)0>(float *, const float *, const float *, unsigned in…
+      9.4       14,114,877        900     15,683.2    8,224.0     3,104     37,089     14,328.5  void <unnamed>::matMul2DKernel<(bool)1, (bool)0>(float *, const float *, const float *, unsigned in…
+
+This is not transposing the left tensor, but transposing the right tensor instead. 
