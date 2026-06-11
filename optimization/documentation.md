@@ -133,7 +133,7 @@ valgrind --leak-check=full [application]
 *CPU*: 1.9068s
 *CUDA*: 0.0613s
 
-### Step five
+# Step five
 
 5 epochs, *500* batches per epoch, median value:
 
@@ -265,7 +265,25 @@ We get the following two recommendations from NCU on the longest running kernels
 - This workload has uncoalesced global accesses resulting in a total of 11239424 excessive sectors (85% of the total 13260928 sectors). Check the L2 Theoretical Sectors Global Excessive table for the primary source locations.
 - The memory access pattern for global loads from L1TEX might not be optimal. On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread. This could possibly be caused by a stride between threads.
 
-New times: 
+We end up with two suggestions for tilesize, 16 and 32. Trying both we get
+- Tilesize = 16: 0.3052s
+- Tilesize = 32: 0.3181s
+
+### After fix times: 
 
 CPU: 18.5311s
-*GPU*: 0.3181s
+*GPU*: 0.3052s
+
+# Step six
+
+5 epochs, 500 batches per epoch, median value:
+
+CPU: 18.5311s
+GPU: 0.3052s
+
+### Solution
+
+At this stage there is not so much more we can harvest from our small MNIST example, larger inputs will reveal further bottlenecks. We can however do small optizations still, drawing from our previous learnings and some literature. Those come in the following.
+
+### Fix 1: Remove unnecessary device syncs
+
