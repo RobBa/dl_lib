@@ -262,6 +262,10 @@ CPU:
 
 We get the following two recommendations from NCU on the longest running kernels: 
 
-- This workload has uncoalesced global accesses resulting in a total of 11239424 excessive sectors (85% of the total 13260928 sectors). Check the L2 Theoretical Sectors Global Excessive table for the primary source locations. The  CUDA Programming Guide has additional information on reducing uncoalesced device memory accesses.
+- This workload has uncoalesced global accesses resulting in a total of 11239424 excessive sectors (85% of the total 13260928 sectors). Check the L2 Theoretical Sectors Global Excessive table for the primary source locations.
+- The memory access pattern for global loads from L1TEX might not be optimal. On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread. This could possibly be caused by a stride between threads.
 
-- The memory access pattern for global loads from L1TEX might not be optimal. On average, only 4.0 of the 32 bytes transmitted per sector are utilized by each thread. This could possibly be caused by a stride between threads. Check the  Source Counters section for uncoalesced global loads.
+New times: 
+
+CPU: 18.5311s
+*GPU*: 0.3181s

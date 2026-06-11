@@ -99,45 +99,46 @@ namespace {
    * @param rightCols n columns of right matrix. See also leftRows.
    * @param resSize Size of the resulting 2D matrix.
    */
-  template<bool transposeLeft, bool transposeRight>
+  template<int tileSize, bool transposeLeft, bool transposeRight>
   __global__ void matMul2DKernel(ftype* const res, 
                                  const ftype* const left, const ftype* const right,
-                                 const tensorDim_t leftRows, const tensorDim_t rightRows, 
-                                 const tensorDim_t leftCols, const tensorDim_t rightCols,
+                                 const tensorDim_t leftRows, const tensorDim_t leftCols, 
+                                 const tensorDim_t rightRows, const tensorDim_t rightCols,
+                                 const tensorDim_t resRows, const tensorDim_t resCols,
                                  const tensorSize_t leftSize, const tensorSize_t rightSize, const tensorSize_t resSize)
   {
-    const int tid = threadIdx.x;
-    const int localIdx = blockDim.x * blockIdx.x + tid;
-    if(localIdx >= resSize) {
-      return;
-    }
+    __shared__ ftype smemA[tileSize];
+    __shared__ ftype smemB[tileSize];
 
-    // 48KB of shared mem -> ~12K floats of 4 bytes -> ~10 blocks per SM of shared memory is limit
-    //extern __shared__ ftype smem[];
-    //smem[tid] = 0.0f;
-    //__syncthreads();
+    const tensorSize_t K = transposeLeft ? leftRows : leftCols;
+    const tensorSize_t N = transposeRight ? rightRows : rightCols;
 
-    const int K = transposeLeft ? leftRows :  leftCols;
-    const int N = transposeRight ? rightRows : rightCols;
+    const tensorSize_t i = blockIdx.y * blockDim.y + threadIdx.y;
+    const tensorSize_t j = blockIdx.x * blockDim.x + threadIdx.x;
 
-    const int i = localIdx / N;
-    const int j = localIdx % N;
+    const tensorSize_t leftOffset = blockIdx.z * leftSize;
+    const tensorSize_t rightOffset = blockIdx.z * rightSize;
+    const tensorSize_t resOffset = blockIdx.z * resSize;
 
-    const int leftOffset = blockIdx.y * leftSize;
-    const int rightOffset = blockIdx.y * rightSize;
-
-    // C[i, j] = sum_{k=0}^{leftCols} A[i, k] * B[k, j]
     ftype cij = 0;
-    for (int k = 0; k < K; k++) {
-      //smem[tid] += left[leftBase + k] * right[k * rightCols + resCol];
+    for (tensorSize_t k = 0; k < K; k += blockDim.x) {
+      // load tile into smem
+      const tensorSize_t leftIdx = transposeLeft ? (k + threadIdx.x) * leftCols + i : i * leftCols + k + threadIdx.x;
+      const tensorSize_t rightIdx = transposeRight ? j * rightCols + (k + threadIdx.y) : (k + threadIdx.y) * rightCols + j;
 
-      int leftIdx = transposeLeft ? k * leftCols + i : i * leftCols + k;
-      int rightIdx = transposeRight ? j * rightCols + k : k * rightCols + j;
-            
-      cij += left[leftOffset + leftIdx] * right[rightOffset + rightIdx];
+      smemA[threadIdx.y * blockDim.x + threadIdx.x] = (i < resRows && (k + threadIdx.x) < K) ? left[leftOffset + leftIdx] : 0.0f;
+      smemB[threadIdx.y * blockDim.x + threadIdx.x] = ((k + threadIdx.y) < K && j < resCols) ? right[rightOffset + rightIdx] : 0.0f;
+      __syncthreads();
+
+      for (int l = 0; l < blockDim.x; l++) {
+        cij += smemA[threadIdx.y * blockDim.x + l] * smemB[l * blockDim.x + threadIdx.x];
+      }
+      __syncthreads();
     }
 
-    res[blockIdx.y * resSize + localIdx] = cij; // smem[tid];
+    if (i < resRows && j < resCols) {
+      res[resOffset + i * N + j] = cij;
+    }
   }
 
   /**
@@ -256,7 +257,8 @@ namespace cuda_impl {
   }
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
-    constexpr int threadsPerBlock = 256;
+    constexpr int MATMUL_TILESIZE = 32; // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
+    constexpr dim3 threadsPerBlock(MATMUL_TILESIZE, MATMUL_TILESIZE);
     
     // sizes of the 2D matrices respectively
     const tensorSize_t leftSize = left.getDims().get(-1) * left.getDims().get(-2); 
@@ -265,31 +267,45 @@ namespace cuda_impl {
 
     const tensorSize_t nMultiplications = res.getSize() / resSize;
 
-    const int blocks = (resSize + threadsPerBlock - 1) / threadsPerBlock;
-    dim3 numBlocks(blocks, nMultiplications);
+    // x = horizontal, y = vertical
+    const int blocksX = (res.getDims().get(-1) + MATMUL_TILESIZE - 1) / MATMUL_TILESIZE;
+    const int blocksY = (res.getDims().get(-2) + MATMUL_TILESIZE - 1) / MATMUL_TILESIZE;
+    dim3 numBlocks(blocksX, blocksY, nMultiplications);
 
     //const auto smemSize = min(resSize, threadsPerBlock) * sizeof(ftype);
     //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset,
     if(!(transposeLeft || transposeRight)) {
-      matMul2DKernel<false, false><<<numBlocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), 
-                                    left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), 
-                                    leftSize, rightSize, resSize);
+      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, false><<<numBlocks, threadsPerBlock>>>(
+                                                      res.getData(), left.getData(), right.getData(), 
+                                                      left.getDims().get(-2), left.getDims().get(-1), 
+                                                      right.getDims().get(-2), right.getDims().get(-1), 
+                                                      res.getDims().get(-2), res.getDims().get(-1),
+                                                      leftSize, rightSize, resSize);
     }
     else if(transposeLeft && transposeRight) [[unlikely]] {
-      matMul2DKernel<true, true><<<numBlocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), 
-                                    left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), 
-                                    leftSize, rightSize, resSize);
+      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, true><<<numBlocks, threadsPerBlock>>>(
+                                                    res.getData(), left.getData(), right.getData(), 
+                                                    left.getDims().get(-2), left.getDims().get(-1), 
+                                                    right.getDims().get(-2), right.getDims().get(-1), 
+                                                    res.getDims().get(-2), res.getDims().get(-1),
+                                                    leftSize, rightSize, resSize);
     }
     else if(transposeLeft) {
-      matMul2DKernel<true, false><<<numBlocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), 
-                                    left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), 
-                                    leftSize, rightSize, resSize);
+      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, false><<<numBlocks, threadsPerBlock>>>(
+                                                     res.getData(), left.getData(), right.getData(), 
+                                                     left.getDims().get(-2), left.getDims().get(-1), 
+                                                     right.getDims().get(-2), right.getDims().get(-1), 
+                                                     res.getDims().get(-2), res.getDims().get(-1),
+                                                     leftSize, rightSize, resSize);
     }
     else if(transposeRight) {
-      matMul2DKernel<false, true><<<numBlocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), 
-                                    left.getDims().get(-2), right.getDims().get(-2), left.getDims().get(-1), right.getDims().get(-1), 
-                                    leftSize, rightSize, resSize);
-    }
+      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, true><<<numBlocks, threadsPerBlock>>>(
+                                                     res.getData(), left.getData(), right.getData(), 
+                                                     left.getDims().get(-2), left.getDims().get(-1), 
+                                                     right.getDims().get(-2), right.getDims().get(-1), 
+                                                     res.getDims().get(-2), res.getDims().get(-1),
+                                                     leftSize, rightSize, resSize);
+      }
 
     cudaErrchk(cudaDeviceSynchronize());
   }
