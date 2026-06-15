@@ -13,8 +13,11 @@
 
 #include "shared/global_params.h"
 
+#include "utility/utils.h"
+
 #include <vector>
 #include <array>
+#include <memory>
 
 #include <iostream>
 #include <cassert>
@@ -24,9 +27,8 @@ class Dimension final {
 
   private:
     // those two indicate the structure of the contiguous data that lies underneath
-    // WARNING: Should only be set in ctor. We did not make them constant, so that we can use copy c'tor
-    std::vector<tensorDim_t> contiguousDims;
-    dim_t contiguousStrides;
+    std::shared_ptr< std::vector<tensorDim_t> > contiguousDims;
+    std::shared_ptr<dim_t> contiguousStrides;
 
     std::vector<tensorDim_t> dims;
     dim_t strides;
@@ -60,8 +62,11 @@ class Dimension final {
 
     Dimension collapseDimension(int idx) const;
 
-    bool inOriginalState() const noexcept { 
-      return contiguousDims == dims && contiguousStrides == strides; 
+    bool inOriginalState() const noexcept {
+      assert_debug((*contiguousDims == dims && contiguousStrides == strides) ||
+                   (*contiguousDims != dims && contiguousStrides != strides),
+                   "Swapping dims implies swapping strides");
+      return *contiguousDims == dims; 
     }
 
     void resize(const std::vector<tensorDim_t>& dims);
@@ -75,14 +80,14 @@ class Dimension final {
     }
 
     tensorDim_t operator[](int idx) const {
-      assert(size>0);
+      assert(size > 0);
       return dims[mapSignedIdx(idx)];
     }
 
     const tensorDim_t* data() const noexcept { return dims.data(); }
+    
     const auto getStrides() const noexcept { return strides; }
     const auto getContiguousStrides() const noexcept { return contiguousStrides; }
-
     tensorSize_t getStride(int i) const noexcept;
 
     std::vector<tensorDim_t> toVector() const noexcept{

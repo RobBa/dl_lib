@@ -22,7 +22,7 @@ tensorSize_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const n
 
 #ifndef NDEBUG
   utility::SafeArithmetics_t<tensorSize_t> mult(1);
-  for(auto dim: dims){
+  for(auto dim : dims){
     mult = mult * dim;
   }
 
@@ -39,7 +39,7 @@ tensorSize_t Dimension::multVector(const std::vector<tensorDim_t>& dims) const n
 void Dimension::resize(const std::vector<tensorDim_t>& dims) {
   this->dims = dims;
   size = multVector(dims);
-  assert(size>0);
+  assert(size > 0);
 }
 
 /**
@@ -57,22 +57,29 @@ void Dimension::swap(int dim1, int dim2) {
 }
 
 Dimension::Dimension(const vector<tensorDim_t>& dims) 
-  : contiguousDims{dims}, contiguousStrides{makeStrides(dims)}, dims{dims}, strides{contiguousStrides} {
+  : contiguousDims{make_shared<vector<tensorDim_t>>(dims)}, 
+    contiguousStrides{make_shared<dim_t>(makeStrides(dims))}, 
+    dims{dims}, 
+    strides{*contiguousStrides} 
+{
   size = multVector(dims);
-  lastDimIdx = dims.size()-1;
-  assert(size>0);
+  lastDimIdx = dims.size() - 1;
+  assert(size > 0);
 }
 
 Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
-  : contiguousDims{dims}, dims{contiguousDims}, contiguousStrides{strides}, strides{contiguousStrides} 
+  : contiguousDims{make_shared<vector<tensorDim_t>>(dims)}, 
+    contiguousStrides{make_shared<dim_t>(makeStrides(dims))}, 
+    dims{dims}, 
+    strides{*contiguousStrides} 
 {
   size = multVector(dims);
-  lastDimIdx = dims.size()-1;
-  assert(size>0);
+  lastDimIdx = dims.size() - 1;
+  assert(size > 0);
 }
 
 /**
- * @brief Computes the strides as they are;
+ * @brief Computes the strides as they are.
  */
 Dimension::dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const noexcept {
   dim_t res;
@@ -90,8 +97,11 @@ Dimension::dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const n
   return res;
 }
 
+/**
+ * @brief Gets the stride of dimension i. Negative values of i eligible.
+ */
 tensorSize_t Dimension::getStride(const int i) const noexcept {
-  if(i<0)
+  if(i < 0)
     return strides[lastDimIdx + i + 1];
   return strides[i];
 }
@@ -117,7 +127,7 @@ Dimension Dimension::collapseDimension(int idx) const {
 
   dim_t newStrides{};
   tensorDim_t strideIdx = 0;
-  for(tensorDim_t i=0; i<strides.size(); i++){
+  for(tensorDim_t i = 0; i < strides.size(); i++){
     if(i==mappedIdx)
       continue;
 
@@ -127,13 +137,16 @@ Dimension Dimension::collapseDimension(int idx) const {
   return Dimension(std::move(newDims), std::move(newStrides));
 }
 
+/**
+ * @brief For printouts.
+ */
 ostream& operator<<(ostream& os, const Dimension& d) noexcept {
-  if(d.size>0){
+  if(d.size > 0){
     os << "\n(";
     for(int i=0; i<d.nDims(); i++){
       os << d.get(i);
 
-      if(i+1<d.nDims()){
+      if(i+1 < d.nDims()){
         os << ",";
       }
     }
