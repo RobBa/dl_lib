@@ -283,7 +283,29 @@ GPU: 0.3052s
 
 ### Solution
 
-At this stage there is not so much more we can harvest from our small MNIST example, larger inputs will reveal further bottlenecks. We can however do small optizations still, drawing from our previous learnings and some literature. Those come in the following.
+At this stage there is not so much more we can harvest from our small MNIST example, larger inputs will reveal further bottlenecks. We can however do small optizations still, drawing from our previous learnings and some literature. Those come in the following. Here we remove unnecessary device syncs.
 
-### Fix 1: Remove unnecessary device syncs
+### Times after fix
 
+CPU: 18.5311s
+*GPU*: 0.2096s
+
+# Step 7: Use warp shuffles
+
+### Times before fix
+
+CPU: 18.5311s
+GPU: 0.2096s
+
+### Comment
+
+Addional benefit: Remove those warnings
+
+warning #3012-D: a volatile destination type for a compound assignment expression is deprecated
+          sdata[tid] += sdata[tid + 32];
+          ^
+
+### Times after fix
+
+CPU: 18.5311s
+*GPU*: 
