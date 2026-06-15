@@ -42,7 +42,12 @@ Tensor::tensorValues_t::tensorValues_t() {
 Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
 
 Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept 
-  : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)} { }
+  : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)} 
+  {
+    // ensuring destructor does not return pointer to memory pool
+    other.values = nullptr;
+    other.size = 0;
+  }
 
 Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other) noexcept {
   if (this == &other) return *this;
@@ -51,16 +56,25 @@ Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other
   size = std::move(other.size);
   values = std::move(other.values);
 
+  // ensuring destructor does not return pointer to memory pool
+  other.values = nullptr;
+  other.size = 0;
+
   return *this;
 }
 
 Tensor::tensorValues_t::~tensorValues_t() noexcept {
-  assert(values != nullptr);
-  mempool::tensorPool.giveback(values, device, size);
+  if(values != nullptr) {
+    mempool::tensorPool.giveback(values, device, size);
+  }
 }
 
 void Tensor::tensorValues_t::resize(const tensorSize_t size) {
   this->size = size;
+
+  if(values != nullptr) [[unlikely]] {
+    mempool::tensorPool.giveback(values, device, size);
+  }
   values = mempool::tensorPool.request(device, size);
 }
 
@@ -93,10 +107,14 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
 
   switch(device){
     case Device::CPU:
+      ASSERT_HOST_PTR(values);
+      ASSERT_HOST_PTR(target.values);
       std::memcpy(target.values, values, size * sizeof(ftype));
       break;
     case Device::CUDA:
       #ifdef __CUDA
+        ASSERT_DEVICE_PTR(values);
+        ASSERT_DEVICE_PTR(target.values);
         cudaErrchk(cudaMemcpy(target.values, values, size * sizeof(ftype), cudaMemcpyDeviceToDevice));
       #else
         __throw_runtime_error("Not compiled with CUDA");
@@ -155,7 +173,12 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
         break;
       case Device::CUDA:
         if(d == Device::CPU) {
+          printf("before sync\n");
+          cudaErrchk(cudaDeviceSynchronize()); // catch prior error here
+          printf("After sync\n");
           ftype* tmp = mempool::tensorPool.request(Device::CPU, size);
+          utility::printPtrProperties(tmp);
+          utility::printPtrProperties(values);
           cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
           mempool::tensorPool.giveback(values, Device::CUDA, size);
           values = tmp;
@@ -288,7 +311,7 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
  * original (other) tensor.
  */
 Tensor::Tensor(const Tensor& other, [[maybe_unused]] shallowCopyToken)
-  : dims(other.dims), cgNode{other.cgNode}, values{other.values}, 
+  : dims(other.dims.shallowCopy()), cgNode{other.cgNode}, values{other.values}, 
     grads{other.grads}, requiresGrad{other.requiresGrad} 
 {
 }
@@ -348,6 +371,7 @@ Tensor Tensor::createContiguousCopy() const {
     }
   }
 
+  res.dims.makeContiguous();
   return res;
 }
 
@@ -713,6 +737,7 @@ void Tensor::backward() {
       }
       else if(!parent->grads){
         parent->grads = incomingGrads[i];
+        parent->grads->setRequiresGrad(false);
       }
       else{
         *parent->grads += *incomingGrads[i];
@@ -759,6 +784,7 @@ Tensor Tensor::getContiguous() const {
  */
 Tensor Tensor::transpose(int dim1, int dim2) {
   Tensor result = createShallowCopy();
+  cout << "calling transpse with " << dim1 << " and " << dim2 << endl;
   result.dims.swap(dim1, dim2);
   return result;
 }

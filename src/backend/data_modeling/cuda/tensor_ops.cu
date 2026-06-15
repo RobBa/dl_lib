@@ -218,7 +218,10 @@ namespace cuda_impl {
     const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     scalaraddKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void scalarmul(Tensor& res, const Tensor& src, ftype scalar) {
@@ -226,7 +229,10 @@ namespace cuda_impl {
     const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     scalarmulKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void broadcastadd(Tensor& res, const Tensor& matrix, const Tensor& vec) {
@@ -237,7 +243,10 @@ namespace cuda_impl {
 
     broadcastaddKernel<<<blocks, threadsPerBlock>>>(
       res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void elementwiseadd(Tensor& res, const Tensor& left, const Tensor& right) {
@@ -245,7 +254,10 @@ namespace cuda_impl {
     const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     elementwiseaddKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void elementwisemul(Tensor& res, const Tensor& left, const Tensor& right) {
@@ -253,11 +265,14 @@ namespace cuda_impl {
     const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     elementwisemulKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
-    constexpr int MATMUL_TILESIZE = 32; // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
+    constexpr int MATMUL_TILESIZE = 16; // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
     constexpr dim3 threadsPerBlock(MATMUL_TILESIZE, MATMUL_TILESIZE);
     
     // sizes of the 2D matrices respectively
@@ -307,7 +322,9 @@ namespace cuda_impl {
                                                      leftSize, rightSize, resSize);
       }
 
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void sumOverDims(Tensor& res, const Tensor& input, tensorDim_t dim) {
@@ -320,14 +337,20 @@ namespace cuda_impl {
     const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     sumOverDimsKernel<<<blocks, threadsPerBlock>>>(res.getData(), input.getData(), stride, input.getDims()[dim], res.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void scalarFill(Tensor& t, ftype value) {
     ftype* ptr = t.getData();
     thrust::fill(thrust::device_pointer_cast(ptr),
                  thrust::device_pointer_cast(ptr + t.getSize()), value);
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void createContiguousCopy(Tensor& res, const Tensor& src) {
@@ -337,9 +360,16 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
+    cout << "Here we go: " << endl;
+    utility::printPtrProperties(res.getData());
+    utility::printPtrProperties(src.getData());
+
     createContiguousCopyKernel<<<blocks, threadsPerBlock>>>(
       res.getData(), src.getData(), src.getDims().getStrides().data(), src.getDims().data(), src.getDims().nDims(), size);
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void getSlice(Tensor& res, const Tensor& src, span<const tensorDim_t> idx) {
@@ -351,8 +381,8 @@ namespace cuda_impl {
 
     const auto sizeOfDim = res.getDims().getStride(0);
     getSliceKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), idx_d, sizeOfDim, res.getSize());
+    
     cudaErrchk(cudaDeviceSynchronize());
-
     mempool::tensorDimPool.giveback(idx_d, Device::CUDA, idx.size());
   }
 }

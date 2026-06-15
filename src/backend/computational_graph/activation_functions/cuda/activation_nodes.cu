@@ -155,7 +155,10 @@ namespace cuda_impl {
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     reluBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), parent.getData(), res.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void leakyReluBackward(Tensor& res, const Tensor& upstreamGrad, const Tensor& parent, ftype eps) {
@@ -163,7 +166,10 @@ namespace cuda_impl {
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     leakyReluBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), parent.getData(), eps, res.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void sigmoidBackward(Tensor& res, const Tensor& upstreamGrad, const Tensor& sigmoid) {
@@ -171,7 +177,10 @@ namespace cuda_impl {
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     sigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), sigmoid.getData(), res.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   /**
@@ -210,6 +219,9 @@ namespace cuda_impl {
       softmaxBackwardKernelLargePass<<<blocksPerStride * nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
                                        res.getData(), upstreamGrad.getData(), softmax.getData(), blocksPerStride, stride);
     }
+
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

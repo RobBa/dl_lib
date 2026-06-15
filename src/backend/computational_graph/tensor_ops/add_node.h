@@ -23,7 +23,7 @@ namespace cgraph {
       explicit AddNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {
           // t2 is either tensor of same size or 1D-vector as bias
-          assert(t1->getDims().nDims()>=t2->getDims().nDims());
+          assert(parents[0]->getDims().nDims() >= parents[1]->getDims().nDims());
 
           broadcasted = parents[0]->getDims() != parents[1]->getDims();
         }

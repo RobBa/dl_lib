@@ -24,6 +24,7 @@
 
 class Dimension final {
   using dim_t = std::array<tensorSize_t, MAX_NDIMS>;
+  struct shallowCopyToken {};
 
   private:
     // those two indicate the structure of the contiguous data that lies underneath
@@ -33,18 +34,19 @@ class Dimension final {
     std::vector<tensorDim_t> dims;
     dim_t strides;
 
-    tensorDim_t lastDimIdx; // look up end in strides/dims
+    int lastDimIdx; // look up end in strides/dims
     tensorSize_t size = 0; // total size of tensor
 
     dim_t makeStrides(const std::vector<tensorDim_t>& dims) const noexcept;
     tensorSize_t multVector(const std::vector<tensorDim_t>& dims) const noexcept;
     
+    Dimension(const Dimension& other, shallowCopyToken t);
     Dimension(std::vector<tensorDim_t>&& dims, dim_t&& strides);
 
-    tensorDim_t mapSignedIdx(int idx) const {
+    int mapSignedIdx(int idx) const {
       if(idx < 0) {
         // -1 is last idx, -2 second last and so forth
-        return lastDimIdx + idx + 1;
+        return lastDimIdx + (idx + 1);
       }
       return idx;
     }
@@ -52,19 +54,21 @@ class Dimension final {
   public:
     Dimension(const std::vector<tensorDim_t>& dims);
 
-    Dimension(const Dimension& other) = default;
-    Dimension& operator=(const Dimension& other) = default;
+    Dimension(const Dimension& other);
+    Dimension& operator=(const Dimension& other);
 
     Dimension(Dimension&& other) noexcept = default;
     Dimension& operator=(Dimension&& other) noexcept = default;
 
     ~Dimension() noexcept = default;
 
+    Dimension shallowCopy() const;
+
     Dimension collapseDimension(int idx) const;
 
     bool inOriginalState() const noexcept {
-      assert_debug((*contiguousDims == dims && contiguousStrides == strides) ||
-                   (*contiguousDims != dims && contiguousStrides != strides),
+      assert_debug((*contiguousDims == dims && *contiguousStrides == strides) ||
+                   (*contiguousDims != dims && *contiguousStrides != strides),
                    "Swapping dims implies swapping strides");
       return *contiguousDims == dims; 
     }
@@ -89,6 +93,7 @@ class Dimension final {
     const auto getStrides() const noexcept { return strides; }
     const auto getContiguousStrides() const noexcept { return contiguousStrides; }
     tensorSize_t getStride(int i) const noexcept;
+    void makeContiguous();
 
     std::vector<tensorDim_t> toVector() const noexcept{
       return dims;

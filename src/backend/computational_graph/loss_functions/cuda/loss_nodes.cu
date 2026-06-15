@@ -116,7 +116,10 @@ namespace cuda_impl {
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     bceBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), yPred.getDims()[0], yTrue.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void bceSigmoidBackward(Tensor& res, const Tensor& logits, const Tensor& yTrue) {
@@ -124,7 +127,10 @@ namespace cuda_impl {
     const int blocks = (logits.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits.getDims()[0], logits.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void crossEntropyBackward(Tensor& res, const Tensor& yPred, const Tensor& yTrue) {
@@ -135,7 +141,10 @@ namespace cuda_impl {
     const ftype nSamples = static_cast<ftype>(yPred.getSize() / stride);
 
     crossEntropyBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), nSamples, yTrue.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void crossEntropySoftmaxBackward(Tensor& res, const Tensor& logits, const Tensor& yTrue) {
@@ -149,7 +158,10 @@ namespace cuda_impl {
     const auto nSamples = static_cast<ftype>(logits.getSize() / stride);
 
     crossEntropySoftmaxBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), softmaxedLogits.getData(), yTrue.getData(), nSamples, logits.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void rmseBackward(Tensor& res, const Tensor& yPred, const Tensor& yTrue, ftype rmse) {
@@ -157,6 +169,9 @@ namespace cuda_impl {
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     rmseBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), rmse, static_cast<ftype>(yPred.getDims()[0]), yPred.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

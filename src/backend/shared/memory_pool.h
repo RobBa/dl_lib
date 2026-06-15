@@ -13,6 +13,7 @@
 
 #include "shared/global_params.h"
 #include "data_modeling/device.h"
+#include "utility/utils.h"
 
 #include <unordered_map>
 #include <vector>
@@ -74,6 +75,7 @@ namespace mempool_impl {
         auto& list = freeLists[n];
         if(!list.empty()) {
           T* ptr = list.back();
+          ASSERT_HOST_PTR(ptr);
           list.pop_back();
           return ptr;
         }
@@ -88,6 +90,7 @@ namespace mempool_impl {
           }
         }
 
+        ASSERT_HOST_PTR(ptr);
         return ptr;
       }
       case Device::CUDA:
@@ -96,6 +99,8 @@ namespace mempool_impl {
           auto& list = freeListsCuda[n];
           if(!list.empty()) {
             T* ptr = list.back();
+            ASSERT_DEVICE_PTR(ptr);
+
             list.pop_back();
             return ptr;
           }
@@ -108,6 +113,7 @@ namespace mempool_impl {
             cudaErrchk(cudaMalloc((void**) &ptr, n * sizeof(T)));
           }
 
+          ASSERT_DEVICE_PTR(ptr);
           return ptr;
         #else 
           std::__throw_runtime_error("Not compiled with CUDA");
@@ -124,13 +130,15 @@ namespace mempool_impl {
   void MemoryPool<T>::giveback(T* ptr, const Device d, const tensorSize_t n) {
     switch(d) {
       case Device::CPU:
+        ASSERT_HOST_PTR(ptr);
         freeLists[n].push_back(ptr); 
         break;
       case Device::CUDA:
         #ifdef __CUDA
+          ASSERT_DEVICE_PTR(ptr);
           freeListsCuda[n].push_back(ptr); 
         #else 
-          __throw_runtime_error("Not compiled with CUDA");
+          std::__throw_runtime_error("Not compiled with CUDA");
         #endif
         break;
     }
@@ -148,6 +156,7 @@ namespace mempool_impl {
       {
         for (auto& [n, ptrs] : freeLists) {
           for (auto* ptr : ptrs) {
+            ASSERT_HOST_PTR(ptr);
             free(ptr);
           }
         }
@@ -157,12 +166,13 @@ namespace mempool_impl {
       {
         #ifdef __CUDA
           for (auto& [n, ptrs] : freeListsCuda) {
-            for (auto* ptr : ptrs) {    
+            for (auto* ptr : ptrs) {
+              ASSERT_DEVICE_PTR(ptr); 
               cudaFree(ptr);
             }
           }
         #else 
-          __throw_runtime_error("Not compiled with CUDA");
+          std::__throw_runtime_error("Not compiled with CUDA");
         #endif
         break;
       }

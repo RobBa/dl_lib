@@ -22,7 +22,7 @@ using namespace std;
 using namespace cgraph;
 
 vector< shared_ptr<Tensor> > CrossEntropySoftmaxNode::backward(const Tensor& upstreamGrad) {
-  assert(!upstreamGrad.getRequiresGrad() && logits.nDims() == 2);
+  assert(!upstreamGrad.getRequiresGrad() && parents[0]->getDims().nDims() == 2);
 
   const auto& logits = parents[0];
   auto res = make_shared<Tensor>(logits->createEmptyCopy());

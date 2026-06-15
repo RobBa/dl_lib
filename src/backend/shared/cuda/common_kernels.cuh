@@ -100,8 +100,8 @@ namespace cuda_impl {
    * @param inputSize Size of the input for boundary checks.
    */
   static __global__ void sumReduceKernel(ftype* const output, const ftype* const input, const int idx, const tensorSize_t inputSize) {
-    assert_debug(gridDim.x == 1, "This kernel can only be launched in one block");
-    assert_debug(blockDim.x <= inputSize, "blockDim.x must be less or equal than size");
+    assert(gridDim.x == 1);
+    assert(blockDim.x <= inputSize);
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;

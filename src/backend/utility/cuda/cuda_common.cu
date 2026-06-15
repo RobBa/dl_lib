@@ -36,19 +36,41 @@ namespace {
       default: return "UNKNOWN";
     }
   }
-}
 
-void utility::gpuAssert(cudaError_t code, const char *file, int line, bool abort) {
-  if (code != cudaSuccess) 
-  {
-      std::cerr << "GPUassert: " << cudaGetErrorString(code) << " " << file << " " << line << "\n";
-      if (abort) exit(code);
+  const char* cudaMemoryTypeToString(cudaMemoryType type) {
+    switch(type) {
+      case cudaMemoryTypeUnregistered: return "Unregistered host";
+      case cudaMemoryTypeHost:         return "Pinned host";
+      case cudaMemoryTypeDevice:       return "Device";
+      case cudaMemoryTypeManaged:      return "Managed";
+      default:                         return "Unknown";
+    }
   }
 }
 
-void utility::cuRandAssert(curandStatus_t status, const char *file, int line, bool abort) {
-  if (status != CURAND_STATUS_SUCCESS) { \
-    std::cerr << "CuRandAssert: " << curandGetErrorString(status) << " " << file << " " << line << "\n";
-    if (abort) exit(status);
+namespace utility {
+  void gpuAssert(cudaError_t code, const char *file, int line, bool abort) {
+    if (code != cudaSuccess) 
+    {
+        std::cerr << "GPUassert: " << cudaGetErrorString(code) << " " << file << " " << line << "\n";
+        if (abort) exit(code);
+    }
+  }
+
+  void cuRandAssert(curandStatus_t status, const char *file, int line, bool abort) {
+    if (status != CURAND_STATUS_SUCCESS) { \
+      std::cerr << "CuRandAssert: " << curandGetErrorString(status) << " " << file << " " << line << "\n";
+      if (abort) exit(status);
+    }
+  }
+
+  void printPtrProperties(ftype* ptr) {
+    cudaPointerAttributes attrs{};
+    cudaError_t err = cudaPointerGetAttributes(&attrs, ptr);
+    if (err != cudaSuccess) {
+        printf("cudaPointerGetAttributes failed: %s\n", cudaGetErrorString(err));
+    } else {
+        printf("type=%s, device=%d\n", cudaMemoryTypeToString(attrs.type), attrs.device);
+    }
   }
 }

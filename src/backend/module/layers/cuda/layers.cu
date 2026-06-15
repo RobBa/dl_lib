@@ -29,6 +29,8 @@ namespace cuda_impl {
 
     // TODO: launch kernel
 
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

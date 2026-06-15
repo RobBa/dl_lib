@@ -177,7 +177,7 @@ namespace {
 
     extern __shared__ ftype smem[];
 
-    const ftype tmp = gid < size ? crossEntropy<ftype>(y[gid], yPred[gid]) : 0;
+    const ftype tmp = gid < size ? crossEntropy<ftype>(y[gid], yPred[gid]) : 0.0f;
     smem[tid] = tmp;
     __syncthreads();
 
@@ -361,7 +361,9 @@ namespace cuda_impl {
 
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           tmp, y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
 
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
@@ -373,12 +375,16 @@ namespace cuda_impl {
     else {
       bceLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           res.getData(), y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
 
     // loss = -loss / nBatches
     divideScalarKernel<<<1, 1>>>(res.getData(), -1 * static_cast<ftype>(y.getDims()[0]));
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void bceSigmoidLoss(Tensor& res, const Tensor& y, const Tensor& logits) {
@@ -391,7 +397,9 @@ namespace cuda_impl {
 
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           tmp, y.getData(), logits.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
 
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
@@ -403,21 +411,27 @@ namespace cuda_impl {
     else {
       bceSigmoidLossKernel<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(
           res.getData(), y.getData(), logits.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
 
     // loss = loss / nBatches
     divideScalarKernel<<<1, 1>>>(res.getData(), static_cast<ftype>(y.getDims()[0]));
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void crossEntropyLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {    
     if(y.getSize() <= 256) {
-      int threadsPerBlock = 1;
-      while(threadsPerBlock < y.getSize()) threadsPerBlock <<= 1; // < 512 threads
+      constexpr int threadsPerBlock = 256;
       
-      crossEntropyLossKernelOneBlock<<<1, threadsPerBlock, y.getSize() * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
       cudaErrchk(cudaDeviceSynchronize());
+      crossEntropyLossKernelOneBlock<<<1, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
+      cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
     else {
       constexpr int threadsPerBlock = 256;
@@ -426,7 +440,9 @@ namespace cuda_impl {
       ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       crossEntropyLossKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
 
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
@@ -440,7 +456,9 @@ namespace cuda_impl {
     const tensorSize_t stride = y.getDims()[-1];
     const tensorSize_t nSamples = y.getSize() / stride;
     divideScalarKernel<<<1, 1>>>(res.getData(), -1 * static_cast<ftype>(nSamples));
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void crossEntropySoftmaxLoss(Tensor& res, const Tensor& y, const Tensor& yPred) {
@@ -452,7 +470,7 @@ namespace cuda_impl {
     // Find per-sample max values for numerical stability (mirrors softmax dispatch)
     constexpr int warpSize = 32;
     if(stride <= warpSize) {
-      assert(DeviceProperties::getWarpSize() == 32);
+      assert(utility::DeviceProperties::getWarpSize() == 32);
 
       // each warp does one stride
       constexpr int threadsPerBlock = 256;
@@ -474,7 +492,9 @@ namespace cuda_impl {
       else if(stride <= 32) {
         findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
       }
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
     else if(stride <= 512) {
       int threadsPerBlock = 1;
@@ -482,7 +502,9 @@ namespace cuda_impl {
       threadsPerBlock /= 2;
 
       findMaxKernelOneBlock<<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
     else {
       mempool::tensorPool.giveback(maxValues, Device::CUDA, nStrides);
@@ -498,7 +520,9 @@ namespace cuda_impl {
 
     crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
       perStrideLoss, y.getData(), yPred.getData(), maxValues, stride);
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
 
     thrust::device_ptr<ftype> lossPtr(perStrideLoss);
     thrust::device_ptr<ftype> resPtr(res.getData());
@@ -517,7 +541,9 @@ namespace cuda_impl {
       while(threadsPerBlock < nSamples) threadsPerBlock <<= 1; // < 512 threads
       
       rmseKernelOneBlock<<<1, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
     else {
       constexpr int threadsPerBlock = 256;
@@ -526,7 +552,9 @@ namespace cuda_impl {
       ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
       rmseKernelOneBlock<<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(tmp, y.getData(), yPred.getData(), y.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
 
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
@@ -537,6 +565,8 @@ namespace cuda_impl {
     }
 
     normalizeRmse<ftype><<<1, 1>>>(res.getData(), static_cast<ftype>(nSamples));
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

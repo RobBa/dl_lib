@@ -103,7 +103,8 @@ namespace cuda_impl {
    * In this initial version we assume one kernel per stride, to make matters simple to understand.
    */
   static __global__ void findMaxKernelOneBlock(ftype* const res, const ftype* const input, const tensorSize_t stride) {
-    assert_debug(blockDim.x / stride == 0, "Kernel built for one stride per block, blockDim.x is < stride"); 
+    // Kernel built for one stride per block, blockDim.x is < stride
+    assert(blockDim.x / stride == 0); 
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * stride + tid;
@@ -193,7 +194,8 @@ namespace cuda_impl {
    * one single block now -> we launch one block per stride this time.
    */
   static __global__ void findMaxKernelLargePass2(ftype* const maxValues, const ftype* const partialMaxValues, const tensorSize_t blocksPerStride) {
-    assert_debug(blockDim.x / blocksPerStride == 0, "Kernel built for one stride per block, blockDim.x is < stride"); 
+    // Kernel built for one stride per block, blockDim.x is < stride
+    assert(blockDim.x / blocksPerStride == 0); 
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blocksPerStride + tid;

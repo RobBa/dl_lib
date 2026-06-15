@@ -24,6 +24,9 @@ namespace cuda_impl {
     const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
     cuda_impl::scalePlusOffsetKernel<<<blocks, threadsPerBlock>>>(data, scale, shift, size);
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

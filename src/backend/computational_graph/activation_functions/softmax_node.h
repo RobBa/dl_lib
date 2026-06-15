@@ -23,7 +23,7 @@ namespace cgraph {
       explicit SoftmaxNode(std::shared_ptr<Tensor> t, std::shared_ptr<const Tensor> softmax) 
         : GraphNode({std::move(t)}), softmax{std::move(softmax)}
         {
-          assert(softmax->getSize()==parents[0]->getDims()[0]);
+          assert(this->softmax->getSize() == parents[0]->getSize());
         }
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;

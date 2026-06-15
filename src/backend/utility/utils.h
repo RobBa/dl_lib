@@ -37,3 +37,7 @@ struct FtypeWarning<double> {
     [[deprecated("ftype=double has serious CUDA performance implications")]]
     static constexpr void check() {}
 };
+
+#ifndef __CUDA
+#define ASSERT_HOST_PTR(ptr) { }
+#endif

@@ -100,8 +100,8 @@ namespace {
    */
   template<typename T>
   __global__ void sumReduceAndSqrtKernel(ftype* const output, const ftype* const input, const tensorSize_t inputSize) {
-    assert_debug(gridDim.x == 1, "This kernel can only be launched in one block");
-    assert_debug(blockDim.x <= inputSize, "blockDim.x must be less or equal than size");
+    assert(gridDim.x == 1);
+    assert(blockDim.x <= inputSize);
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
@@ -229,19 +229,23 @@ namespace cuda_impl {
 
         powerTwoSumKernel<true><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
                                   tmp, grads->getData(), maxNorm, /*sentinel value*/ -1, grads->getSize());
+        #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
+        #endif
 
         const int threadsPerBlock2 = blocks > threadsPerBlock ? threadsPerBlock * 2 : threadsPerBlock;
         sumReduceKernel<<<1, threadsPerBlock2, 2 * threadsPerBlock2 * sizeof(ftype)>>>(
                           totalNorm, tmp, paramIdx, blocks);
+        
         cudaErrchk(cudaDeviceSynchronize());
-
         mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
       }
       else {
         powerTwoSumKernel<false><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
                                   totalNorm, grads->getData(), maxNorm, paramIdx, grads->getSize());
+        #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
+        #endif
       }
     }
 
@@ -250,7 +254,9 @@ namespace cuda_impl {
       const int threadsPerBlock = params.size() < 512 ? 512 : 1024;
       sumReduceAndSqrtKernel<ftype><<<1, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
                         totalNorm, totalNorm, params.size());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
     }
 
     // step 3: scale the gradients
@@ -264,9 +270,9 @@ namespace cuda_impl {
       blocks = max(1, blocks >> 2); // each thread tries to cover two elements
 
       clipGradientsKernel<<<blocks, threadsPerBlock>>>(grads->getData(), totalNorm, maxNorm, grads->getSize());
-      cudaErrchk(cudaDeviceSynchronize());
     }
 
+    cudaErrchk(cudaDeviceSynchronize());
     mempool::tensorPool.giveback(totalNorm, Device::CUDA, params.size());
   }
 
@@ -275,7 +281,10 @@ namespace cuda_impl {
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     stepSgdKernel<<<blocks, threadsPerBlock>>>(param.getData(), grads.getData(), lr, param.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void rmspropStep(Tensor& param, Tensor& movingAvg, const Tensor& grads, ftype lr, ftype decay) {
@@ -283,6 +292,9 @@ namespace cuda_impl {
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     stepRmsPropKernel<<<blocks, threadsPerBlock>>>(param.getData(), movingAvg.getData(), grads.getData(), lr, decay, param.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }

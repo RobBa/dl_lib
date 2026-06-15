@@ -32,14 +32,23 @@ namespace cuda_impl {
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
     scalarMulKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), factor, upstreamGrad.getSize());
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 
   void getterBackward(Tensor& res, ftype val, tensorSize_t linearIdx) {
     cudaErrchk(cudaMemset(res.getData(), 0, res.getSize() * sizeof(ftype)));
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
 
     cudaErrchk(cudaMemcpy(res.getData() + linearIdx, &val, sizeof(ftype), cudaMemcpyHostToDevice));
+    
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
   }
 }
