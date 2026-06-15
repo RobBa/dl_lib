@@ -28,7 +28,7 @@ namespace utility {
   void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true);
   void cuRandAssert(curandStatus_t status, const char *file, int line, bool abort=false);
   
-  void printPtrProperties(ftype* ptr);
+  void printPtrProperties(void* ptr);
 }
 
 #define cudaErrchk(ans) { utility::gpuAssert((ans), __FILE__, __LINE__); }

@@ -101,7 +101,6 @@ namespace {
   template<typename T>
   __global__ void sumReduceAndSqrtKernel(ftype* const output, const ftype* const input, const tensorSize_t inputSize) {
     assert(gridDim.x == 1);
-    assert(blockDim.x <= inputSize);
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
@@ -158,9 +157,7 @@ namespace {
   /**
    * @brief Clip the gradients with scale = maxNorm / (totalNorm + EPS_OPTIM_GRADCLIP) when totalNorm > maxNorm.
    */
-  __global__ void clipGradientsKernel(ftype* const grads, const ftype* const totalNorm, const ftype maxNorm, const tensorSize_t size) {
-    assert(blockDim.x == 1 && gridDim.x == 1);
-    
+  __global__ void clipGradientsKernel(ftype* const grads, const ftype* const totalNorm, const ftype maxNorm, const tensorSize_t size) {    
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -237,7 +234,10 @@ namespace cuda_impl {
         sumReduceKernel<<<1, threadsPerBlock2, 2 * threadsPerBlock2 * sizeof(ftype)>>>(
                           totalNorm, tmp, paramIdx, blocks);
         
+        #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
+        #endif
+
         mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
       }
       else {
@@ -272,7 +272,10 @@ namespace cuda_impl {
       clipGradientsKernel<<<blocks, threadsPerBlock>>>(grads->getData(), totalNorm, maxNorm, grads->getSize());
     }
 
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
+    
     mempool::tensorPool.giveback(totalNorm, Device::CUDA, params.size());
   }
 

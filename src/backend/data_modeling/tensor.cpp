@@ -173,12 +173,7 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
         break;
       case Device::CUDA:
         if(d == Device::CPU) {
-          printf("before sync\n");
-          cudaErrchk(cudaDeviceSynchronize()); // catch prior error here
-          printf("After sync\n");
           ftype* tmp = mempool::tensorPool.request(Device::CPU, size);
-          utility::printPtrProperties(tmp);
-          utility::printPtrProperties(values);
           cudaErrchk(cudaMemcpy(tmp, values, size * sizeof(ftype), cudaMemcpyDeviceToHost));
           mempool::tensorPool.giveback(values, Device::CUDA, size);
           values = tmp;
@@ -784,7 +779,6 @@ Tensor Tensor::getContiguous() const {
  */
 Tensor Tensor::transpose(int dim1, int dim2) {
   Tensor result = createShallowCopy();
-  cout << "calling transpse with " << dim1 << " and " << dim2 << endl;
   result.dims.swap(dim1, dim2);
   return result;
 }

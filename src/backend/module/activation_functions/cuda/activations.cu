@@ -475,13 +475,18 @@ namespace cuda_impl {
       // final division pass: divide each exp value by its stride's sum
       const int nBlocksDivision = (in.getSize() + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
       divideKernel<<<nBlocksDivision, maxThreadsPerBlock>>>(res.getData(), partialSums, stride, in.getSize());
+      #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
+      #endif
 
       mempool::tensorPool.giveback(partialMaxValues, Device::CUDA, nPartialMax);
       mempool::tensorPool.giveback(partialSums, Device::CUDA, nPartialMax);
     }
 
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
+    
     mempool::tensorPool.giveback(maxValues, Device::CUDA, nStrides);
   }
 }

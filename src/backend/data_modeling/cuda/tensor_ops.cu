@@ -360,16 +360,22 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    cout << "Here we go: " << endl;
-    utility::printPtrProperties(res.getData());
-    utility::printPtrProperties(src.getData());
+    const auto ndims = src.getDims().nDims();
+    tensorSize_t* d_strides = mempool::tensorSizePool.request(Device::CUDA, ndims);
+    cudaErrchk(cudaMemcpy(d_strides, src.getDims().getStrides().data(), ndims* sizeof(tensorSize_t), cudaMemcpyHostToDevice));
+
+    tensorSize_t* d_dims = mempool::tensorDimPool.request(Device::CUDA, ndims);
+    cudaErrchk(cudaMemcpy(d_dims, src.getDims().data(), ndims* sizeof(tensorDim_t), cudaMemcpyHostToDevice));
 
     createContiguousCopyKernel<<<blocks, threadsPerBlock>>>(
-      res.getData(), src.getData(), src.getDims().getStrides().data(), src.getDims().data(), src.getDims().nDims(), size);
+      res.getData(), src.getData(), d_strides, d_dims, ndims, size);
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
     #endif
+
+    mempool::tensorDimPool.giveback(d_dims, Device::CUDA, ndims);
+    mempool::tensorSizePool.giveback(d_strides, Device::CUDA, ndims);
   }
 
   void getSlice(Tensor& res, const Tensor& src, span<const tensorDim_t> idx) {
@@ -382,7 +388,10 @@ namespace cuda_impl {
     const auto sizeOfDim = res.getDims().getStride(0);
     getSliceKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), idx_d, sizeOfDim, res.getSize());
     
+    #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
+    #endif
+
     mempool::tensorDimPool.giveback(idx_d, Device::CUDA, idx.size());
   }
 }

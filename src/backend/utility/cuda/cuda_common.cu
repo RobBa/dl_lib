@@ -64,7 +64,7 @@ namespace utility {
     }
   }
 
-  void printPtrProperties(ftype* ptr) {
+  void printPtrProperties(void* ptr) {
     cudaPointerAttributes attrs{};
     cudaError_t err = cudaPointerGetAttributes(&attrs, ptr);
     if (err != cudaSuccess) {

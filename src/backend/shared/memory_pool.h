@@ -75,8 +75,11 @@ namespace mempool_impl {
         auto& list = freeLists[n];
         if(!list.empty()) {
           T* ptr = list.back();
-          ASSERT_HOST_PTR(ptr);
           list.pop_back();
+
+          assert(ptr != nullptr);
+          ASSERT_HOST_PTR(ptr);
+
           return ptr;
         }
 
@@ -90,7 +93,9 @@ namespace mempool_impl {
           }
         }
 
+        assert(ptr != nullptr);
         ASSERT_HOST_PTR(ptr);
+
         return ptr;
       }
       case Device::CUDA:
@@ -99,9 +104,11 @@ namespace mempool_impl {
           auto& list = freeListsCuda[n];
           if(!list.empty()) {
             T* ptr = list.back();
+            list.pop_back();
+
+            assert(ptr != nullptr);
             ASSERT_DEVICE_PTR(ptr);
 
-            list.pop_back();
             return ptr;
           }
 
@@ -128,6 +135,8 @@ namespace mempool_impl {
    */
   template<typename T>
   void MemoryPool<T>::giveback(T* ptr, const Device d, const tensorSize_t n) {
+    assert(ptr != nullptr);
+
     switch(d) {
       case Device::CPU:
         ASSERT_HOST_PTR(ptr);
@@ -156,6 +165,7 @@ namespace mempool_impl {
       {
         for (auto& [n, ptrs] : freeLists) {
           for (auto* ptr : ptrs) {
+            assert(ptr != nullptr);
             ASSERT_HOST_PTR(ptr);
             free(ptr);
           }
@@ -167,6 +177,7 @@ namespace mempool_impl {
         #ifdef __CUDA
           for (auto& [n, ptrs] : freeListsCuda) {
             for (auto* ptr : ptrs) {
+              assert(ptr != nullptr);
               ASSERT_DEVICE_PTR(ptr); 
               cudaFree(ptr);
             }
@@ -183,4 +194,5 @@ namespace mempool_impl {
 namespace mempool {
   inline static mempool_impl::MemoryPool<ftype> tensorPool;
   inline static mempool_impl::MemoryPool<tensorDim_t> tensorDimPool;
+  inline static mempool_impl::MemoryPool<tensorSize_t> tensorSizePool;
 }
