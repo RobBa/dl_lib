@@ -25,7 +25,7 @@ target_link_libraries(unit_tests_backend PRIVATE
 include(GoogleTest)
 gtest_discover_tests(unit_tests_backend)
 
-if(CMAKE_CUDA_COMPILER)
+if(CUDA AND CMAKE_CUDA_COMPILER)
   file(GLOB_RECURSE CUDA_TEST_SOURCES backend/cuda/*.cu)
   add_executable(unit_tests_cuda ${CUDA_TEST_SOURCES})
 

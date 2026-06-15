@@ -8,7 +8,7 @@ file(GLOB_RECURSE CORE_SOURCES
     utility/*.cpp
 )
 
-if(CMAKE_CUDA_COMPILER)
+if(CUDA AND CMAKE_CUDA_COMPILER)
     file(GLOB_RECURSE CUDA_SOURCES
         computational_graph/*.cu
         data_modeling/*.cu
@@ -31,7 +31,7 @@ set_target_properties(BackendCore PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${PYTHON_MODULE_DIR}" # make sure Python-modules see backend
 )
 
-if(CMAKE_CUDA_COMPILER)
+if(CUDA AND CMAKE_CUDA_COMPILER)
     set_target_properties(BackendCore PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         # nvidia-smi --query-gpu=compute_cap --format=csv,noheader 
