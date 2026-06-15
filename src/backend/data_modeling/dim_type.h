@@ -66,11 +66,13 @@ class Dimension final {
 
     Dimension collapseDimension(int idx) const;
 
+    /**
+     * @brief For quadratic tensors the stride changes upon a transpose,
+     * but the dims remain intact. Hence stride is only reliable source of
+     * memory layout deductions.
+     */
     bool inOriginalState() const noexcept {
-      assert_debug((*contiguousDims == dims && *contiguousStrides == strides) ||
-                   (*contiguousDims != dims && *contiguousStrides != strides),
-                   "Swapping dims implies swapping strides");
-      return *contiguousDims == dims; 
+      return *contiguousStrides == strides;
     }
 
     void resize(const std::vector<tensorDim_t>& dims);
