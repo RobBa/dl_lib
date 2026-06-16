@@ -123,7 +123,7 @@ namespace {
     ftype cij = 0;
     for (tensorSize_t k = 0; k < K; k += blockDim.x) {
       // load tile into smem
-      const tensorSize_t leftIdx = transposeLeft ? (k + threadIdx.x) * leftCols + i : i * leftCols + k + threadIdx.x;
+      const tensorSize_t leftIdx = transposeLeft ? (k + threadIdx.x) * leftCols + i : i * leftCols + (k + threadIdx.x);
       const tensorSize_t rightIdx = transposeRight ? j * rightCols + (k + threadIdx.y) : (k + threadIdx.y) * rightCols + j;
 
       smemA[threadIdx.y * blockDim.x + threadIdx.x] = (i < resRows && (k + threadIdx.x) < K) ? left[leftOffset + leftIdx] : 0.0f;

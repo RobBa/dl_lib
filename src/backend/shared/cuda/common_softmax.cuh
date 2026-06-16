@@ -39,60 +39,27 @@ namespace cuda_impl {
   }
 
   /**
-   * @brief Reduction kernel that computes the maximum within the size of 2 * warpsize at maximum.
-   */
-  template<int maxoffset>
-  __forceinline__ __device__ void warpMaxReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
-    static_assert(maxoffset > 0 && maxoffset <= 32, "Invalid value for template");
-    // TODO: warp shuffle for newer architectures
-    if(maxoffset == 32) {
-      if(offset + 32 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 32]);
-    }
-    if(maxoffset >= 16) {
-      if(offset + 16 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 16]);
-    }
-    if(maxoffset >= 8) {
-      if(offset + 8 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 8]);
-    }
-    if(maxoffset >= 4) {
-      if(offset + 4 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 4]);
-    }
-    if(maxoffset >= 2) {
-      if(offset + 2 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 2]);
-    }
-    if(maxoffset >= 1) {
-      if(offset + 1 < stride) input[offset] = cudaMax<ftype>(input[offset], input[offset + 1]);
-    }
-  }
-
-  /**
    * @brief Here we find the maximum within a stride. Assumption: One warp does exactly one stride!
    * Reduction via warp reduce. res has the maximum values stored.
    */
   template<int maxoffset>
   static __global__ void findMaxKernelOneWarp(ftype* const res, const ftype* const input, const tensorSize_t stride, const tensorSize_t nStrides) {
-    assert(blockDim.x % 32 == 0);
+    assert(blockDim.x == 32);
 
-    const int tid = threadIdx.x;
-    const int gid = blockIdx.x * blockDim.x + tid;
+    const int strideNumber = blockIdx.x * blockDim.y + threadIdx.y; // same as warp number
+    const int withinStrideOffset = threadIdx.x; // each warp covers up to 32 elements within a stride
+    const int globalIdx = strideNumber * stride + withinStrideOffset;
 
-    const int strideNumber = gid / 32; // same as warp number
-    const int withinStrideOffset = gid % 32; // each warp covers up to 32 elements within a stride
-    const bool isNotPadded = withinStrideOffset < stride && strideNumber < nStrides;
+    const bool isActive = withinStrideOffset < stride && strideNumber < nStrides;
 
-    extern __shared__ ftype smem[];
-    smem[tid] = isNotPadded ? input[strideNumber * stride + withinStrideOffset] : -INFINITY; // TODO: is this memory access pattern bad?
-    __syncthreads();
+    ftype maxVal = isActive ? input[strideNumber * stride + withinStrideOffset] : -INFINITY; // TODO: is this memory access pattern bad?
 
-    if(strideNumber >= nStrides) {
-      return;
+    for(int offset = maxoffset; offset > 0; offset >>= 1) {
+      maxVal = cudaMax<ftype>(maxVal, __shfl_down_sync(0xFFFFFFFF, maxVal, offset, stride)); 
     }
 
-    volatile ftype* const start = smem + (tid / 32) * 32;
-    warpMaxReduce<maxoffset>(start, stride, withinStrideOffset);
-
     if(withinStrideOffset == 0) {
-      res[strideNumber] = start[0];
+      res[strideNumber] = maxVal;
     }
   }
 
@@ -121,26 +88,23 @@ namespace cuda_impl {
     }
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x >> 1; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] = cudaMax<ftype>(smem[tid], smem[tid + offset]);
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle for newer architectures
-    volatile ftype* const start = smem;
-    if(tid < 32) {
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 32]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 16]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 8]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 4]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 2]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 1]);
-    }
 
-    if(tid == 0) { // one block per stride
-      res[blockIdx.x] = start[0];
+    if(tid < 32) {
+      ftype maxVal = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        maxVal = cudaMax<ftype>(maxVal, __shfl_down_sync(0xFFFFFFFF, maxVal, offset)); 
+      }
+
+      if(tid == 0) { // one block per stride
+        res[blockIdx.x] = maxVal;
+      }
     }
   }
 
@@ -167,25 +131,22 @@ namespace cuda_impl {
     __syncthreads();
 
     // same reduction as findMaxKernelOneBlock from here
-    for(tensorSize_t offset = blockDim.x; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x; offset > 16; offset >>= 1) {
       if(tid < offset){
         smem[tid] = cudaMax<ftype>(smem[tid], smem[tid + offset]);
       } 
       __syncthreads();
     }
 
-    volatile ftype* start = smem;
     if(tid < 32) {
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 32]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 16]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 8]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 4]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 2]);
-      start[tid] = cudaMax<ftype>(start[tid], start[tid + 1]);
-    }
+      ftype maxVal = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        maxVal = cudaMax<ftype>(maxVal, __shfl_down_sync(0xFFFFFFFF, maxVal, offset)); 
+      }
 
-    if(tid == 0) {
-      partialMaxValues[blockIdx.x] = start[0];
+      if(tid == 0) { // one block per stride
+        partialMaxValues[blockIdx.x] = maxVal;
+      }
     }
   }
 
@@ -212,26 +173,22 @@ namespace cuda_impl {
     }
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x >> 1; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] = cudaMax<ftype>(smem[tid], smem[tid + offset]);
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle for newer architectures
-    volatile ftype* const start = smem;
     if(tid < 32) {
-      if(tid + 32 < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 32]);
-      if(tid + 16 < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 16]);
-      if(tid + 8  < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 8]);
-      if(tid + 4  < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 4]);
-      if(tid + 2  < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 2]);
-      if(tid + 1  < blockDim.x) start[tid] = cudaMax<ftype>(start[tid], start[tid + 1]);
-    }
+      ftype maxVal = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        maxVal = cudaMax<ftype>(maxVal, __shfl_down_sync(0xFFFFFFFF, maxVal, offset)); 
+      }
 
-    if(tid == 0) { // one block per stride
-      maxValues[blockIdx.x] = start[0];
+      if(tid == 0) { // one block per stride
+        maxValues[blockIdx.x] = maxVal;
+      }
     }
   }
 }

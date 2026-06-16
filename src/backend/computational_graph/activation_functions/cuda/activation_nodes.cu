@@ -114,8 +114,8 @@ namespace {
 
     extern __shared__ ftype smem[];
 
-    const bool isNotPadded = i < stride;
-    const ftype yi = isNotPadded ? softmax[gid] : 0;
+    const bool isActive = i < stride;
+    const ftype yi = isActive ? softmax[gid] : 0;
 
     ftype grad = 0;
     for(int offset = 0; offset < stride; offset += blockDim.x) {
@@ -143,7 +143,7 @@ namespace {
       __syncthreads();
     }
 
-    if(isNotPadded) {
+    if(isActive) {
       res[gid] = grad;
     } 
   }

@@ -475,22 +475,23 @@ namespace cuda_impl {
       // each warp does one stride
       constexpr int threadsPerBlock = 256;
       constexpr int warpsPerBlock = threadsPerBlock / 32;
+      constexpr dim3 blockDims(32, warpsPerBlock);
       const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
 
       if(stride <= 2) {
-        findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
+        findMaxKernelOneWarp<1><<<blocks, blockDims>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 4) {
-        findMaxKernelOneWarp<2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
+        findMaxKernelOneWarp<2><<<blocks, blockDims>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 8) {
-        findMaxKernelOneWarp<4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
+        findMaxKernelOneWarp<4><<<blocks, blockDims>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 16) {
-        findMaxKernelOneWarp<8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
+        findMaxKernelOneWarp<8><<<blocks, blockDims>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       else if(stride <= 32) {
-        findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride, nStrides);
+        findMaxKernelOneWarp<16><<<blocks, blockDims>>>(maxValues, yPred.getData(), stride, nStrides);
       }
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());

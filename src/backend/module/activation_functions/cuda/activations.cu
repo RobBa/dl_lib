@@ -63,62 +63,32 @@ namespace {
   }
 
   /**
-   * @brief Reduction kernel that computes the sum over an array within the size of 2 * warpsize at maximum.
-   */
-  template<int maxoffset>
-  __forceinline__ __device__ void softmaxWarpSumReduce(volatile ftype* const input, const tensorSize_t stride, const int offset) {
-    static_assert(maxoffset > 0 && maxoffset <= 32, "Invalid value for template");
-    // TODO: warp shuffle for newer architectures
-    if(maxoffset == 32) {
-      if(offset + 32 < stride) input[offset] += input[offset + 32];
-    }
-    if(maxoffset >= 16) {
-      if(offset + 16 < stride) input[offset] += input[offset + 16];
-    }
-    if(maxoffset >= 8) {
-      if(offset + 8 < stride) input[offset] += input[offset + 8];
-    }
-    if(maxoffset >= 4) {
-      if(offset + 4 < stride) input[offset] += input[offset + 4];
-    }
-    if(maxoffset >= 2) {
-      if(offset + 2 < stride) input[offset] += input[offset + 2];
-    }
-    if(maxoffset >= 1) {
-      if(offset + 1 < stride) input[offset] += input[offset + 1];
-    }
-  }
-
-  /**
    * @brief Numerically stable version of softmax kernel. Just as in findMaxKernelOneWarp we assume that stride <= warpsize.
    * Numerical stability comes from computing the maximum values per row, see findMaxKernelOneWarp and argument maxValues.
    */
-  template<typename T, int maxoffset>
+  template<int maxoffset>
   __global__ void stableSoftmaxKernelOneWarp(ftype* const res, const ftype* const input, const ftype* const maxValues,
                                              const tensorSize_t stride, const tensorSize_t size) {
-    assert(blockDim.x % 32 == 0);
 
-    const int tid = threadIdx.x;
-    const int gid = blockIdx.x * blockDim.x + tid;
-
-    const int strideNumber = gid / 32; // same as warp number
-    const int withinStrideOffset = gid % 32; // each warp covers up to 32 elements within a stride
-
+    const int strideNumber = blockIdx.x * blockDim.y + threadIdx.y; // same as warp number
+    const int withinStrideOffset = threadIdx.x; // each warp covers up to 32 elements within a stride
     const int globalIdx = strideNumber * stride + withinStrideOffset;
-    const bool isNotPadded = withinStrideOffset < stride && globalIdx < size;
+
+    const bool isActive = (withinStrideOffset < stride) && (globalIdx < size);
 
     const auto maxValue = maxValues[strideNumber];
-    const ftype expVal = isNotPadded ? stableExp<ftype>(input[globalIdx], maxValue) : 0;
+    const ftype expVal = isActive ? stableExp<ftype>(input[globalIdx], maxValue) : 0.0f;
 
-    extern __shared__ ftype smem[];
-    smem[tid] = expVal;
-    __syncthreads();
+    ftype sum = expVal;
+    for(int offset = maxoffset; offset > 0; offset >>= 1) {
+      sum += __shfl_down_sync(0xFFFFFFFF, sum, offset, stride); 
+    }
 
-    volatile ftype* const start = smem + (tid / 32) * 32;
-    softmaxWarpSumReduce<maxoffset>(start, stride, withinStrideOffset); // TODO: do we need the bounds check here at all?
+    // broadcast thread zero's result
+    sum = __shfl_sync(0xFFFFFFFF, sum, 0);
 
-    if(isNotPadded) {
-      res[globalIdx] = expVal / start[0];
+    if(isActive) {
+      res[globalIdx] = expVal / sum;
     }
   }
 
@@ -127,10 +97,9 @@ namespace {
    * 
    * In this initial version we assume one kernel per stride, to make matters simple to understand.
    */
-  template<typename T>
   __global__ void stableSoftmaxKernelOneBlock(ftype* const res, const ftype* const input, const ftype* const maxValues, const tensorSize_t stride) {
     // Kernel built for one stride per block, blockDim.x is < stride
-    assert(blockDim.x / stride == 0); 
+    assert(blockDim.x < stride); 
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * stride + tid;
@@ -151,28 +120,29 @@ namespace {
     smem[maxIdx] = expValOffset;
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle for newer architectures
-    volatile ftype* const start = smem;
     if(tid < 32) {
-      start[tid] += start[tid + 32];
-      start[tid] += start[tid + 16];
-      start[tid] += start[tid + 8];
-      start[tid] += start[tid + 4];
-      start[tid] += start[tid + 2];
-      start[tid] += start[tid + 1];
+      ftype sum = smem[tid];
+      for (int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
+
+      if(tid == 0) {
+        smem[0] = sum;
+      }
     }
     __syncthreads(); // needed because threads > 32 will also use start[0]
 
-    res[gid] = expVal / start[0];
+    const ftype sum = smem[0];
+    res[gid] = expVal / sum;
     if(!doPadding) {
-      res[gid + blockDim.x] = expValOffset / start[0];
+      res[gid + blockDim.x] = expValOffset / sum;
     }
   }
 
@@ -213,25 +183,22 @@ namespace {
     }
     
     // reduce sum
-    for(tensorSize_t offset = blockDim.x; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    volatile ftype* start = smem;
     if(tid < 32) {
-      start[tid] += start[tid + 32];
-      start[tid] += start[tid + 16];
-      start[tid] += start[tid + 8];
-      start[tid] += start[tid + 4];
-      start[tid] += start[tid + 2];
-      start[tid] += start[tid + 1];
-    }
+      ftype sum = smem[tid];
+      for (int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
 
-    if(tid == 0) {
-      partialSums[blockIdx.x] = start[0];
+      if(tid == 0) {
+        partialSums[blockIdx.x] = sum;
+      }
     }
   }
 
@@ -258,26 +225,22 @@ namespace {
     }
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x >> 1; offset > 32; offset >>= 1) {
+    for(tensorSize_t offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle for newer architectures
-    volatile ftype* const start = smem;
     if(tid < 32) {
-      if(tid + 32 < blockDim.x) start[tid] += start[tid + 32];
-      if(tid + 16 < blockDim.x) start[tid] += start[tid + 16];
-      if(tid + 8  < blockDim.x) start[tid] += start[tid + 8];
-      if(tid + 4  < blockDim.x) start[tid] += start[tid + 4];
-      if(tid + 2  < blockDim.x) start[tid] += start[tid + 2];
-      if(tid + 1  < blockDim.x) start[tid] += start[tid + 1];
-    }
+      ftype sum = smem[tid];
+      for (int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
 
-    if(tid == 0) { // one block per stride
-      sums[blockIdx.x] = start[0];
+      if(tid == 0) { // one block per stride
+        sums[blockIdx.x] = sum;
+      }
     }
   }
 
@@ -350,24 +313,23 @@ namespace cuda_impl {
       // each warp does one stride
       constexpr int threadsPerBlock = 256;
       constexpr int warpsPerBlock = threadsPerBlock / 32;
+      constexpr dim3 blockDims(32, warpsPerBlock);
       const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
 
-      //cout << "nStrides " << nStrides << " - in " << in << endl;
-
       if(stride <= 2) {
-        findMaxKernelOneWarp<1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<1><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
       }
       else if(stride <= 4) {
-        findMaxKernelOneWarp<2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<2><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
       }
       else if(stride <= 8) {
-        findMaxKernelOneWarp<4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<4><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
       }
       else if(stride <= 16) {
-        findMaxKernelOneWarp<8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<8><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
       }
       else if(stride <= 32) {
-        findMaxKernelOneWarp<16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<16><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
       }
       
       #ifndef NDEBUG
@@ -375,24 +337,19 @@ namespace cuda_impl {
       #endif
 
       if(stride <= 2) {
-        stableSoftmaxKernelOneWarp<ftype, 1> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<1><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       else if(stride <= 4) {
-        stableSoftmaxKernelOneWarp<ftype, 2> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<2><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       else if(stride <= 8) {
-        stableSoftmaxKernelOneWarp<ftype, 4> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<4><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       else if(stride <= 16) {
-        stableSoftmaxKernelOneWarp<ftype, 8> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<8><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       else if(stride <= 32) {
-        stableSoftmaxKernelOneWarp<ftype, 16> <<<blocks, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>
-                                                (res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<16><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
       }
       
       #ifndef NDEBUG
@@ -417,7 +374,7 @@ namespace cuda_impl {
       cudaErrchk(cudaDeviceSynchronize());
       #endif
 
-      stableSoftmaxKernelOneBlock<ftype><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(res.getData(), in.getData(), maxValues, 
+      stableSoftmaxKernelOneBlock<<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(res.getData(), in.getData(), maxValues, 
                                                                                                            stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
