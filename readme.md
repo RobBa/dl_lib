@@ -22,7 +22,7 @@ For some examples on Python interface, see tests/python.
 - **Python Interface**: Seamless integration via Boost.Python
 - **Clean Architecture**: Modular design, maintainable and extensible
 - **CI/CD**: Automated testing with GTest and GitHub Actions
-- **CUDA implementation**: Full end-to-end CUDA implementation for better HW utilization (optimization in progress)
+- **CUDA implementation**: Full end-to-end CUDA implementation for better HW utilization
 
 ## Tech Stack
 
@@ -43,7 +43,7 @@ Roadmap:
 - [x] Optimizers and training framework
 - [x] MNIST example
 - [x] CUDA mode for operations
-- [ ] CUDA optimization for optimal run-times
+- [x] CUDA optimization for optimal run-times
 - [ ] CPU optimization for optimal run-times
 - [ ] Additional layer types (Conv2D, Dropout, etc.)
 - [ ] AlexNet reference implementation
