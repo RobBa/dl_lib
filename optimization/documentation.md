@@ -308,4 +308,4 @@ warning #3012-D: a volatile destination type for a compound assignment expressio
 ### Times after fix
 
 CPU: 18.5311s
-*GPU*: 
+*GPU*: 0.2058s

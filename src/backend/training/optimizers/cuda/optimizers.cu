@@ -46,49 +46,35 @@ namespace {
     const int gid = blockIdx.x * blockDim.x + tid;
     const int gridOffset = gridDim.x * blockDim.x;
 
-    const ftype g1 = gid < size ? grads[gid] : 0.;
-    const ftype g2 = gid + gridOffset < size ? grads[gid + gridOffset] : 0.;
+    const ftype g1 = gid < size ? grads[gid] : 0.0f;
+    const ftype g2 = gid + gridOffset < size ? grads[gid + gridOffset] : 0.0f;
     
     extern __shared__ ftype smem[];
     smem[tid] = g1 * g1 + g2 * g2;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 32; offset >>=1) {
+    for(int offset = blockDim.x >> 1; offset > 16; offset >>=1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(gid + 32 < size) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(gid + 16 < size) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(gid + 8 < size) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(gid + 4 < size) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(gid + 2 < size) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(gid + 1 < size) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(tid == 0) {
-      if constexpr (useBlockIdx) {
-        output[blockIdx.x] = sdata[0];
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
-      else {
-        output[idx] = sdata[0];
+
+      if(tid == 0) {
+        if constexpr (useBlockIdx) {
+          output[blockIdx.x] = sum;
+        }
+        else {
+          output[idx] = sum;
+        }
       }
     }
   }
@@ -106,50 +92,36 @@ namespace {
     const int gid = blockIdx.x * blockDim.x + tid;
 
     extern __shared__ ftype smem[]; 
-    const ftype x1 = gid < inputSize ? input[gid] : 0;
-    const ftype x2 = gid + blockDim.x < inputSize ? input[gid + blockDim.x] : 0;
+    const ftype x1 = gid < inputSize ? input[gid] : 0.0f;
+    const ftype x2 = gid + blockDim.x < inputSize ? input[gid + blockDim.x] : 0.0f;
     smem[tid] = x1 + x2;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
+    for(int offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(tid + 32 < inputSize) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(tid + 16 < inputSize) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(tid + 8 < inputSize) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(tid + 4 < inputSize) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(tid + 2 < inputSize) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(tid + 1 < inputSize) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(tid == 0) {
-      if constexpr (std::is_same_v<T, float>) {
-        output[0] = __fsqrt_rd(sdata[0]);
-      } 
-      else if constexpr (std::is_same_v<T, double>) {
-        output[0] = sqrt(sdata[0]);
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
-      else {
-        static_assert(always_false<T>, "Unexpected value for ftype encountered");
+
+      if(tid == 0) {
+        if constexpr (std::is_same_v<T, float>) {
+          output[0] = __fsqrt_rd(sum);
+        } 
+        else if constexpr (std::is_same_v<T, double>) {
+          output[0] = sqrt(sum);
+        }
+        else {
+          static_assert(always_false<T>, "Unexpected value for ftype encountered");
+        }
       }
     }
   }
@@ -253,7 +225,8 @@ namespace cuda_impl {
     {
       const int threadsPerBlock = params.size() < 512 ? 512 : 1024;
       sumReduceAndSqrtKernel<ftype><<<1, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
-                        totalNorm, totalNorm, params.size());
+                                      totalNorm, totalNorm, params.size());
+
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif

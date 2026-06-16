@@ -101,49 +101,34 @@ namespace cuda_impl {
    */
   static __global__ void sumReduceKernel(ftype* const output, const ftype* const input, const int idx, const tensorSize_t inputSize) {
     assert(gridDim.x == 1);
-    assert(blockDim.x <= inputSize);
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
 
     extern __shared__ ftype smem[]; 
-    const ftype x1 = gid < inputSize ? input[gid] : 0;
-    const ftype x2 = gid + blockDim.x < inputSize ? input[gid + blockDim.x] : 0;
+    const ftype x1 = gid < inputSize ? input[gid] : 0.0f;
+    const ftype x2 = gid + blockDim.x < inputSize ? input[gid + blockDim.x] : 0.0f;
     smem[tid] = x1 + x2;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
+    for(int offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(tid + 32 < inputSize) {
-        sdata[tid] += sdata[tid + 32];
+      assert(blockDim.x >= 32);
+      
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
-      if(tid + 16 < inputSize) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(tid + 8 < inputSize) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(tid + 4 < inputSize) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(tid + 2 < inputSize) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(tid + 1 < inputSize) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
 
-    if(tid == 0) {
-      output[idx] = sdata[0];
+      if(tid == 0) {
+        output[idx] = sum;
+      }
     }
   }
 }

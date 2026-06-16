@@ -191,7 +191,7 @@ namespace {
 
   /**
    * @brief Copies the elements of the given slices from src to res. Assumes that the dimension to slice over
-   * is the first one currently!
+   * is the first one currently! I.e. we can only slice over dim0 right now!
    * 
    * @param idx The indices of the dimension in src.
    */

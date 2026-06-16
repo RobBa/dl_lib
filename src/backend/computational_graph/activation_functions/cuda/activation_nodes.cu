@@ -28,7 +28,7 @@ namespace {
       return;
     }
 
-    res[gid] =  parent[gid] > 0 ? upstreamGrad[gid] : 0;
+    res[gid] =  parent[gid] > 0.0f ? upstreamGrad[gid] : 0.0f;
   }
 
   /**
@@ -40,7 +40,7 @@ namespace {
       return;
     }
 
-    res[gid] = parent[gid] > 0 ? upstreamGrad[gid] : eps * upstreamGrad[gid];
+    res[gid] = parent[gid] > 0.0f ? upstreamGrad[gid] : eps * upstreamGrad[gid];
   }
 
   /**
@@ -115,7 +115,7 @@ namespace {
     extern __shared__ ftype smem[];
 
     const bool isActive = i < stride;
-    const ftype yi = isActive ? softmax[gid] : 0;
+    const ftype yi = isActive ? softmax[gid] : 0.0f;
 
     ftype grad = 0;
     for(int offset = 0; offset < stride; offset += blockDim.x) {

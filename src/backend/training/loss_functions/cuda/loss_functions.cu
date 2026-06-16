@@ -51,42 +51,28 @@ namespace {
     const int tid = threadIdx.x;
 
     extern __shared__ ftype smem[];
-    const ftype tmp = gid < size ? bce<ftype>(y[gid], ypred[gid]) : 0;
+    const ftype tmp = gid < size ? bce<ftype>(y[gid], ypred[gid]) : 0.0f;
     smem[tid] = tmp;
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x / 2; offset > 32; offset >>= 1){
+    for(tensorSize_t offset = blockDim.x >> 1; offset > 16; offset >>= 1){
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffles
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(gid + 32 < size) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(gid + 16 < size) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(gid + 8 < size) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(gid + 4 < size) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(gid + 2 < size) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(gid + 1 < size) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(tid == 0) {
-      res[blockIdx.x] = sdata[0];
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
+
+      if(tid == 0) {
+        res[blockIdx.x] = sum;
+      }
     }
   }
 
@@ -116,42 +102,28 @@ namespace {
     extern __shared__ ftype smem[];
 
     // pre-load first round
-    const ftype tmp = gid < size ? bceSimplified<ftype>(y[gid], logits[gid]) : 0;
+    const ftype tmp = gid < size ? bceSimplified<ftype>(y[gid], logits[gid]) : 0.0f;
     smem[tid] = tmp;
     __syncthreads();
 
-    for(tensorSize_t offset = blockDim.x / 2; offset > 32; offset >>= 1){
+    for(tensorSize_t offset = blockDim.x >> 1; offset > 16; offset >>= 1){
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffles
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(gid + 32 < size) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(gid + 16 < size) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(gid + 8 < size) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(gid + 4 < size) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(gid + 2 < size) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(gid + 1 < size) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(tid == 0) {
-      res[blockIdx.x] = sdata[0];
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
+
+      if(tid == 0) {
+        res[blockIdx.x] = sum;
+      }
     }
   }
 
@@ -181,38 +153,24 @@ namespace {
     smem[tid] = tmp;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
+    for(int offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle again
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(gid + 32 < size) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(gid + 16 < size) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(gid + 8 < size) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(gid + 4 < size) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(gid + 2 < size) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(gid + 1 < size) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(threadIdx.x == 0) {
-      res[blockIdx.x] = sdata[0];
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
+
+      if(threadIdx.x == 0) {
+        res[blockIdx.x] = sum;
+      }
     }
   }
 
@@ -296,42 +254,28 @@ namespace {
     const int gid = blockIdx.x * blockDim.x + tid;
 
     extern __shared__ ftype smem[];
-    const ftype tmp = gid < size ? diffPow(y[gid], yPred[gid]) : 0;
+    const ftype tmp = gid < size ? diffPow(y[gid], yPred[gid]) : 0.0f;
     smem[tid] = tmp;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset > 32; offset >>= 1) {
+    for(int offset = blockDim.x >> 1; offset > 16; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
       __syncthreads();
     }
 
-    // TODO: warp shuffle again
-    volatile ftype* const sdata = smem;
     if(tid < 32) {
-      if(gid + 32 < size) {
-        sdata[tid] += sdata[tid + 32];
-      }
-      if(gid + 16 < size) {
-        sdata[tid] += sdata[tid + 16];
-      }
-      if(gid + 8 < size) {
-        sdata[tid] += sdata[tid + 8];
-      }
-      if(gid + 4 < size) {
-        sdata[tid] += sdata[tid + 4];
-      }
-      if(gid + 2 < size) {
-        sdata[tid] += sdata[tid + 2];
-      }
-      if(gid + 1 < size) {
-        sdata[tid] += sdata[tid + 1];
-      }
-    }
+      assert(blockDim.x >= 32);
 
-    if(threadIdx.x == 0) {
-      res[blockIdx.x] = sdata[0];
+      ftype sum = smem[tid];
+      for(int offset = 16; offset > 0; offset >>= 1) {
+        sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
+      }
+
+      if(threadIdx.x == 0) {
+        res[blockIdx.x] = sum;
+      }
     }
   }
 
