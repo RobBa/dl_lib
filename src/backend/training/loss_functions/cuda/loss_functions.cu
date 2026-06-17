@@ -216,7 +216,7 @@ namespace {
     smem[tid] = yz0 + yz1;
     __syncthreads();
 
-    for(int offset = blockDim.x / 2; offset >= 1; offset >>= 1) {
+    for(int offset = blockDim.x >> 1; offset >= 1; offset >>= 1) {
       if(tid < offset) {
         smem[tid] += smem[tid + offset];
       }
@@ -444,9 +444,9 @@ namespace cuda_impl {
     else if(stride <= 512) {
       int threadsPerBlock = 1;
       while(threadsPerBlock < stride) threadsPerBlock <<= 1;
-      threadsPerBlock /= 2;
+      threadsPerBlock >>= 1;
 
-      findMaxKernelOneBlock<<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
+      findMaxKernelOneBlock<<<nStrides, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(maxValues, yPred.getData(), stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif
@@ -458,12 +458,12 @@ namespace cuda_impl {
 
     // one block per sample, each thread covers up to 2 elements
     int threadsPerBlock = 1;
-    while(threadsPerBlock * 2 < stride) threadsPerBlock <<= 1;
+    while((threadsPerBlock << 1) < stride) threadsPerBlock <<= 1;
     threadsPerBlock = max(1, threadsPerBlock);
 
     ftype* perStrideLoss = mempool::tensorPool.request(Device::CUDA, nStrides);
 
-    crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+    crossEntropySoftmaxLossKernel<ftype><<<nStrides, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
       perStrideLoss, y.getData(), yPred.getData(), maxValues, stride);
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());

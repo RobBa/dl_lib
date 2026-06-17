@@ -188,7 +188,7 @@ namespace cuda_impl {
       constexpr int threadsPerBlock = 256;
       int blocks = (grads->getSize() + threadsPerBlock - 1) / threadsPerBlock;
       blocks = max(1, blocks >> 2); // each thread tries to cover two elements
-      if(blocks > threadsPerBlock * 2) {
+      if(blocks > (threadsPerBlock << 1)) {
         __throw_invalid_argument("Gradients too large for gradient clipping at the moment.");
       }
 
@@ -196,14 +196,14 @@ namespace cuda_impl {
       if(blocks > 1) {
         ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
-        powerTwoSumKernel<true><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+        powerTwoSumKernel<true><<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
                                   tmp, grads->getData(), maxNorm, /*sentinel value*/ -1, grads->getSize());
         #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
         #endif
 
-        const int threadsPerBlock2 = blocks > threadsPerBlock ? threadsPerBlock * 2 : threadsPerBlock;
-        sumReduceKernel<<<1, threadsPerBlock2, 2 * threadsPerBlock2 * sizeof(ftype)>>>(
+        const int threadsPerBlock2 = blocks > threadsPerBlock ? (threadsPerBlock << 1) : threadsPerBlock;
+        sumReduceKernel<<<1, threadsPerBlock2, (threadsPerBlock2 << 1) * sizeof(ftype)>>>(
                           totalNorm, tmp, paramIdx, blocks);
         
         #ifndef NDEBUG
@@ -213,7 +213,7 @@ namespace cuda_impl {
         mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
       }
       else {
-        powerTwoSumKernel<false><<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+        powerTwoSumKernel<false><<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
                                   totalNorm, grads->getData(), maxNorm, paramIdx, grads->getSize());
         #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
@@ -224,7 +224,7 @@ namespace cuda_impl {
     // step 2: get the total sum of all totalNorm values
     {
       const int threadsPerBlock = params.size() < 512 ? 512 : 1024;
-      sumReduceAndSqrtKernel<ftype><<<1, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+      sumReduceAndSqrtKernel<ftype><<<1, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
                                       totalNorm, totalNorm, params.size());
 
       #ifndef NDEBUG

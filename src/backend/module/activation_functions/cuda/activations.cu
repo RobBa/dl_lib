@@ -159,7 +159,8 @@ namespace {
     const int blockWithinStride = blockIdx.x % blocksPerStride;
 
     // same logic as in findMaxKernelLargePass1
-    const int inputBase = strideIdx * stride + blockWithinStride * 2 * blockDim.x;
+    assert((blockWithinStride > 0) && ((blockWithinStride << 1) > 0));
+    const int inputBase = strideIdx * stride + (blockWithinStride << 1) * blockDim.x;
     const ftype maxValue = maxValues[strideIdx];
     
     extern __shared__ ftype smem[];
@@ -357,24 +358,21 @@ namespace cuda_impl {
       #endif
     }
     else if (stride <= 512) {
-      constexpr int maxThreadsPerBlock = 256;
-      assert_debug(stride <= 2 * maxThreadsPerBlock, "If you adapt maxThreadsPerBlock you also have to adapt the limit in the if-clause above");
-
       constexpr int stridesPerBlock = 1; // if multiple strides per block allowed (adapt kernels!): max(maxThreadsPerBlock / stride, 1);
 
       // threads per block needs to be power of 2 for reduction to resolve cleanly
       int threadsPerBlock = 1;
       while(threadsPerBlock < stride) threadsPerBlock <<= 1;
-      threadsPerBlock /= 2;
+      threadsPerBlock >>= 1;
 
       const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock; // gerneralized version iff multiple strides per block allowed
 
-      findMaxKernelOneBlock<<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(maxValues, in.getData(), stride);
+      findMaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(maxValues, in.getData(), stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif
 
-      stableSoftmaxKernelOneBlock<<<blocks, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(res.getData(), in.getData(), maxValues, 
+      stableSoftmaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(res.getData(), in.getData(), maxValues, 
                                                                                                            stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
@@ -398,7 +396,7 @@ namespace cuda_impl {
 
       // pass 1: reduce each chunk of 512 elements to one partial max
       // launch blocksPerStride blocks per stride
-      findMaxKernelLargePass1<<<totalBlocks, maxThreadsPerBlock, 2 * maxThreadsPerBlock * sizeof(ftype)>>>(
+      findMaxKernelLargePass1<<<totalBlocks, maxThreadsPerBlock, (maxThreadsPerBlock << 1) * sizeof(ftype)>>>(
                                 partialMaxValues, in.getData(), stride, blocksPerStride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
@@ -407,7 +405,7 @@ namespace cuda_impl {
       // pass 2: reduce partial maxes to one max per stride
       int threadsPass2 = 1;
       while(threadsPass2 < blocksPerStride) threadsPass2 <<= 1; // threadsPass2 needs to be power of 2
-      threadsPass2 = max(1, threadsPass2 / 2);
+      threadsPass2 = max(1, threadsPass2 >> 1);
       
       findMaxKernelLargePass2<<<nStrides, threadsPass2, threadsPass2 * sizeof(ftype)>>>(maxValues, partialMaxValues, blocksPerStride);
       #ifndef NDEBUG
@@ -417,7 +415,7 @@ namespace cuda_impl {
       // same two-pass structure for the sum
       ftype* partialSums = mempool::tensorPool.request(Device::CUDA, nPartialMax);
 
-      stableSoftmaxLargePass1<ftype><<<totalBlocks, maxThreadsPerBlock, 2 * maxThreadsPerBlock * sizeof(ftype)>>>(
+      stableSoftmaxLargePass1<ftype><<<totalBlocks, maxThreadsPerBlock, (maxThreadsPerBlock << 1) * sizeof(ftype)>>>(
                         res.getData(), partialSums, in.getData(), maxValues, stride, blocksPerStride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());

@@ -44,9 +44,17 @@ if(CUDA AND CMAKE_CUDA_COMPILER)
     target_include_directories(BackendCore PRIVATE 
         ${CUDAToolkit_INCLUDE_DIRS}
     )
-    target_link_libraries(BackendCore 
+    target_link_libraries(BackendCore
         CUDA::cudart
         CUDA::curand
     )
+
+    if(CUDA_BACKEND STREQUAL "cuBLAS")
+        message(STATUS "CUDA backend: cuBLAS")
+        target_compile_definitions(BackendCore PRIVATE CUDA_BACKEND_CUBLAS)
+        target_link_libraries(BackendCore CUDA::cublas)
+    else()
+        message(STATUS "CUDA backend: Custom")
+    endif()
 endif()
 
