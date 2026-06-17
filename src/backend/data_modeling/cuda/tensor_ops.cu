@@ -24,6 +24,10 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include <thrust/fill.h>
 #include <thrust/device_ptr.h>
 
+#ifdef CUDA_BACKEND_CUBLAS
+#include <cublas_v2.h>
+#endif
+
 using namespace std;
 
 namespace {
@@ -84,6 +88,45 @@ namespace {
     res[gid] = left[gid] * scalar;
   }
 
+#ifdef CUDA_BACKEND_CUBLAS
+  cublasHandle_t& cublasHandle() {
+    static cublasHandle_t handle = [] {
+      cublasHandle_t h;
+      cublasCreate(&h);
+      return h;
+    }();
+    return handle;
+  }
+
+  template<typename T>
+  void cublasGemmT(cublasHandle_t h, cublasOperation_t opA, cublasOperation_t opB,
+                   int m, int n, int k, const T* alpha,
+                   const T* A, int lda, const T* B, int ldb,
+                   const T* beta, T* C, int ldc);
+
+  template<> void cublasGemmT<ftype>(cublasHandle_t h, cublasOperation_t opA, cublasOperation_t opB,
+                   int m, int n, int k, const ftype* alpha,
+                   const ftype* A, int lda, const ftype* B, int ldb,
+                   const ftype* beta, ftype* C, int ldc) {
+    cublasSgemm(h, opA, opB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+
+  template<typename T>
+  void cublasGemmStridedBatchedT(cublasHandle_t h, cublasOperation_t opA, cublasOperation_t opB,
+                   int m, int n, int k, const T* alpha,
+                   const T* A, int lda, long long strideA,
+                   const T* B, int ldb, long long strideB,
+                   const T* beta, T* C, int ldc, long long strideC, int batchCount);
+
+  template<> void cublasGemmStridedBatchedT<ftype>(cublasHandle_t h, cublasOperation_t opA, cublasOperation_t opB,
+                   int m, int n, int k, const ftype* alpha,
+                   const ftype* A, int lda, long long strideA,
+                   const ftype* B, int ldb, long long strideB,
+                   const ftype* beta, ftype* C, int ldc, long long strideC, int batchCount) {
+    cublasSgemmStridedBatched(h, opA, opB, m, n, k, alpha, A, lda, strideA, B, ldb, strideB, beta, C, ldc, strideC, batchCount);
+  }
+#else
+
   /**
    * @brief 2D matMul operation. Assumes that res is where result is written to, and res is zero-indexed.
    * For higher dimensionalities the caller is responsible for proper offset computation!!! The same goes
@@ -140,6 +183,8 @@ namespace {
       res[resOffset + i * N + j] = cij;
     }
   }
+
+#endif
 
   /**
    * @brief Strides in an outer size larger than one block. We use one thread per stride.
@@ -272,13 +317,44 @@ namespace cuda_impl {
   }
 
   void matmul(Tensor& res, const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
+    const tensorSize_t leftSize  = left.getDims().get(-2)  * left.getDims().get(-1);
+    const tensorSize_t rightSize = right.getDims().get(-2) * right.getDims().get(-1);
+    const tensorSize_t resSize   = res.getDims().get(-2)   * res.getDims().get(-1);
+
+#ifdef CUDA_BACKEND_CUBLAS
+    //we need op_A(right^T) = op_R(right)^T,
+    const cublasOperation_t opA = transposeRight ? CUBLAS_OP_T : CUBLAS_OP_N;
+    const cublasOperation_t opB = transposeLeft  ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    const int m    = static_cast<int>(res.getDims().get(-1));   // resCols
+    const int n    = static_cast<int>(res.getDims().get(-2));   // resRows
+    const int k    = static_cast<int>(transposeLeft ? left.getDims().get(-2) : left.getDims().get(-1));
+    const int lda  = static_cast<int>(right.getDims().get(-1)); // rightCols
+    const int ldb  = static_cast<int>(left.getDims().get(-1));  // leftCols
+    const int ldc  = m;
+
+    const ftype alpha = static_cast<ftype>(1.0);
+    const ftype beta  = static_cast<ftype>(0.0);
+
+    const int batchCount = static_cast<int>(res.getSize() / resSize);
+
+    if(batchCount == 1) {
+      cublasGemmT<ftype>(cublasHandle(), opA, opB, m, n, k,
+                         &alpha, right.getData(), lda, left.getData(), ldb,
+                         &beta,  res.getData(),   ldc);
+    } else {
+      cublasGemmStridedBatchedT<ftype>(cublasHandle(), opA, opB, m, n, k,
+                         &alpha,
+                         right.getData(), lda, static_cast<long long>(rightSize),
+                         left.getData(),  ldb, static_cast<long long>(leftSize),
+                         &beta,
+                         res.getData(),   ldc, static_cast<long long>(resSize),
+                         batchCount);
+    }
+
+#else
     constexpr int MATMUL_TILESIZE = 16; // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
     constexpr dim3 threadsPerBlock(MATMUL_TILESIZE, MATMUL_TILESIZE);
-    
-    // sizes of the 2D matrices respectively
-    const tensorSize_t leftSize = left.getDims().get(-1) * left.getDims().get(-2); 
-    const tensorSize_t rightSize = right.getDims().get(-1) * right.getDims().get(-2);
-    const tensorSize_t resSize = res.getDims().get(-2) * res.getDims().get(-1);
 
     const tensorSize_t nMultiplications = res.getSize() / resSize;
 
@@ -291,36 +367,37 @@ namespace cuda_impl {
     //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset,
     if(!(transposeLeft || transposeRight)) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, false><<<numBlocks, threadsPerBlock>>>(
-                                                      res.getData(), left.getData(), right.getData(), 
-                                                      left.getDims().get(-2), left.getDims().get(-1), 
-                                                      right.getDims().get(-2), right.getDims().get(-1), 
+                                                      res.getData(), left.getData(), right.getData(),
+                                                      left.getDims().get(-2), left.getDims().get(-1),
+                                                      right.getDims().get(-2), right.getDims().get(-1),
                                                       res.getDims().get(-2), res.getDims().get(-1),
                                                       leftSize, rightSize, resSize);
     }
     else if(transposeLeft && transposeRight) [[unlikely]] {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, true><<<numBlocks, threadsPerBlock>>>(
-                                                    res.getData(), left.getData(), right.getData(), 
-                                                    left.getDims().get(-2), left.getDims().get(-1), 
-                                                    right.getDims().get(-2), right.getDims().get(-1), 
+                                                    res.getData(), left.getData(), right.getData(),
+                                                    left.getDims().get(-2), left.getDims().get(-1),
+                                                    right.getDims().get(-2), right.getDims().get(-1),
                                                     res.getDims().get(-2), res.getDims().get(-1),
                                                     leftSize, rightSize, resSize);
     }
     else if(transposeLeft) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, false><<<numBlocks, threadsPerBlock>>>(
-                                                     res.getData(), left.getData(), right.getData(), 
-                                                     left.getDims().get(-2), left.getDims().get(-1), 
-                                                     right.getDims().get(-2), right.getDims().get(-1), 
+                                                     res.getData(), left.getData(), right.getData(),
+                                                     left.getDims().get(-2), left.getDims().get(-1),
+                                                     right.getDims().get(-2), right.getDims().get(-1),
                                                      res.getDims().get(-2), res.getDims().get(-1),
                                                      leftSize, rightSize, resSize);
     }
     else if(transposeRight) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, true><<<numBlocks, threadsPerBlock>>>(
-                                                     res.getData(), left.getData(), right.getData(), 
-                                                     left.getDims().get(-2), left.getDims().get(-1), 
-                                                     right.getDims().get(-2), right.getDims().get(-1), 
+                                                     res.getData(), left.getData(), right.getData(),
+                                                     left.getDims().get(-2), left.getDims().get(-1),
+                                                     right.getDims().get(-2), right.getDims().get(-1),
                                                      res.getDims().get(-2), res.getDims().get(-1),
                                                      leftSize, rightSize, resSize);
-      }
+    }
+#endif
 
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());

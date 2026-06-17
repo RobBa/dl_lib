@@ -48,10 +48,8 @@ namespace cuda_impl {
 
     const int strideNumber = blockIdx.x * blockDim.y + threadIdx.y; // same as warp number
     const int withinStrideOffset = threadIdx.x; // each warp covers up to 32 elements within a stride
-    const int globalIdx = strideNumber * stride + withinStrideOffset;
 
     const bool isActive = withinStrideOffset < stride && strideNumber < nStrides;
-
     ftype maxVal = isActive ? input[strideNumber * stride + withinStrideOffset] : -INFINITY; // TODO: is this memory access pattern bad?
 
     for(int offset = maxoffset; offset > 0; offset >>= 1) {
@@ -119,7 +117,8 @@ namespace cuda_impl {
     const int blockWithinStride = blockIdx.x % blocksPerStride;
 
     // block 0 within stride handles elements [0, 2*blockDim.x), block 1 within stride handles elements [2*blockDim.x, 4*blockDim.x), ...
-    const int inputBase = strideIdx * stride + blockWithinStride * 2 * blockDim.x; 
+    assert((blockWithinStride > 0) && ((blockWithinStride << 1) > 0));
+    const int inputBase = strideIdx * stride + (blockWithinStride << 1) * blockDim.x; 
       
     extern __shared__ ftype smem[];
     const tensorSize_t localIdx0 = inputBase + tid;

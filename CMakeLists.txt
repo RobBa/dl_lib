@@ -36,9 +36,12 @@ if (CUDA)
   if(CMAKE_CUDA_COMPILER)
     add_definitions(-D__CUDA)
     enable_language(CUDA)
-    
+
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+    set(CUDA_BACKEND "Custom" CACHE STRING "CUDA compute backend (Custom | cuBLAS)")
+    set_property(CACHE CUDA_BACKEND PROPERTY STRINGS "Custom" "cuBLAS")
   else()
     message(WARNING "Could not find CUDA on system. Compiling without CUDA enabled")
   endif()

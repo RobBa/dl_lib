@@ -216,7 +216,7 @@ namespace cuda_impl {
       const int threadsPerBlock = maxThreadsPerBlock; // TODO: do that one better, this can result in gross imbalance; also for normal softmax
       const int blocksPerStride = (stride + threadsPerBlock - 1) / threadsPerBlock; 
 
-      softmaxBackwardKernelLargePass<<<blocksPerStride * nStrides, threadsPerBlock, 2 * threadsPerBlock * sizeof(ftype)>>>(
+      softmaxBackwardKernelLargePass<<<blocksPerStride * nStrides, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
                                        res.getData(), upstreamGrad.getData(), softmax.getData(), blocksPerStride, stride);
     }
 
