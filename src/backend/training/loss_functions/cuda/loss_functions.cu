@@ -24,6 +24,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
+#include <cuda/std/functional>
 
 using namespace std;
 
@@ -312,7 +313,7 @@ namespace cuda_impl {
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
       thrust::device_ptr<ftype> resPtr(res.getData());
-      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
+      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), cuda::std::plus<ftype>());
 
       mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
@@ -348,7 +349,7 @@ namespace cuda_impl {
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
       thrust::device_ptr<ftype> resPtr(res.getData());
-      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
+      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), cuda::std::plus<ftype>());
 
       mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
@@ -391,7 +392,7 @@ namespace cuda_impl {
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
       thrust::device_ptr<ftype> resPtr(res.getData());
-      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
+      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), cuda::std::plus<ftype>());
 
       mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
@@ -471,7 +472,7 @@ namespace cuda_impl {
 
     thrust::device_ptr<ftype> lossPtr(perStrideLoss);
     thrust::device_ptr<ftype> resPtr(res.getData());
-    resPtr[0] = thrust::reduce(lossPtr, lossPtr + nStrides, static_cast<ftype>(0), thrust::plus<ftype>())
+    resPtr[0] = thrust::reduce(lossPtr, lossPtr + nStrides, static_cast<ftype>(0), cuda::std::plus<ftype>())
                 / static_cast<ftype>(nStrides);
 
     mempool::tensorPool.giveback(perStrideLoss, Device::CUDA, nStrides);
@@ -504,7 +505,7 @@ namespace cuda_impl {
       // do a sum over the residual array
       thrust::device_ptr<ftype> tmpPtr(tmp);
       thrust::device_ptr<ftype> resPtr(res.getData());
-      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), thrust::plus<ftype>());
+      resPtr[0] = thrust::reduce(tmpPtr, tmpPtr + blocks, static_cast<ftype>(0.0f), cuda::std::plus<ftype>());
 
       mempool::tensorPool.giveback(tmp, Device::CUDA, blocks);
     }
