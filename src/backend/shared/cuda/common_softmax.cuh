@@ -111,13 +111,12 @@ namespace cuda_impl {
    * large to fit in one block.
    */
   static __global__ void findMaxKernelLargePass1(ftype* const partialMaxValues, const ftype* const input, 
-                                          const tensorSize_t stride, const int blocksPerStride) {
+                                          const tensorSize_t stride, const unsigned int blocksPerStride) {
     const int tid = threadIdx.x;
     const int strideIdx = blockIdx.x / blocksPerStride;
-    const int blockWithinStride = blockIdx.x % blocksPerStride;
+    const unsigned int blockWithinStride = blockIdx.x % blocksPerStride;
 
     // block 0 within stride handles elements [0, 2*blockDim.x), block 1 within stride handles elements [2*blockDim.x, 4*blockDim.x), ...
-    assert((blockWithinStride > 0) && ((blockWithinStride << 1) > 0));
     const int inputBase = strideIdx * stride + (blockWithinStride << 1) * blockDim.x; 
       
     extern __shared__ ftype smem[];
@@ -153,7 +152,7 @@ namespace cuda_impl {
    * @brief Self explanatory following findMaxKernelLargePass1. Assumption: All remaining cudaMax<ftype> values do fit into 
    * one single block now -> we launch one block per stride this time.
    */
-  static __global__ void findMaxKernelLargePass2(ftype* const maxValues, const ftype* const partialMaxValues, const tensorSize_t blocksPerStride) {
+  static __global__ void findMaxKernelLargePass2(ftype* const maxValues, const ftype* const partialMaxValues, const unsigned int blocksPerStride) {
     // Kernel built for one stride per block, blockDim.x is < stride
     assert(blockDim.x / blocksPerStride == 0); 
 

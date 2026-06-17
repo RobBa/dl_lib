@@ -153,13 +153,12 @@ namespace {
    */
   template<typename T>
   __global__ void stableSoftmaxLargePass1(ftype* const res, ftype* const partialSums, const ftype* const input, const ftype* const maxValues, 
-                                          const tensorSize_t stride, const int blocksPerStride) {
+                                          const tensorSize_t stride, const unsigned int blocksPerStride) {
     const int tid = threadIdx.x;
     const int strideIdx = blockIdx.x / blocksPerStride;
-    const int blockWithinStride = blockIdx.x % blocksPerStride;
+    const unsigned int blockWithinStride = blockIdx.x % blocksPerStride;
 
     // same logic as in findMaxKernelLargePass1
-    assert((blockWithinStride > 0) && ((blockWithinStride << 1) > 0));
     const int inputBase = strideIdx * stride + (blockWithinStride << 1) * blockDim.x;
     const ftype maxValue = maxValues[strideIdx];
     
@@ -207,9 +206,9 @@ namespace {
    * @brief Self explanatory after stableSoftmaxLargePass1. Continues the sum reduce, does not need to write further to res, since 
    * pass 1 already did that for us.
    */
-  __global__ void stableSoftmaxLargePass2(ftype* const sums, const ftype* const partialSums, const tensorSize_t blocksPerStride) {
+  __global__ void stableSoftmaxLargePass2(ftype* const sums, const ftype* const partialSums, const unsigned int blocksPerStride) {
     // Kernel built for one stride per block, blockDim.x is < stride
-    assert(blockDim.x / blocksPerStride == 0); 
+    assert(blockDim.x < blocksPerStride); 
 
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blocksPerStride + tid;
@@ -385,7 +384,7 @@ namespace cuda_impl {
       // each block handles up to 512 elements (2 * 256 threads)
       constexpr int maxThreadsPerBlock = 256;
       constexpr int elemsPerBlock = 2 * maxThreadsPerBlock; // constant folding
-      const int blocksPerStride = (stride + elemsPerBlock - 1) / elemsPerBlock;
+      const unsigned int blocksPerStride = (stride + elemsPerBlock - 1) / elemsPerBlock;
       assert_debug(blocksPerStride <= 512, "Stride too large for two-pass reduction");
       
       const int totalBlocks = nStrides * blocksPerStride;

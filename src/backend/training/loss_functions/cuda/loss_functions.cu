@@ -485,7 +485,8 @@ namespace cuda_impl {
     if(nSamples <= 256) {
       int threadsPerBlock = 1;
       while(threadsPerBlock < nSamples) threadsPerBlock <<= 1; // < 512 threads
-      
+      threadsPerBlock = max(32, threadsPerBlock);
+
       rmseKernelOneBlock<<<1, threadsPerBlock, threadsPerBlock * sizeof(ftype)>>>(res.getData(), y.getData(), yPred.getData(), y.getSize());
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());

@@ -53,9 +53,16 @@ namespace mempool_impl {
   MemoryPool<T>::~MemoryPool() noexcept {
     MemoryPool<T>::flush(Device::CPU);
 
-    #ifdef __CUDA
-    MemoryPool<T>::flush(Device::CUDA);
-    #endif
+#ifdef __CUDA
+  // We have no CUDA guarantees on cleanup, so driver might close before static 
+  // objects get cleaned up, hence we do not want to assert here. cudaFree() reverts 
+  // to no-op if CUDA API disconnected before MemoryPool gets destroyed.
+  for (auto& [n, ptrs] : freeListsCuda) {
+    for (auto* ptr : ptrs) {
+      cudaFree(ptr);
+    }
+  }
+#endif
   }
 
   /**
@@ -188,7 +195,7 @@ namespace mempool_impl {
           for (auto& [n, ptrs] : freeListsCuda) {
             for (auto* ptr : ptrs) {
               assert(ptr != nullptr);
-              ASSERT_DEVICE_PTR(ptr); 
+              ASSERT_DEVICE_PTR(ptr);
               cudaFree(ptr);
             }
           }
