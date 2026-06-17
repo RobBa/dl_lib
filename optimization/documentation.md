@@ -309,3 +309,38 @@ warning #3012-D: a volatile destination type for a compound assignment expressio
 
 CPU: 18.5311s
 *GPU*: 0.2058s
+
+# Step 8: Compare with cuBlas
+
+Matmul dominates, therefore we use cuBLas.
+
+Custom backend: 0.2058s
+cuBLAS: 0.1628s
+
+## Benchmarking
+
+### cuBLAS
+----------------------------------------------------------------------------------------
+Benchmark                              Time             CPU   Iterations UserCounters...
+----------------------------------------------------------------------------------------
+BM_MatMul_CUDA/64/64/64             12.3 us         12.3 us        57092 GFLOP/s=42.5191/s
+BM_MatMul_CUDA/256/256/256          23.4 us         23.4 us        31298 GFLOP/s=1.4355k/s
+BM_MatMul_CUDA/512/512/512          66.1 us         66.1 us        10415 GFLOP/s=4.05948k/s
+BM_MatMul_CUDA/1024/1024/1024        400 us          400 us         1696 GFLOP/s=5.3725k/s
+BM_MatMul_CUDA/64/784/256           19.6 us         19.6 us        34714 GFLOP/s=1.31137k/s
+BM_MatMul_CUDA/64/256/128           12.3 us         12.3 us        55978 GFLOP/s=340.338/s
+BM_MatMul_CUDA/64/128/10            12.3 us         12.3 us        56551 GFLOP/s=13.3226/s
+
+### Custom Kernel
+
+----------------------------------------------------------------------------------------
+Benchmark                              Time             CPU   Iterations UserCounters...
+----------------------------------------------------------------------------------------
+BM_MatMul_CUDA/64/64/64             7.51 us         7.50 us        93948 GFLOP/s=69.8632/s
+BM_MatMul_CUDA/256/256/256          56.9 us         56.9 us        12746 GFLOP/s=589.361/s
+BM_MatMul_CUDA/512/512/512           408 us          408 us         1713 GFLOP/s=657.182/s
+BM_MatMul_CUDA/1024/1024/1024       3293 us         3293 us          218 GFLOP/s=652.158/s
+BM_MatMul_CUDA/64/784/256           56.8 us         56.8 us        11748 GFLOP/s=452.521/s
+BM_MatMul_CUDA/64/256/128           15.3 us         15.3 us        45443 GFLOP/s=273.79/s
+BM_MatMul_CUDA/64/128/10            9.10 us         9.10 us        76300 GFLOP/s=18.0097/s
+
