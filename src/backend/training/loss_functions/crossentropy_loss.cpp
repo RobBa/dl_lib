@@ -45,7 +45,7 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
       const tensorSize_t stride = y->getDims()[-1];
       const tensorSize_t nSamples = y->getSize() / stride;
 
-      ftype loss = 0;
+      ftype loss = 0.0f;
       for (tensorSize_t i = 0; i < y->getSize(); i++) {
         loss += (*y)[i] * log(std::max((*ypred)[i], EPS_CROSSENTROPY));
       }

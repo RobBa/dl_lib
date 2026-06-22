@@ -112,7 +112,7 @@ namespace {
     const tensorSize_t maxIdx = tid + blockDim.x;
     const bool doPadding = maxIdx >= stride;
 
-    ftype expValOffset = 0;
+    ftype expValOffset = 0.0f;
     if(!doPadding) { // some threads will be idle here
       expValOffset = stableExp<ftype>(input[gid + blockDim.x], maxValue);
     }

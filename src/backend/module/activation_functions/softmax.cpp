@@ -56,7 +56,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
       }
 
       auto compute = [&res, &tmp, stride](tensorSize_t start){
-        ftype sum = 0;
+        ftype sum = 0.0f;
         for(tensorSize_t i = start; i < start + stride; i++){
           sum += tmp[i];
         }

@@ -42,8 +42,8 @@ TEST(ActivationTest, ReluInputNegative) {
 
   auto res = f(t1);
 
-  constexpr ftype zero = 0; 
-  for(size_t i=0; i<t1.getSize(); i++){
+  constexpr ftype zero = 0.0f; 
+  for(size_t i = 0; i < t1.getSize(); i++){
     ASSERT_DOUBLE_EQ(res[i], zero);
   }
 }

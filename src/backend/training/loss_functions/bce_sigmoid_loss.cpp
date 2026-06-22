@@ -43,12 +43,12 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
   switch(y->getDevice()) {
     case Device::CPU: {
       auto bceSimplified = [](ftype y, ftype logit){
-        constexpr ftype zero = 0;
+        constexpr ftype zero = 0.0f;
         return std::max(logit, zero) - logit * y + log(1 + exp(-std::abs(logit)));
       };
 
       const auto nBatches = y->getDims()[0];
-      ftype loss = 0;
+      ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nBatches; i++){
         loss += bceSimplified((*y)[i], (*logits)[i]);
       }

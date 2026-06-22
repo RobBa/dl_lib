@@ -46,7 +46,7 @@ TEST(CudaActivationTest, ReluInputNegative) {
   auto res = f(t1);
   res.setDevice(Device::CPU);
 
-  constexpr ftype zero = 0;
+  constexpr ftype zero = 0.0f;
   for(size_t i=0; i<t1.getSize(); i++){
     ASSERT_DOUBLE_EQ(res[i], zero);
   }
@@ -75,7 +75,7 @@ TEST(CudaActivationTest, LeakyReluForward) {
   res.setDevice(Device::CPU);
   t1.setDevice(Device::CPU);
 
-  for(size_t i=0; i<t1.getSize(); i++){
+  for(size_t i = 0; i < t1.getSize(); i++){
     ASSERT_NEAR(res[i], t1[i], 1e-5);
   }
 }

@@ -72,7 +72,7 @@ namespace {
     const int gid = blockIdx.x * stridesWidthPerBlock + strideOffset + withinStrideOffset;
     const bool isPadded = (withinStrideOffset >= stride) || (gid >= size); // padded threads only exists to align warps with strides
 
-    ftype yi = 0;
+    ftype yi = 0.0f;
     const int smemOffset = strideOffset + withinStrideOffset;
 
     extern __shared__ ftype smem[];
@@ -87,7 +87,7 @@ namespace {
       return;
     }
 
-    ftype grad = 0;
+    ftype grad = 0.0f;
     for(int j = 0; j < stride; j++) {
       // warp alignment -> smem-reads are broadcasted per warp -> no bank conflicts
       ftype yj = smem[strideOffset + j];
@@ -117,7 +117,7 @@ namespace {
     const bool isActive = i < stride;
     const ftype yi = isActive ? softmax[gid] : 0.0f;
 
-    ftype grad = 0;
+    ftype grad = 0.0f;
     for(int offset = 0; offset < stride; offset += blockDim.x) {
       // load into smem
       {

@@ -163,7 +163,7 @@ namespace {
     const tensorSize_t rightOffset = blockIdx.z * rightSize;
     const tensorSize_t resOffset = blockIdx.z * resSize;
 
-    ftype cij = 0;
+    ftype cij = 0.0f;
     for (tensorSize_t k = 0; k < K; k += blockDim.x) {
       // load tile into smem
       const tensorSize_t leftIdx = transposeLeft ? (k + threadIdx.x) * leftCols + i : i * leftCols + (k + threadIdx.x);
@@ -201,7 +201,7 @@ namespace {
 
     const int withinStrideIdx = gid % stride;
 
-    ftype sum = 0;
+    ftype sum = 0.0f;
     for(int k = 0; k < srcDimSize; k++) {
       sum += input[batchOffset + k * stride + withinStrideIdx];
     }

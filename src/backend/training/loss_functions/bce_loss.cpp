@@ -48,7 +48,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
       };
 
       const auto nBatches = y->getDims()[0];
-      ftype loss = 0;
+      ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nBatches; i++){
         loss += bce((*y)[i], (*ypred)[i]);
       }

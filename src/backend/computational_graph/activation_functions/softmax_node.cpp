@@ -39,7 +39,7 @@ vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
       tensorSize_t offset = 0;
       while(offset < yPred->getSize()) {
         for(tensorSize_t i = 0; i < stride; i++) {
-          ftype grad = 0;
+          ftype grad = 0.0f;
           const ftype yi = softmax->get(offset + i);
 
           for(tensorSize_t j = 0; j < stride; j++) {

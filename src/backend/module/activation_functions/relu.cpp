@@ -27,7 +27,7 @@ Tensor ReLu::operator()(const Tensor& t) const {
   switch(t.getDevice()) {
     case Device::CPU:
       for(tensorSize_t i=0; i<t.getSize(); i++){
-        constexpr ftype zero = 0;
+        constexpr ftype zero = 0.0f;
         if(t[i] < zero){
           res.set(zero, i);
         }

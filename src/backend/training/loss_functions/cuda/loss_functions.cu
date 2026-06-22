@@ -192,7 +192,7 @@ namespace {
     const bool inBounds0 = (tid < stride);
     const bool inBounds1 = (tid2 < stride);
 
-    constexpr ftype zero = 0;
+    constexpr ftype zero = 0.0f;
     ftype e0 = inBounds0 ? stableExp<T>(logits[strideBase + tid],  maxV) : zero;
     ftype e1 = inBounds1 ? stableExp<T>(logits[strideBase + tid2], maxV) : zero;
 

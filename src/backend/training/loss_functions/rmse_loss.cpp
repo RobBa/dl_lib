@@ -50,7 +50,7 @@ shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared
 
       const auto nSamples = y->getSize();
       
-      ftype loss = 0;
+      ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nSamples; i++){
         loss += diffPow((*y)[i], (*ypred)[i]);
       }
