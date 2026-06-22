@@ -13,12 +13,15 @@
 
 #include "shared/global_params.h"
 #include "data_modeling/device.h"
+#include "memory_layout.h"
 #include "utility/utils.h"
 
 #include <unordered_map>
 #include <vector>
 
 #include <utility>
+#include <cstdlib>
+
 #include <stdexcept>
 
 #ifdef __CUDA
@@ -90,11 +93,21 @@ namespace mempool_impl {
           return ptr;
         }
 
-        T* ptr = static_cast<T*>(std::malloc(n * sizeof(T)));
+        T* ptr = std::is_same_v<T, ftype> ? 
+                 static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, n * sizeof(T))) :
+                 static_cast<T*>(std::malloc(n * sizeof(T)));
+
         if(ptr == nullptr) {
           // ran out of memory, free up cached memory and retry
           flush(Device::CPU);
-          ptr = static_cast<T*>(std::malloc(n * sizeof(T)));
+
+          if constexpr (std::is_same_v<T, ftype>) {
+            ptr = static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, n * sizeof(T)));
+          }
+          else {
+            ptr = static_cast<T*>(std::malloc(n * sizeof(T)));
+          }
+
           if(ptr == nullptr) {
             std::__throw_bad_alloc();
           }

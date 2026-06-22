@@ -442,26 +442,30 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
       tensorSize_t rightOffset = 0;
       tensorSize_t resOffset = 0;
 
+    //#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+      //static bool avxWorks = true;
+
+    //#else
       while(leftOffset < left.getSize()){
         if(!(transposeLeft || transposeRight)) {
-          matMul2DCpu<false, false>(res, left, right, resOffset, leftOffset, rightOffset);
+          matMul2DCpuScalar<false, false>(res, left, right, resOffset, leftOffset, rightOffset);
         }
         else if(transposeLeft && transposeRight) [[unlikely]] {
-          matMul2DCpu<true, true>(res, left, right, resOffset, leftOffset, rightOffset);
+          matMul2DCpuScalar<true, true>(res, left, right, resOffset, leftOffset, rightOffset);
         }
         else if(transposeLeft) {
-          matMul2DCpu<true, false>(res, left, right, resOffset, leftOffset, rightOffset);
+          matMul2DCpuScalar<true, false>(res, left, right, resOffset, leftOffset, rightOffset);
         }
         else if(transposeRight) {
-          matMul2DCpu<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
+          matMul2DCpuScalar<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
         }
         
         leftOffset += leftSize;
         rightOffset += rightSize;
         resOffset += resSize;
       }
-
       break;
+    //#endif
     }
     case Device::CUDA:
       #ifdef __CUDA

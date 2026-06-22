@@ -104,8 +104,14 @@ private:
   std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
 
   static Tensor matMulImpl(const Tensor& left, const Tensor& right, bool transposeLeft, bool transposeRight);
+  
   template<bool transposeLeft, bool transposeRight>
-  static void matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right,
+  static void matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right,
+                          tensorSize_t resOffset, tensorSize_t leftOffset,
+                          tensorSize_t rightOffset);
+  
+                          template<bool transposeLeft, bool transposeRight>
+  static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
 
@@ -279,9 +285,120 @@ public:
 
 /**
  * @brief Name says it all. Inplace operation on res.
+ * 
+ * Transposition baked into kernel. Assumption is that kernels are not transposed, but we treat them 
+ * as if they were for increased speed without the actual transposition happening.
  */
 template<bool transposeLeft, bool transposeRight>
-void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
+  // physical, not logically as in the transposition
+  const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
+  const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
+  const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
+  const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
+
+  if constexpr (!transposeLeft && !transposeRight) {
+    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
+      const tensorSize_t leftOffset = i * nColsLeft;
+      const tensorSize_t resOffset = i * nColsRight;
+
+      // tensors not zero initialized, therefore need one dry run pre-filling
+      for(tensorSize_t j = 0; j < nColsRight; j++) {
+        res.values->data()[resOffset + j] = left[0] * right[j];
+      }
+
+      // compute the entire column of the left matrix
+      for (tensorSize_t k = 1; k < nRowsRight; k++) {
+        const tensorSize_t rightOffset = k * nColsRight;
+
+        const ftype leftVal = left[leftOffset + k];
+        for(tensorSize_t j = 0; j < nColsRight; j++) {
+          res.values->data()[resOffset + j] += leftVal * right[rightOffset + j];
+        }
+      }
+    }
+  }
+  else if constexpr (!transposeLeft && transposeRight) {
+    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
+      const tensorSize_t leftOffset = i * nColsLeft;
+      const tensorSize_t resOffset = i * nRowsRight;
+
+      for(tensorSize_t j = 0; j < nRowsRight; j++) {
+        const tensorSize_t rightOffset = j * nColsRight;
+
+        ftype sum = 0.0f;
+        for (tensorSize_t k = 0; k < nColsRight; k++) { 
+          sum += left[leftOffset + k] * right[rightOffset + k];
+        }
+
+        res.values->data()[resOffset + j] = sum;
+      }
+    }
+  }
+  else if constexpr (transposeLeft && !transposeRight) {
+    // initialize whole res matrix
+    for (tensorSize_t i = 0; i < nColsLeft; i++) {
+      const tensorSize_t resOffset = i * nColsRight;
+
+      // tensors not zero initialized, therefore need one dry run pre-filling
+      const ftype leftVal = left[i];
+      for(tensorSize_t j = 0; j < nColsRight; j++) {
+        res.values->data()[resOffset + j] = leftVal * right[j];
+      }
+    }
+
+    for(tensorSize_t k = 1; k < nRowsLeft; k++) {
+      const tensorSize_t leftOffset = k * nColsLeft;
+
+      for (tensorSize_t i = 0; i < nColsLeft; i++) {
+        const tensorSize_t resOffset = i * nColsRight;
+        const tensorSize_t rightOffset = i * nColsRight;
+
+        const ftype leftVal = left[leftOffset + i];
+        for(tensorSize_t j = 0; j < nColsRight; j++) {
+          res.values->data()[resOffset + j] = leftVal * right[rightOffset + j];
+        }
+      }
+    }
+  }
+  else {
+    // warm-up
+/*     for(tensorSize_t j = 0; j < nRowsRight; j++) {
+      const ftype rightVal = right[j];
+
+      for(tensorSize_t i = 0; i < nColsLeft; i++) {
+        const tensorSize_t resOffset = i * nRowsRight;
+        res[resOffset + j] = left[i] * rightVal;
+      }
+    }
+
+    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
+
+    } */
+
+    for (tensorSize_t i = 0; i < nColsLeft; i++) {
+      const tensorSize_t resOffset = i * nRowsRight;
+
+      for (tensorSize_t j = 0; j < nRowsRight; j++) {
+        const tensorSize_t rightOffset = j * nColsRight;
+
+        ftype sum = 0.0f;
+        for (tensorSize_t k = 0; k < nRowsLeft; k++) {
+          sum += left[k * nColsLeft + i] * right[rightOffset + k];
+        }
+
+        res.values->data()[resOffset + j] = sum;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Name says it all. Inplace operation on res.
+ */
+/* template<bool transposeLeft, bool transposeRight>
+void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
   
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
@@ -295,7 +412,7 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
 
   for (tensorSize_t i = 0; i < M; i++) {
     for (tensorSize_t j = 0; j < N; j++) {
-      ftype sum = 0;
+      ftype sum = 0.0f;
 
       for (tensorSize_t k = 0; k < K; k++) {
         tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
@@ -304,10 +421,20 @@ void Tensor::matMul2DCpu(Tensor& res, const Tensor& left, const Tensor& right, c
         tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
                                                : rightOffset + k * nColsRight + j;
 
+      #if defined(USE_AVX512)
+        
+      #elif defined(USE_AVX2)
+        
+      #elif defined(USE_AVX)
+        
+      #else
+        std::__throw_runtime_error("Not compiled with AVX enabled");
+      #endif
+
         sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
       }
 
       res.values->data()[resOffset + i * N + j] = sum;
     }
   }
-}
+} */
