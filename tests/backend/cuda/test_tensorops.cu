@@ -302,6 +302,57 @@ TEST(CudaTensorOpsTest, MatMulLarge) {
   }
 }
 
+TEST(CudaTensorOpsTest, MatMulTransposeLeft) {
+  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
+  auto B = TensorFunctions::Gaussian({4, 5}, 1.0);
+  auto resCpu = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/false);
+
+  auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
+  auto BGpu = B.createDeepCopy(); BGpu.setDevice(Device::CUDA);
+  auto resGpu = AGpu.matmul(BGpu, /*transposeLeft=*/true, /*transposeRight=*/false);
+  resGpu.setDevice(Device::CPU);
+
+  ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
+  for(int i = 0; i < resCpu.getDims().get(0); i++)
+    for(int j = 0; j < resCpu.getDims().get(1); j++)
+      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+        << "Mismatch at (" << i << ", " << j << ")";
+}
+
+TEST(CudaTensorOpsTest, MatMulTransposeRight) {
+  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
+  auto B = TensorFunctions::Gaussian({5, 3}, 1.0);
+  auto resCpu = A.matmul(B, /*transposeLeft=*/false, /*transposeRight=*/true);
+
+  auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
+  auto BGpu = B.createDeepCopy(); BGpu.setDevice(Device::CUDA);
+  auto resGpu = AGpu.matmul(BGpu, /*transposeLeft=*/false, /*transposeRight=*/true);
+  resGpu.setDevice(Device::CPU);
+
+  ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
+  for(int i = 0; i < resCpu.getDims().get(0); i++)
+    for(int j = 0; j < resCpu.getDims().get(1); j++)
+      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+        << "Mismatch at (" << i << ", " << j << ")";
+}
+
+TEST(CudaTensorOpsTest, MatMulTransposeBoth) {
+  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
+  auto B = TensorFunctions::Gaussian({5, 4}, 1.0);
+  auto resCpu = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/true);
+
+  auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
+  auto BGpu = B.createDeepCopy(); BGpu.setDevice(Device::CUDA);
+  auto resGpu = AGpu.matmul(BGpu, /*transposeLeft=*/true, /*transposeRight=*/true);
+  resGpu.setDevice(Device::CPU);
+
+  ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
+  for(int i = 0; i < resCpu.getDims().get(0); i++)
+    for(int j = 0; j < resCpu.getDims().get(1); j++)
+      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+        << "Mismatch at (" << i << ", " << j << ")";
+}
+
 TEST(CudaAutogradTest, MatMul) {
   constexpr int dimsize = 30;
 

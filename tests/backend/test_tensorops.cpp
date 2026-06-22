@@ -251,6 +251,60 @@ TEST(TensorOpsTest, MatMul2) {
   }
 }
 
+TEST(TensorOpsTest, MatMulTransposeLeft) {
+  auto fill = [](Tensor& t, ftype a, ftype b, ftype c, ftype d) {
+    t.set(a, {0,0}); t.set(b, {0,1});
+    t.set(c, {1,0}); t.set(d, {1,1});
+  };
+  Tensor A({2, 2}), B({2, 2}), expected({2, 2});
+  fill(A, 1, 2, 3, 4);
+  fill(B, 5, 6, 7, 8);
+  fill(expected, 26, 30, 38, 44);
+
+  auto res = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/false);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{2, 2}));
+  for(int i = 0; i < 2; i++)
+    for(int j = 0; j < 2; j++)
+      ASSERT_NEAR(res.get(i, j), expected.get(i, j), 1e-5);
+}
+
+TEST(TensorOpsTest, MatMulTransposeRight) {
+  auto fill = [](Tensor& t, ftype a, ftype b, ftype c, ftype d) {
+    t.set(a, {0,0}); t.set(b, {0,1});
+    t.set(c, {1,0}); t.set(d, {1,1});
+  };
+  Tensor A({2, 2}), B({2, 2}), expected({2, 2});
+  fill(A, 1, 2, 3, 4);
+  fill(B, 5, 6, 7, 8);
+  fill(expected, 17, 23, 39, 53);
+
+  auto res = A.matmul(B, /*transposeLeft=*/false, /*transposeRight=*/true);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{2, 2}));
+  for(int i = 0; i < 2; i++)
+    for(int j = 0; j < 2; j++)
+      ASSERT_NEAR(res.get(i, j), expected.get(i, j), 1e-5);
+}
+
+TEST(TensorOpsTest, MatMulTransposeBoth) {
+  auto fill = [](Tensor& t, ftype a, ftype b, ftype c, ftype d) {
+    t.set(a, {0,0}); t.set(b, {0,1});
+    t.set(c, {1,0}); t.set(d, {1,1});
+  };
+  Tensor A({2, 2}), B({2, 2}), expected({2, 2});
+  fill(A, 1, 2, 3, 4);
+  fill(B, 5, 6, 7, 8);
+  fill(expected, 23, 31, 34, 46);
+
+  auto res = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/true);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{2, 2}));
+  for(int i = 0; i < 2; i++)
+    for(int j = 0; j < 2; j++)
+      ASSERT_NEAR(res.get(i, j), expected.get(i, j), 1e-5);
+}
+
 TEST(AutogradTest, MatMul) {
   auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
   auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
