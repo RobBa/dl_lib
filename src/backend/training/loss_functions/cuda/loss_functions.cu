@@ -47,7 +47,7 @@ namespace {
   /**
    * @brief Forward BCE loss.
    */
-  __global__ void bceLossKernel(ftype* const res, const ftype* const y, const ftype* const ypred, tensorSize_t size) {
+  __global__ void bceLossKernel(ftype* __restrict__ const res, const ftype* __restrict__ const y, const ftype* __restrict__ const ypred, tensorSize_t size) {
     const int gid = blockDim.x * blockIdx.x + threadIdx.x;
     const int tid = threadIdx.x;
 
@@ -96,7 +96,7 @@ namespace {
    * 
    * @param logits Forward logits.
    */
-  __global__ void bceSigmoidLossKernel(ftype* const res, const ftype* const y, const ftype* const logits, tensorSize_t size) {
+  __global__ void bceSigmoidLossKernel(ftype* __restrict__ const res, const ftype* __restrict__ const y, const ftype* __restrict__ const logits, tensorSize_t size) {
     const int gid = blockDim.x * blockIdx.x + threadIdx.x;    
     const int tid = threadIdx.x;
 
@@ -144,7 +144,7 @@ namespace {
   /**
    * @brief Cross-entropy reduction over a full block. Covers two times blockDim.x.
    */
-  __global__ void crossEntropyLossKernelOneBlock(ftype* const res, const ftype* const y, const ftype* const yPred, const tensorSize_t size) {
+  __global__ void crossEntropyLossKernelOneBlock(ftype* __restrict__ const res, const ftype* __restrict__ const y, const ftype* __restrict__ const yPred, const tensorSize_t size) {
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
 
@@ -180,8 +180,8 @@ namespace {
    */
 
   template<typename T>
-  __global__ void crossEntropySoftmaxLossKernel(ftype* const perStrideLoss, const ftype* const y, const ftype* const logits,
-                                                const ftype* const maxValues, const tensorSize_t stride) {
+  __global__ void crossEntropySoftmaxLossKernel(ftype* __restrict__ const perStrideLoss, const ftype* __restrict__ const y, const ftype* __restrict__ const logits,
+                                                const ftype* __restrict__ const maxValues, const tensorSize_t stride) {
     const int tid  = threadIdx.x;
     const int tid2 = tid + blockDim.x;
     const int strideBase = blockIdx.x * stride;
@@ -250,7 +250,7 @@ namespace {
   /**
    * @brief RMSE forward loss.
    */
-  __global__ void rmseKernelOneBlock(ftype* const res, const ftype* const y, const ftype* const yPred, const tensorSize_t size) {
+  __global__ void rmseKernelOneBlock(ftype* __restrict__ const res, const ftype* __restrict__ const y, const ftype* __restrict__ const yPred, const tensorSize_t size) {
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
 
@@ -281,7 +281,7 @@ namespace {
   }
 
   template<typename T>
-  __global__ void normalizeRmse(ftype* const val, ftype divisor) {
+  __global__ void normalizeRmse(ftype* __restrict__ const val, ftype divisor) {
     const ftype v = val[0];
     if constexpr (std::is_same_v<T, float>) {
       val[0] = sqrtf(v / divisor);

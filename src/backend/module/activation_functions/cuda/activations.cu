@@ -32,7 +32,7 @@ namespace {
   /**
    * @brief Kernel for forward ReLU function.
    */
-  __global__ void reluKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
+  __global__ void reluKernel(ftype* __restrict__ const res, const ftype* __restrict__ const input, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -43,7 +43,7 @@ namespace {
   /**
    * @brief Kernel for forward Leaky-ReLU function.
    */
-  __global__ void leakyReluKernel(ftype* const res, const ftype* const input, const ftype eps, const tensorSize_t size) {
+  __global__ void leakyReluKernel(ftype* __restrict__ const res, const ftype* __restrict__ const input, const ftype eps, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -54,7 +54,7 @@ namespace {
   /**
    * @brief Kernel for forward Sigmoid function.
    */
-  __global__ void sigmoidKernel(ftype* const res, const ftype* const input, const tensorSize_t size) {
+  __global__ void sigmoidKernel(ftype* __restrict__ const res, const ftype* __restrict__ const input, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -67,7 +67,7 @@ namespace {
    * Numerical stability comes from computing the maximum values per row, see findMaxKernelOneWarp and argument maxValues.
    */
   template<int maxoffset>
-  __global__ void stableSoftmaxKernelOneWarp(ftype* const res, const ftype* const input, const ftype* const maxValues,
+  __global__ void stableSoftmaxKernelOneWarp(ftype* __restrict__ const res, const ftype* __restrict__ const input, const ftype* __restrict__ const maxValues,
                                              const tensorSize_t stride, const tensorSize_t size) {
 
     const int strideNumber = blockIdx.x * blockDim.y + threadIdx.y; // same as warp number
@@ -97,7 +97,7 @@ namespace {
    * 
    * In this initial version we assume one kernel per stride, to make matters simple to understand.
    */
-  __global__ void stableSoftmaxKernelOneBlock(ftype* const res, const ftype* const input, const ftype* const maxValues, const tensorSize_t stride) {
+  __global__ void stableSoftmaxKernelOneBlock(ftype* __restrict__ const res, const ftype* __restrict__ const input, const ftype* __restrict__ const maxValues, const tensorSize_t stride) {
     // Kernel built for one stride per block, blockDim.x is < stride
     assert(blockDim.x < stride); 
 
@@ -152,7 +152,7 @@ namespace {
    * exp values back to res to prepare for the division.
    */
   template<typename T>
-  __global__ void stableSoftmaxLargePass1(ftype* const res, ftype* const partialSums, const ftype* const input, const ftype* const maxValues, 
+  __global__ void stableSoftmaxLargePass1(ftype* __restrict__ const res, ftype* __restrict__ const partialSums, const ftype* __restrict__ const input, const ftype* __restrict__ const maxValues,
                                           const tensorSize_t stride, const unsigned int blocksPerStride) {
     const int tid = threadIdx.x;
     const int strideIdx = blockIdx.x / blocksPerStride;
@@ -206,7 +206,7 @@ namespace {
    * @brief Self explanatory after stableSoftmaxLargePass1. Continues the sum reduce, does not need to write further to res, since 
    * pass 1 already did that for us.
    */
-  __global__ void stableSoftmaxLargePass2(ftype* const sums, const ftype* const partialSums, const unsigned int blocksPerStride) {
+  __global__ void stableSoftmaxLargePass2(ftype* __restrict__ const sums, const ftype* __restrict__ const partialSums, const unsigned int blocksPerStride) {
     // Kernel built for one stride per block, blockDim.x is < stride
     assert(blockDim.x < blocksPerStride); 
 
@@ -247,7 +247,7 @@ namespace {
   /**
    * @brief Simple kernel doing the division of softmax in the case of a large stride.
    */
-  __global__ void divideKernel(ftype* const res, const ftype* const sums, const tensorSize_t stride, const tensorSize_t size) {
+  __global__ void divideKernel(ftype* __restrict__ const res, const ftype* __restrict__ const sums, const tensorSize_t stride, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;

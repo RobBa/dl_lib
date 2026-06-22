@@ -30,7 +30,7 @@ namespace {
   /**
    * @brief Does what you think it does.
    */
-  __global__ void bceBackwardKernel(ftype* const res, const ftype* const yPred, const ftype* const yTrue, const ftype bSize, const tensorSize_t size) {
+  __global__ void bceBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const yPred, const ftype* __restrict__ const yTrue, const ftype bSize, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -49,7 +49,7 @@ namespace {
    * @param bSize Batch-size.
    * @param sigmoids Sigmoids from forward pass.
    */
-  __global__ void bceSigmoidBackwardKernel(ftype* const res, const ftype* const logits, const ftype* const yTrue, const ftype bSize, const tensorSize_t size) {
+  __global__ void bceSigmoidBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const logits, const ftype* __restrict__ const yTrue, const ftype bSize, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -67,7 +67,7 @@ namespace {
    * 
    * @param bSize The batch-size.
    */
-  __global__ void crossEntropyBackwardKernel(ftype* const res, const ftype* const yPred, const ftype* const yTrue, const ftype nSamples, const tensorSize_t size) {
+  __global__ void crossEntropyBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const yPred, const ftype* __restrict__ const yTrue, const ftype nSamples, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -80,7 +80,7 @@ namespace {
   /**
    * @brief Does what you think it does.
    */
-  __global__ void crossEntropySoftmaxBackwardKernel(ftype* const res, const ftype* const softmaxedLogits, const ftype* const yTrue, 
+  __global__ void crossEntropySoftmaxBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const softmaxedLogits, const ftype* __restrict__ const yTrue,
                                                     const ftype nSamples, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
@@ -93,7 +93,7 @@ namespace {
   /**
    * @brief RMSE backward kernel. bSize = batch-size, rmse = the rmse from the forward pass.
    */
-  __global__ void rmseBackwardKernel(ftype* const res, const ftype* const yPred, const ftype* const yTrue,
+  __global__ void rmseBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const yPred, const ftype* __restrict__ const yTrue,
                                      const ftype rmse, const ftype bSize, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {

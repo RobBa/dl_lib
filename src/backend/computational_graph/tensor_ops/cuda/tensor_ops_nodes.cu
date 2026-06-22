@@ -19,7 +19,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 namespace {
-  __global__ void scalarMulKernel(ftype* const res, const ftype* const upstreamGrad, const ftype factor, const tensorSize_t size) {
+  __global__ void scalarMulKernel(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype factor, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) return;
     res[gid] = upstreamGrad[gid] * factor;

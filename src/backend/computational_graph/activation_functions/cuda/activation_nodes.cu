@@ -22,7 +22,7 @@ namespace {
   /**
    * @brief Relu backward kernel.
    */
-  __global__ void reluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const tensorSize_t size) {
+  __global__ void reluBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype* __restrict__ const parent, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -34,7 +34,7 @@ namespace {
   /**
    * @brief Leaky relu backward kernel.
    */
-  __global__ void leakyReluBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const parent, const ftype eps, const tensorSize_t size) {
+  __global__ void leakyReluBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype* __restrict__ const parent, const ftype eps, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -46,7 +46,7 @@ namespace {
   /**
    * @brief Sigmoid backward kernel, optimized by using the forward sigmoid.
    */
-  __global__ void sigmoidBackwardKernel(ftype* const res, const ftype* const upstreamGrad, const ftype* const sigmoid, const tensorSize_t size) {
+  __global__ void sigmoidBackwardKernel(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype* __restrict__ const sigmoid, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -62,7 +62,7 @@ namespace {
    * 
    * stridesWidthPerBlock is an awkward name. It is the product of number of strides per block (times) stride. We pre-compute it on host. 
    */
-  __global__ void softmaxBackwardKernelOneBlock(ftype* const res, const ftype* const upstreamGrad, const ftype* const softmax,  
+  __global__ void softmaxBackwardKernelOneBlock(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype* __restrict__ const softmax,
                                                 const tensorSize_t stride, const int stridesWidthPerBlock, const int threadsPerStride, tensorSize_t size) {
     const int tid = threadIdx.x;
 
@@ -103,7 +103,7 @@ namespace {
   /**
    * @brief Large softmax pass. Because the stride now does not fit into one block anymore we do a grid-stride loop.
    */
-  __global__ void softmaxBackwardKernelLargePass(ftype* const res, const ftype* const upstreamGrad, const ftype* const softmax, const int blocksPerStride, const tensorSize_t stride) {    
+  __global__ void softmaxBackwardKernelLargePass(ftype* __restrict__ const res, const ftype* __restrict__ const upstreamGrad, const ftype* __restrict__ const softmax, const int blocksPerStride, const tensorSize_t stride) {    
     const int strideNumber = blockIdx.x / blocksPerStride;
     const int strideOffset = strideNumber * stride;
     const int i = (blockIdx.x % blocksPerStride) * blockDim.x + threadIdx.x;

@@ -41,7 +41,7 @@ namespace {
    * @param idx The index to write into.
    */
   template<bool useBlockIdx>
-  __global__ void powerTwoSumKernel(ftype* const output, const ftype* const grads, const ftype maxNorm, const int idx, const tensorSize_t size) {
+  __global__ void powerTwoSumKernel(ftype* __restrict__ const output, const ftype* __restrict__ const grads, const ftype maxNorm, const int idx, const tensorSize_t size) {
     const int tid = threadIdx.x;
     const int gid = blockIdx.x * blockDim.x + tid;
     const int gridOffset = gridDim.x * blockDim.x;
@@ -85,7 +85,7 @@ namespace {
    * Writes to output[0], which is also input.
    */
   template<typename T>
-  __global__ void sumReduceAndSqrtKernel(ftype* const output, const ftype* const input, const tensorSize_t inputSize) {
+  __global__ void sumReduceAndSqrtKernel(ftype* __restrict__ const output, const ftype* __restrict__ const input, const tensorSize_t inputSize) {
     assert(gridDim.x == 1);
 
     const int tid = threadIdx.x;
@@ -129,7 +129,7 @@ namespace {
   /**
    * @brief Clip the gradients with scale = maxNorm / (totalNorm + EPS_OPTIM_GRADCLIP) when totalNorm > maxNorm.
    */
-  __global__ void clipGradientsKernel(ftype* const grads, const ftype* const totalNorm, const ftype maxNorm, const tensorSize_t size) {    
+  __global__ void clipGradientsKernel(ftype* __restrict__ const grads, const ftype* __restrict__ const totalNorm, const ftype maxNorm, const tensorSize_t size) {    
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -141,7 +141,7 @@ namespace {
     grads[gid] *= scale;
   }
   
-  __global__ void stepSgdKernel(ftype* const params, const ftype* const grads, const ftype lr, const tensorSize_t size) {
+  __global__ void stepSgdKernel(ftype* __restrict__ const params, const ftype* __restrict__ const grads, const ftype lr, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;
@@ -150,7 +150,7 @@ namespace {
     params[gid] = params[gid] - lr * grads[gid];
   }
 
-  __global__ void stepRmsPropKernel(ftype* const tensor, ftype* const v, const ftype* const grads, const ftype lr, const ftype decay, const tensorSize_t size) {
+  __global__ void stepRmsPropKernel(ftype* __restrict__ const tensor, ftype* __restrict__ const v, const ftype* __restrict__ const grads, const ftype lr, const ftype decay, const tensorSize_t size) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
       return;

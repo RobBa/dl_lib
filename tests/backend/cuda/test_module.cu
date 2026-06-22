@@ -34,7 +34,7 @@ TEST(CudaActivationTest, ReluForward) {
   res.setDevice(Device::CPU);
   t1.setDevice(Device::CPU);
 
-  for(size_t i=0; i<t1.getSize(); i++){
+  for(size_t i = 0; i < t1.getSize(); i++) {
     ASSERT_NEAR(res[i], t1[i], 1e-5);
   }
 }
@@ -47,7 +47,7 @@ TEST(CudaActivationTest, ReluInputNegative) {
   res.setDevice(Device::CPU);
 
   constexpr ftype zero = 0.0f;
-  for(size_t i=0; i<t1.getSize(); i++){
+  for(size_t i = 0; i < t1.getSize(); i++) {
     ASSERT_DOUBLE_EQ(res[i], zero);
   }
 }
@@ -75,7 +75,7 @@ TEST(CudaActivationTest, LeakyReluForward) {
   res.setDevice(Device::CPU);
   t1.setDevice(Device::CPU);
 
-  for(size_t i = 0; i < t1.getSize(); i++){
+  for(size_t i = 0; i < t1.getSize(); i++) {
     ASSERT_NEAR(res[i], t1[i], 1e-5);
   }
 }
@@ -90,7 +90,7 @@ TEST(CudaActivationTest, LeakyReluInputNegative) {
 
   res.setDevice(Device::CPU);
 
-  for(size_t i=0; i<t1.getSize(); i++){
+  for(size_t i = 0; i < t1.getSize(); i++) {
     ASSERT_NEAR(res[i], factor * eps, 1e-5);
   }
 }

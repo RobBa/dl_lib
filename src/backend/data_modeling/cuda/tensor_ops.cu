@@ -34,7 +34,7 @@ namespace {
   /**
    * @brief Kernel for simple elementwise addition.
    */
-  __global__ void elementwiseaddKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
+  __global__ void elementwiseaddKernel(ftype* __restrict__ const res, const ftype* __restrict__ const left, const ftype* __restrict__ const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -45,7 +45,7 @@ namespace {
   /**
    * @brief Kernel for broadcasted addition, e.g. when adding a bias to a matrix.
    */
-  __global__ void broadcastaddKernel(ftype* const res, const ftype* const matrix, const ftype* const vec, 
+  __global__ void broadcastaddKernel(ftype* __restrict__ const res, const ftype* __restrict__ const matrix, const ftype* __restrict__ const vec,
                                      const tensorSize_t vectorSize, const tensorSize_t matrixSize) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid>=matrixSize)
@@ -58,7 +58,7 @@ namespace {
   /**
    * @brief Kernel for simple elementwise multiplication.
    */
-  __global__ void elementwisemulKernel(ftype* const res, const ftype* const left, const ftype* const right, const tensorSize_t size) {
+  __global__ void elementwisemulKernel(ftype* __restrict__ const res, const ftype* __restrict__ const left, const ftype* __restrict__ const right, const tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -69,7 +69,7 @@ namespace {
   /**
    * @brief Kernel for scalar addition.
    */
-  __global__ void scalaraddKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
+  __global__ void scalaraddKernel(ftype* __restrict__ const res, const ftype* __restrict__ const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -80,7 +80,7 @@ namespace {
   /**
    * @brief Kernel for scalar multiplication.
    */
-  __global__ void scalarmulKernel(ftype* const res, const ftype* const left, ftype scalar, tensorSize_t size) {
+  __global__ void scalarmulKernel(ftype* __restrict__ const res, const ftype* __restrict__ const left, ftype scalar, tensorSize_t size) {
     int gid = blockDim.x * blockIdx.x + threadIdx.x;
     if(gid >= size)
       return;
@@ -143,8 +143,8 @@ namespace {
    * @param resSize Size of the resulting 2D matrix.
    */
   template<int tileSize, bool transposeLeft, bool transposeRight>
-  __global__ void matMul2DKernel(ftype* const res, 
-                                 const ftype* const left, const ftype* const right,
+  __global__ void matMul2DKernel(ftype* __restrict__ const res,
+                                 const ftype* __restrict__ const left, const ftype* __restrict__ const right,
                                  const tensorDim_t leftRows, const tensorDim_t leftCols, 
                                  const tensorDim_t rightRows, const tensorDim_t rightCols,
                                  const tensorDim_t resRows, const tensorDim_t resCols,
@@ -189,7 +189,7 @@ namespace {
   /**
    * @brief Strides in an outer size larger than one block. We use one thread per stride.
    */
-  __global__ void sumOverDimsKernel(ftype* const res, const ftype* const input, tensorSize_t stride,
+  __global__ void sumOverDimsKernel(ftype* __restrict__ const res, const ftype* __restrict__ const input, tensorSize_t stride,
                                     const tensorDim_t srcDimSize, const tensorSize_t size) {
     const tensorSize_t gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= size) {
@@ -217,8 +217,8 @@ namespace {
    * @param ndim Number of dimension of both src and dst.
    * @param size Total size of both src and dst.
    */
-  __global__ void createContiguousCopyKernel(ftype* const dst, const ftype* const src, const tensorSize_t* const strides,
-                                             const tensorDim_t* const dims, const int ndims, const tensorSize_t size)
+  __global__ void createContiguousCopyKernel(ftype* __restrict__ const dst, const ftype* __restrict__ const src, const tensorSize_t* __restrict__ const strides,
+                                             const tensorDim_t* __restrict__ const dims, const int ndims, const tensorSize_t size)
   {
     const tensorSize_t flatIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if(flatIdx >= size) 
@@ -240,7 +240,7 @@ namespace {
    * 
    * @param idx The indices of the dimension in src.
    */
-  __global__ void getSliceKernel(ftype* res, const ftype* const src, const tensorDim_t* const idx,
+  __global__ void getSliceKernel(ftype* __restrict__ res, const ftype* __restrict__ const src, const tensorDim_t* __restrict__ const idx,
                                  const tensorSize_t sizeOfDim, const tensorSize_t resSize) {
     const int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= resSize) {
