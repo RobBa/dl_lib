@@ -297,7 +297,7 @@ Replace instructions like ```right[rightOffset + j];``` with accesses to the arr
 Before: 29.3046s
 After: 15.1904s
 
-## Step 2-3: 
+## Step 2-3: More inlining of class methods and other small functions
 
 ### Analysis
 
@@ -338,4 +338,11 @@ BM_MatMul_CPU/64/128/10            42.1 us         42.0 us        16639 GFLOP/s=
    17.87 :   6ca67:  je     6cac8 <Tensor::tensorValues_t::operator[](unsigned int) const+0x88> // tensor.cpp:216
 ```
 
-We still see some functions that are being called. To reduce this noise from future profiling we go through the main classes tensor and dimension and inline what can be inlined.
+We still see some functions that are being called. To reduce this noise from future profiling we go through the main classes tensor and dimension and inline what can be inlined. Changes made here can be found in git commit with tag b320be5b15f0af3791c3e7e89557e1e03e039e30
+
+### Times after step 2-3
+
+Before: 15.1904s
+After: 14.5321s
+
+## Step 2-4: 
