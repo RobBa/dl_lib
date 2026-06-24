@@ -303,9 +303,12 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       const tensorSize_t leftOffset = i * nColsLeft;
       const tensorSize_t resOffset = i * nColsRight;
 
-      // tensors not zero initialized, therefore need one dry run pre-filling
-      for(tensorSize_t j = 0; j < nColsRight; j++) {
-        res.values->data()[resOffset + j] = left[0] * right[j];
+      {
+        // tensors not zero initialized, therefore need one dry run pre-filling
+        const auto leftVal = left[leftOffset];
+        for(tensorSize_t j = 0; j < nColsRight; j++) {
+          res.values->data()[resOffset + j] = leftVal * right[j];
+        }
       }
 
       // compute the entire column of the left matrix
@@ -339,7 +342,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   else if constexpr (transposeLeft && !transposeRight) {
     // initialize whole res matrix
     for (tensorSize_t i = 0; i < nColsLeft; i++) {
-      const tensorSize_t resOffset = i * nColsRight;
+      const tensorSize_t resOffset = i * nColsRight; // start of row
 
       // tensors not zero initialized, therefore need one dry run pre-filling
       const ftype leftVal = left[i];
@@ -350,33 +353,19 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
     for(tensorSize_t k = 1; k < nRowsLeft; k++) {
       const tensorSize_t leftOffset = k * nColsLeft;
+      const tensorSize_t rightOffset = k * nColsRight;
 
       for (tensorSize_t i = 0; i < nColsLeft; i++) {
         const tensorSize_t resOffset = i * nColsRight;
-        const tensorSize_t rightOffset = i * nColsRight;
 
         const ftype leftVal = left[leftOffset + i];
         for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] = leftVal * right[rightOffset + j];
+          res.values->data()[resOffset + j] += leftVal * right[rightOffset + j];
         }
       }
     }
   }
   else {
-    // warm-up
-/*     for(tensorSize_t j = 0; j < nRowsRight; j++) {
-      const ftype rightVal = right[j];
-
-      for(tensorSize_t i = 0; i < nColsLeft; i++) {
-        const tensorSize_t resOffset = i * nRowsRight;
-        res[resOffset + j] = left[i] * rightVal;
-      }
-    }
-
-    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
-
-    } */
-
     for (tensorSize_t i = 0; i < nColsLeft; i++) {
       const tensorSize_t resOffset = i * nRowsRight;
 
