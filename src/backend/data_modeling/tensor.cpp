@@ -129,11 +129,13 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
 void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low, 
                                         tensorSize_t high, tensorSize_t targetOffset) const {
   assert(target.size >= high - low);
-  if(high<low){
+#ifndef NDEBUG
+  if(high < low){
     __throw_invalid_argument(
       std::format("high argument should be higher than low, but received {0} and {1}", high, low).c_str()
     );
   }
+#endif
 
   switch(device){
     case Device::CPU:
@@ -186,28 +188,6 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
     device = d;
   #endif
 }
-
-
-Device Tensor::tensorValues_t::getDevice() const noexcept {
-  return device;
-}
-
-void Tensor::tensorValues_t::setDefaultDevice(const Device d) noexcept {
-  defaultDevice = d;
-}
-            
-Device Tensor::tensorValues_t::getDefaultDevice() noexcept {
-  return defaultDevice;
-}
-
-tensorSize_t Tensor::tensorValues_t::getSize() const noexcept {
-  return size;
-}
-
-Tensor::tensorValues_t::operator bool() const noexcept {
-  return values != nullptr;
-}
-
 
 ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
 #ifdef NDEBUG

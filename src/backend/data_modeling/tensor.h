@@ -75,25 +75,28 @@ private:
     ftype* data() noexcept { return values; }
     const ftype* data() const noexcept { return values; }
     
-    explicit operator bool() const noexcept;
+    explicit operator bool() const noexcept { return values != nullptr; }
 
     ftype operator[](tensorSize_t idx) const;
     void set(ftype v, tensorSize_t idx);
     ftype get(tensorSize_t idx);
 
-    tensorSize_t getSize() const noexcept;
+    tensorSize_t getSize() const noexcept { return size; }
 
     void resize(tensorSize_t size);
 
     void setDevice(Device d) noexcept;
     Device getDevice() const noexcept;
 
+    Device Tensor::tensorValues_t::getDevice() const noexcept {
+      return device;
+    }
 
     void copyValues(tensorValues_t& target) const;
     void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
 
-    static void setDefaultDevice(Device d) noexcept;
-    static Device getDefaultDevice() noexcept;
+    static void setDefaultDevice(Device d) noexcept { defaultDevice = d; }
+    static Device getDefaultDevice() noexcept { return defaultDevice; }
   };
 
   mutable Dimension dims;
