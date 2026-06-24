@@ -18,7 +18,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-#set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=raptorlake")
+#set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 option(CUDA "Enable CUDA execution for some faster data structures" ON)

@@ -210,8 +210,10 @@ Tensor::tensorValues_t::operator bool() const noexcept {
 
 
 ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
+#ifdef NDEBUG
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
+#endif
 
   switch(device){
     case Device::CPU:
@@ -861,10 +863,6 @@ void Tensor::setDevice(const Device d) noexcept {
   }
 }
 
-Device Tensor::getDevice() const noexcept {
-  return values->getDevice();
-}
-
 /**
  * @brief Gets a slice of this tensor.
  * 
@@ -884,7 +882,7 @@ Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
 
   const tensorSize_t stride = dims.getStride(0);
   auto resDims = dims.toVector();
-  resDims[0] = high-low;
+  resDims[0] = high - low;
   Tensor res(std::move(resDims), values->getDevice(), false);
   values->copyValues(*res.values, low * stride, high * stride, 0);
   return res;
@@ -988,67 +986,4 @@ tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const
     res += idx[i] * dims.getStride(i);
   }
   return res;
-}
-
-/**
- * @brief No explanation needed.
- */
-ftype Tensor::get(const std::vector<tensorDim_t>& idx) const {
-  makeContiguous();
-  return (*values)[computeLinearIdx(idx, dims)]; 
-}
-
-/**
- * @brief Special getter, indexes the contained underlying array linearly.
- * Can lead to unexpected results in multidimensional tensors.
- */
-ftype Tensor::get(tensorSize_t idx) const {
-  return (*this)[idx];
-}
-
-/**
- * @brief For convenience.
- */
-ftype Tensor::operator[](tensorSize_t idx) const {
-  return (*values)[idx];
-}
-
-ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1) const {
-  return get({idx0, idx1});
-}
-
-ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const {
-  return get({idx0, idx1, idx2});
-}
-
-ftype Tensor::get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const {
-  return get({idx0, idx1, idx2, idx3});
-}
-
-/**
- * @brief No explanation needed.
- */
-void Tensor::set(ftype item, const std::vector<tensorDim_t>& idx) {
-  makeContiguous();
-  values->set(item, computeLinearIdx(idx, dims));
-}
-
-/**
- * @brief Special setter, indexes the contained underlying array linearly.
- * Can lead to unexpected results in multidimensional tensors.
- */
-void Tensor::set(ftype item, tensorDim_t idx) { 
-  values->set(item, idx);
-}
-
-void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { 
-  set(item, {idx0, idx1});
-}
-
-void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { 
-  set(item, {idx0, idx1, idx2});
-}
-
-void Tensor::set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { 
-  set(item, {idx0, idx1, idx2, idx3});
 }

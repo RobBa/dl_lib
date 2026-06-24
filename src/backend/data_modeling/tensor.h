@@ -236,25 +236,40 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
   // for convenience we provide some simple getters
-  ftype get(tensorSize_t idx) const;
-  ftype get(tensorDim_t idx0, tensorDim_t idx1) const;
-  ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const;
-  ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const;
+  ftype get(const std::vector<tensorDim_t>& idx) const {
+    makeContiguous();
+    return (*values)[computeLinearIdx(idx, dims)];
+  }
+  ftype get(tensorDim_t idx0, tensorDim_t idx1) const { return get({idx0, idx1}); }
+  ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) const { return get({idx0, idx1, idx2}); }
+  ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const { return get({idx0, idx1, idx2, idx3}); }
 
   // non-const version of operator[] does not exist because of CUDA
-  ftype operator[](tensorSize_t idx) const;
+  ftype operator[](tensorSize_t idx) const { return (*values)[idx]; }
 
-  ftype get(const std::vector<tensorDim_t>& idx) const;
+  /**
+   * @brief Special getter, indexes the contained underlying array linearly.
+   * Can lead to unexpected results in multidimensional tensors.
+   */
+  ftype get(tensorSize_t idx) const { return (*this)[idx]; }
 
   // for convenience we provide some simple setters
-  void set(ftype item, tensorDim_t idx);
-  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1);
-  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2);
-  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3);
-  void set(ftype item, const std::vector<tensorDim_t>& idx);
+  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { set(item, {idx0, idx1}); }
+  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { set(item, {idx0, idx1, idx2}); }
+  void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { set(item, {idx0, idx1, idx2, idx3}); }
+  void set(ftype item, const std::vector<tensorDim_t>& idx) {
+    makeContiguous();
+    values->set(item, computeLinearIdx(idx, dims));
+  }
+
+  /**
+   * @brief Special setter, indexes the contained underlying array linearly.
+   * Can lead to unexpected results in multidimensional tensors.
+   */
+  void set(ftype item, tensorDim_t idx) { values->set(item, idx); }
 
   void setDevice(const Device d) noexcept;
-  Device getDevice() const noexcept;
+  Device getDevice() const noexcept { return values->getDevice(); }
 
   bool getRequiresGrad() const noexcept { return requiresGrad; }
   void setRequiresGrad(const bool requiresGrad) noexcept { this->requiresGrad=requiresGrad; }
@@ -305,9 +320,9 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
       {
         // tensors not zero initialized, therefore need one dry run pre-filling
-        const auto leftVal = left[leftOffset];
+        const auto leftVal = left.values->data()[leftOffset];
         for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] = leftVal * right[j];
+          res.values->data()[resOffset + j] = leftVal * right.values->data()[j];
         }
       }
 
@@ -315,14 +330,37 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       for (tensorSize_t k = 1; k < nRowsRight; k++) {
         const tensorSize_t rightOffset = k * nColsRight;
 
-        const ftype leftVal = left[leftOffset + k];
+        const ftype leftVal = left.values->data()[leftOffset + k];
         for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] += leftVal * right[rightOffset + j];
+          res.values->data()[resOffset + j] += leftVal * right.values->data()[rightOffset + j];
         }
       }
     }
   }
-  else if constexpr (!transposeLeft && transposeRight) {
+  else {
+    const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
+    const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
+    const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
+
+    for (tensorSize_t i = 0; i < M; i++) {
+      for (tensorSize_t j = 0; j < N; j++) {
+        ftype sum = 0;
+
+        for (tensorSize_t k = 0; k < K; k++) {
+          tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
+                                              : leftOffset + i * nColsLeft + k;
+          
+          tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
+                                                : rightOffset + k * nColsRight + j;
+
+          sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
+        }
+
+        res.values->data()[resOffset + i * N + j] = sum;
+      }
+    }
+  }
+  /* else if constexpr (!transposeLeft && transposeRight) {
     for (tensorSize_t i = 0; i < nRowsLeft; i++) {
       const tensorSize_t leftOffset = i * nColsLeft;
       const tensorSize_t resOffset = i * nRowsRight;
@@ -380,7 +418,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
         res.values->data()[resOffset + j] = sum;
       }
     }
-  }
+  } */
 }
 
 /**
