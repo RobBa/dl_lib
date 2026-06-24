@@ -21,11 +21,6 @@
 using namespace std;
 using namespace cgraph;
 
-vector<shared_ptr<Tensor>> cgraph::ScalarAddNode::backward(const Tensor& upstreamGrad) {
-  assert(!upstreamGrad.getRequiresGrad());
-  return {make_shared<Tensor>(upstreamGrad.createDeepCopy())};
-}
-
 vector<shared_ptr<Tensor>> cgraph::ScalarMulNode::backward(const Tensor& upstreamGrad) {
   assert(!upstreamGrad.getRequiresGrad());
 

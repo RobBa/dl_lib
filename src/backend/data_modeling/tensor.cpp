@@ -1,12 +1,12 @@
 /**
  * @file tensor.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2025-12-07
- * 
+ *
  * @copyright Copyright (c) 2025
- * 
+ *
  */
 
 #include "tensor.h"
@@ -31,43 +31,10 @@
 
 using namespace std;
 
-/******************************************************************** 
-*************************** tensorValues_t *********************************
+/********************************************************************
+*************************** tensorValues_t *************************
 ********************************************************************/
 
-Tensor::tensorValues_t::tensorValues_t() {
-  device = defaultDevice;
-}
-
-Tensor::tensorValues_t::tensorValues_t(Device d) : device(d) {}
-
-Tensor::tensorValues_t::tensorValues_t(tensorValues_t&& other) noexcept 
-  : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)} 
-  {
-    // ensuring destructor does not return pointer to memory pool
-    other.values = nullptr;
-    other.size = 0;
-  }
-
-Tensor::tensorValues_t& Tensor::tensorValues_t::operator=(tensorValues_t&& other) noexcept {
-  if (this == &other) return *this;
-
-  device = std::move(other.device);
-  size = std::move(other.size);
-  values = std::move(other.values);
-
-  // ensuring destructor does not return pointer to memory pool
-  other.values = nullptr;
-  other.size = 0;
-
-  return *this;
-}
-
-Tensor::tensorValues_t::~tensorValues_t() noexcept {
-  if(values != nullptr) {
-    mempool::tensorPool.giveback(values, device, size);
-  }
-}
 
 void Tensor::tensorValues_t::resize(const tensorSize_t size) {
   this->size = size;
@@ -126,7 +93,7 @@ void Tensor::tensorValues_t::copyValues(Tensor::tensorValues_t& target) const {
 /**
  * @brief Does what you think it does. For linear slicing.
  */
-void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low, 
+void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low,
                                         tensorSize_t high, tensorSize_t targetOffset) const {
   assert(target.size >= high - low);
 #ifndef NDEBUG
@@ -151,12 +118,11 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low
   }
 }
 
-
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
   #ifndef __CUDA
     cerr << "setDevice called when CUDA not enabled. Doing nothing." << endl;
     return;
-  #else 
+  #else
     if(d==device){
       return;
     }
@@ -257,69 +223,18 @@ ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
   return 0; // suppress warnings
 }
 
-/******************************************************************** 
+/********************************************************************
 *************************** Tensor **********************************
 ********************************************************************/
 
-Tensor::Tensor(Tensor&& other) noexcept
-  : dims{std::move(other.dims)}, 
-    values{std::move(other.values)}, 
-    requiresGrad{other.requiresGrad},
-    cgNode{std::move(other.cgNode)}, 
-    grads{std::move(other.grads)}
-{ }
-
-Tensor& Tensor::operator=(Tensor&& other) noexcept {
-  if (this == &other) return *this;
-  
-  dims = std::move(other.dims);
-  values = std::move(other.values);
-
-  requiresGrad = other.requiresGrad;
-  cgNode = std::move(other.cgNode);
-  grads = std::move(other.grads);
-
-  return *this;
-}
-
 /**
- * @brief Only createShallowCopy is supposed to access this ctor.
- * Like a copy ctor, shares recourses (grad, cgNode, values) with 
- * original (other) tensor.
- */
-Tensor::Tensor(const Tensor& other, [[maybe_unused]] shallowCopyToken)
-  : dims(other.dims.shallowCopy()), cgNode{other.cgNode}, values{other.values}, 
-    grads{other.grads}, requiresGrad{other.requiresGrad} 
-{
-}
-
-/**
- * @brief Creates an empty copy of this tensor.
- * Metadata all filled, but gradients not initialized, and 
- * values are reserved in memory, but uninitialized.
- */
-Tensor Tensor::createEmptyCopy() const {
-  auto res = Tensor(dims, values->getDevice(), requiresGrad);
-  return res;
-}
-
-/**
- * @brief Creates a shallow copy. New tensor object, but all resources 
- * (grads, cgNode, values) are shared with this tensor. Useful for optimization.
- */
-Tensor Tensor::createShallowCopy() const {
-  auto res = Tensor(*this, shallowCopyToken{});
-  return res;
-}
-
-/**
- * @brief Creates a linearized copy of this tensor. New memory allocations for 
- * values, and values will be copied so that the memory layout reflects the 
+ * @brief Creates a linearized copy of this tensor. New memory allocations for
+ * values, and values will be copied so that the memory layout reflects the
  * current shape of the tensor.
  */
 Tensor Tensor::createContiguousCopy() const {
   auto res = createEmptyCopy();
-  
+
   switch(values->getDevice()) {
     case Device::CPU:
     {
@@ -364,7 +279,7 @@ void Tensor::makeContiguous() const {
   if(grads){
     if(grads->hasGrads())
       __throw_runtime_error("Grads should never have grads themselves");
-    
+
     grads->makeContiguous();
   }
 }
@@ -384,25 +299,15 @@ Tensor Tensor::createDeepCopy() const {
 }
 
 /**
- * @brief For convenience. Needed for other classes to perform their CUDA operations.
- * Avoids moving all CUDA code into tensor.
- */
-ftype* Tensor::getData() const noexcept {
-  if(values->getDevice() == Device::CPU)
-    __throw_runtime_error("Should only be called on CUDA tensor.");
-  return values->data();
-}
-
-/**
  * @brief Just like in normal matrix multiplication order matters.
  * Not commutative as per usual for matrices -> a*b != b*a
- * 
+ *
  * Multiply dimension left.dims.size()-1 of left with dimension right.dims.size()-2 of right.
  * Output shape: see document assumptions_matrices.md.
- * 
+ *
  * We assume here that the dimensions of the tensors already do match!
  * The check of whether they do or not is to be performed by the surrounding
- * network class object instance upon construction. 
+ * network class object instance upon construction.
  */
 Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool transposeLeft, const bool transposeRight) {
   // broadcasting
@@ -416,7 +321,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
     case Device::CPU:
     {
       // sizes of the 2D matrices respectively
-      const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2); 
+      const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2);
       const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);
       const tensorSize_t resSize = left.dims.get(-2) * right.dims.get(-1);
 
@@ -441,7 +346,7 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
         else if(transposeRight) {
           matMul2DCpuScalar<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
         }
-        
+
         leftOffset += leftSize;
         rightOffset += rightSize;
         resOffset += resSize;
@@ -462,27 +367,27 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
 }
 
 /**
- * @brief Matrix multiplication. Transpose flags are optimizations to avoid a 
- * physical transpose in memory before the computation. Transposition done on the last two 
+ * @brief Matrix multiplication. Transpose flags are optimizations to avoid a
+ * physical transpose in memory before the computation. Transposition done on the last two
  * dimensions, the dimensions the matmul is executed on.
  */
 Tensor Tensor::matmul(const Tensor& other, const bool transposeLeft, const bool transposeRight) const {
   if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
-  
+
   return matMulImpl(getContiguous(), other.getContiguous(), transposeLeft, transposeRight);
 }
 
 /**
- * @brief Addition of two tensors. This works in two ways: 
- * 1. Shapes of the two tensors are identical. In this case it is simple 
+ * @brief Addition of two tensors. This works in two ways:
+ * 1. Shapes of the two tensors are identical. In this case it is simple
  * elementwise addition.
- * 2. The second tensor is a vector. In this case broadcast it. We assume 
+ * 2. The second tensor is a vector. In this case broadcast it. We assume
  * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
 Tensor Tensor::operator+(const Tensor& other) const {
-  if(this->dims != other.dims && 
+  if(this->dims != other.dims &&
     !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
     __throw_invalid_argument("Tensors need matching dimensions");
   }
@@ -530,13 +435,6 @@ Tensor Tensor::operator+(const Tensor& other) const {
 }
 
 /**
- * @brief Named version of operator +.
- */
-Tensor Tensor::add(const Tensor& other) const {
-  return *this + other;
-}
-
-/**
  * @brief Elementwise multiplication.
  */
 Tensor Tensor::operator*(const Tensor& other) const {
@@ -567,13 +465,6 @@ Tensor Tensor::operator*(const Tensor& other) const {
   }
 
   return res;
-}
-
-/**
- * @brief Named version of operator *.
- */
-Tensor Tensor::elementwiseMul(const Tensor& other) const {
-  return *this * other;
 }
 
 Tensor& Tensor::operator+=(const Tensor& other) {
@@ -630,7 +521,7 @@ Tensor Tensor::operator/(const ftype scalar) const {
     case Device::CUDA:
       #ifdef __CUDA
         cuda_impl::scalarmul(res, *this, 1 / scalar);
-      #else 
+      #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
       break;
@@ -670,21 +561,13 @@ Tensor Tensor::operator-(const ftype scalar) const {
     case Device::CUDA:
       #ifdef __CUDA
         cuda_impl::scalaradd(res, *this, -scalar);
-      #else 
+      #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
       break;
   }
 
   return res;
-}
-
-Tensor operator*(const ftype scalar, const Tensor& tensor) {
-  return tensor * scalar;
-}
-
-Tensor operator+(const ftype scalar, const Tensor& tensor) {
-  return tensor + scalar;
 }
 
 void Tensor::backward() {
@@ -728,61 +611,6 @@ void Tensor::backward() {
 }
 
 /**
- * @brief Get gradients
- */
-shared_ptr<Tensor> Tensor::getGrads() const {
-  return grads;
-}
-
-/**
- * @brief Sometimes we do accept negative dim-values. In accordance with e.g. 
- * NumPy we map from the end to the beginning in that case. 
- */
-tensorDim_t Tensor::mapDim(const int dim, const Dimension& dims) {
-  if(dim >= 0){
-    return dim;
-  }
-  else if(dim + dims.nDims() < 0){
-    __throw_invalid_argument("Invalid dim value given.");
-  }
-
-  // dims < 0
-  return dims.nDims() + dim;
-}
-
-/**
- * @brief Get a tensor that is linear in memory. Useful for coalesced memory access patterns.
- */
-Tensor Tensor::getContiguous() const {
-  if(dims.inOriginalState())
-    return createShallowCopy();
-  return createContiguousCopy();
-}
-
-/**
- * @brief Quick transpose operation. Important: Does a shallow copy/view. 
- * Both tensors will point to the same underlying data.
- */
-Tensor Tensor::transpose(int dim1, int dim2) {
-  Tensor result = createShallowCopy();
-  result.dims.swap(dim1, dim2);
-  return result;
-}
-
-/**
- * @brief Reorder according to the newOrder. 
- * 
- * New order aligns axes newly. E.g. (2, 3, 1, 0)
- */
-void Tensor::permute(const std::vector<tensorDim_t>& newOrder) noexcept {
-  assert(newOrder.size()==dims.nDims());
-
-  for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++){
-    dims.swap(i, newOrder[i]);
-  }
-}
-
-/**
  * @brief Populates the tensor with value.
  */
 void Tensor::reset(const ftype x) noexcept {
@@ -818,22 +646,6 @@ void Tensor::reset(shared_ptr<utility::InitializerBase> init) noexcept {
   }
 }
 
-const Dimension& Tensor::getDims() const noexcept {
-  return dims;
-}
-
-tensorSize_t Tensor::getSize() const noexcept {
-  return values->getSize();
-}
-
-void Tensor::setDefaultDevice(const Device d) noexcept {
-  tensorValues_t::setDefaultDevice(d);
-}
-            
-Device Tensor::getDefaultDevice() noexcept {
-  return tensorValues_t::getDefaultDevice();
-}
-
 void Tensor::setDevice(const Device d) noexcept {
   makeContiguous();
   values->setDevice(d);
@@ -845,10 +657,10 @@ void Tensor::setDevice(const Device d) noexcept {
 
 /**
  * @brief Gets a slice of this tensor.
- * 
+ *
  * Quick and dirty implementation for now: Copies and
- * returns. 
- * 
+ * returns.
+ *
  * @param low Lower idx, inclusive bound.
  * @param high Upper idx, non-inclusive bound.
  * @return Tensor The slices tensor.
@@ -869,9 +681,9 @@ Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
 }
 
 /**
- * @brief Like overload, but gets the slicing according to the 
+ * @brief Like overload, but gets the slicing according to the
  * indices given by the argument. Used e.g. in batch-size.
- * 
+ *
  * @param indices A list of indices
  * @return Tensor The result.
  */
@@ -884,7 +696,7 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
   Tensor res(std::move(resDims), values->getDevice(), false);
 
   switch(res.getDevice()) {
-    case Device::CPU: 
+    case Device::CPU:
     {
       // TODO: multithreading
       const tensorSize_t sizeOfDim = res.getDims().getStride(0);
@@ -903,7 +715,7 @@ Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
         __throw_runtime_error("Not compiled with CUDA");
       #endif
   }
-  
+
   return res;
 }
 
@@ -911,7 +723,7 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
   os << "Dims: " << t.getDims();
   os << "\nDevice: " << DeviceToString(t.values->getDevice());
   os << "\nrequiresGrad: " << t.requiresGrad << "\n\n";
-  
+
   auto printVals = [&os](const Tensor& t){
     constexpr auto MAX_IDX = static_cast<tensorDim_t>(10);
 
@@ -940,17 +752,8 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
 }
 
 /**
- * @brief Computes the 1D index from a set of indices. 
- * 
- * WARNING: Does not check for overflow.
- */
-tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims) {
-  return computeLinearIdx(idx, dims);
-}
-
-/**
- * @brief Computes the 1D index from a set of indices. 
- * 
+ * @brief Computes the 1D index from a set of indices.
+ *
  * WARNING: Does not check for overflow.
  */
 tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims) {

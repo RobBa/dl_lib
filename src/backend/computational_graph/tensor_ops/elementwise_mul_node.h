@@ -19,6 +19,12 @@ namespace cgraph {
       explicit ElementwiseMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {}
 
-      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override {
+        assert(!upstreamGrad.getRequiresGrad());
+        return {
+          std::make_shared<Tensor>(upstreamGrad * (*parents[1])), 
+          std::make_shared<Tensor>(upstreamGrad * (*parents[0]))
+        };
+      }
   };
 }

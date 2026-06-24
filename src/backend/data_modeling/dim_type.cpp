@@ -1,83 +1,23 @@
 /**
  * @file dim_type.cpp
  * @author Robert Baumgartner (r.baumgartner-1@tudelft.nl)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2026-01-18
- * 
+ *
  * @copyright Copyright (c) 2026
- * 
+ *
  */
 
 #include "dim_type.h"
-#include "utility/safe_arithmetics.h"
-
-#include <utility>
-#include <sstream>
 
 using namespace std;
 
-tensorSize_t Dimension::multVector(const vector<tensorDim_t>& dims) const noexcept {
-  tensorSize_t res = 1;
-
-#ifndef NDEBUG
-  utility::SafeArithmetics_t<tensorSize_t> mult(1);
-  for(auto dim : dims){
-    mult = mult * dim;
-  }
-
-  res = mult.value;
-#else 
-  for(auto dim: dims){
-    res *= dim;
-  }
-#endif // NDEBUG
-
-  return res;
-}
-
-void Dimension::resize(const vector<tensorDim_t>& dims) {
-  this->dims = dims;
-  size = multVector(dims);
-  assert(size > 0);
-}
-
-/**
- * @brief Swap along the two given dimensions.
- */
-void Dimension::swap(int dim1, int dim2) {
-  if(dim1 == dim2)
-    return;
-  
-  auto d1 = mapSignedIdx(dim1);
-  auto d2 = mapSignedIdx(dim2);
-
-  assert(d1 >= 0);
-  assert(d2 >= 0);
-
-  std::swap(dims[d1], dims[d2]);
-  std::swap(strides[d1], strides[d2]);
-}
-
-/**
- * @brief Construct a new Dimension:: Dimension object
- */
-Dimension::Dimension(const vector<tensorDim_t>& dims) 
-  : contiguousDims{make_shared<vector<tensorDim_t>>(dims)}, 
-    contiguousStrides{make_shared<dim_t>(makeStrides(dims))}, 
-    dims{dims}, 
-    strides{*contiguousStrides} 
-{
-  size = multVector(dims);
-  lastDimIdx = dims.size() - 1;
-  assert(size > 0);
-}
-
 Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
-  : contiguousDims{make_shared<vector<tensorDim_t>>(dims)}, 
-    contiguousStrides{make_shared<dim_t>(makeStrides(dims))}, 
-    dims{dims}, 
-    strides{*contiguousStrides} 
+  : contiguousDims{make_shared<vector<tensorDim_t>>(dims)},
+    contiguousStrides{make_shared<dim_t>(makeStrides(dims))},
+    dims{dims},
+    strides{*contiguousStrides}
 {
   size = multVector(dims);
   lastDimIdx = dims.size() - 1;
@@ -85,109 +25,14 @@ Dimension::Dimension(vector<tensorDim_t>&& dims, dim_t&& strides)
 }
 
 /**
- * @brief Construct a new Dimension object. Contiguous fields will be created anew!
- */
-Dimension::Dimension(const Dimension& other) {
-  dims = other.dims;
-  strides = other.strides;
-
-  contiguousDims = make_shared<vector<tensorDim_t>>(*other.contiguousDims);
-  contiguousStrides = make_shared<dim_t>(*other.contiguousStrides);
-
-  lastDimIdx = other.lastDimIdx;
-  size = other.size;
-}
-
-/**
- * @brief Move assignment operator. Contiguous fields will be created anew!
- */
-Dimension& Dimension::operator=(const Dimension& other) {
-  if(&other == this) {
-    return *this;
-  }
-
-  dims = other.dims;
-  strides = other.strides;
-
-  contiguousDims = make_shared<vector<tensorDim_t>>(*other.contiguousDims);
-  contiguousStrides = make_shared<dim_t>(*other.contiguousStrides);
-
-  lastDimIdx = other.lastDimIdx;
-  size = other.size;
-
-  return *this;
-}
-
-/**
- * @brief Construct a new Dimension:: Dimension object.
- * 
- * For shallow copies.
- * 
- * @param other 
- * @param t 
- */
-Dimension::Dimension(const Dimension& other, [[maybe_unused]] shallowCopyToken) 
-  : dims{other.dims},
-    strides{other.strides},
-    contiguousDims{other.contiguousDims},
-    contiguousStrides{other.contiguousStrides},
-    lastDimIdx{other.lastDimIdx},
-    size{other.size}
-{ }
-
-/**
- * @brief Return shallow copy that shares the contiguous information with this strides. 
- */
-Dimension Dimension::shallowCopy() const {
-  return Dimension(*this, shallowCopyToken{});
-}
-
-/**
- * @brief Computes the strides as they are.
- */
-Dimension::dim_t Dimension::makeStrides(const vector<tensorDim_t>& dims) const noexcept {
-  dim_t res;
-  const int lastDimIdx = dims.size() - 1;
-
-  tensorSize_t stride = 1;
-  res[lastDimIdx] = stride;
-  stride *= dims[lastDimIdx];
-
-  for(int i = lastDimIdx - 1; i >= 0; i--){
-    res[i] = stride;
-    stride *= dims[i];
-  }
-
-  return res;
-}
-
-/**
- * @brief Gets the stride of dimension i. Negative values of i eligible.
- */
-tensorSize_t Dimension::getStride(const int i) const noexcept {
-  if(i < 0)
-    return strides[lastDimIdx + i + 1];
-  return strides[i];
-}
-
-/**
- * @brief Aligns contiguous and actual stride- and dim-information.
- * 
- */
-void Dimension::makeContiguous() { 
-  contiguousDims = make_shared<vector<tensorDim_t>>(dims); 
-  contiguousStrides = make_shared<dim_t>(strides); 
-}
-
-/**
- * @brief This method gets interesting when we want to get a copy of 
+ * @brief This method gets interesting when we want to get a copy of
  * this dimension instance, but we collapsed one of the dimensions.
- * E.g. when we have a tensor, and we sum over one of its dimensions 
+ * E.g. when we have a tensor, and we sum over one of its dimensions
  * to get a new tensor, then this will be the new dimensions of the result.
- * 
- * Example: t=Tensor with dims (b-size, d). We sum over all batches and 
+ *
+ * Example: t=Tensor with dims (b-size, d). We sum over all batches and
  * get a new tensor tSum=Tensor with dims (d).
- * 
+ *
  * @param idx The dimension to collapse.
  */
 Dimension Dimension::collapseDimension(int idx) const {

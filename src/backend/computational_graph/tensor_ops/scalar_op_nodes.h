@@ -27,7 +27,10 @@ namespace cgraph {
 
       ~ScalarAddNode() noexcept = default; 
 
-      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override {
+        assert(!upstreamGrad.getRequiresGrad());
+        return {std::make_shared<Tensor>(upstreamGrad.createDeepCopy())};
+      }
   };
 
   class ScalarMulNode final : public GraphNode {

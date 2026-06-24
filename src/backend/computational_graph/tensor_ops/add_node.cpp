@@ -15,15 +15,3 @@
 
 using namespace std;
 using namespace cgraph;
-
-vector< shared_ptr<Tensor> > AddNode::backward(const Tensor& upstreamGrad) {
-  assert(!upstreamGrad.getRequiresGrad());
-  auto weightGrad = make_shared<Tensor>(upstreamGrad.createDeepCopy());
-  
-  if(broadcasted){
-    auto biasGrad = make_shared<Tensor>(TensorFunctions::SumOverDims(*weightGrad));
-    return {weightGrad, biasGrad};
-  }
-  
-  return {weightGrad, weightGrad};
-}

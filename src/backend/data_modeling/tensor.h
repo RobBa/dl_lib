@@ -19,6 +19,7 @@
 
 #include "shared/global_params.h"
 #include "shared/initializers.h"
+#include "shared/memory_pool.h"
 
 #include <memory>
 #include <span>
@@ -41,7 +42,7 @@ class Tensor final : public std::enable_shared_from_this<Tensor>
   friend class cgraph::TopologicalSort;
 
 private:
-  struct shallowCopyToken{}; // we only want createShallowCopy to do shallow copies
+  struct shallowCopyToken{};
 
   /**
    * @brief Here we encapsulate the tensor's values.
@@ -60,21 +61,41 @@ private:
     inline static Device defaultDevice = Device::CPU;
 
   public:
-    explicit tensorValues_t();
-    explicit tensorValues_t(Device d);
-    ~tensorValues_t() noexcept;
+    explicit tensorValues_t() { device = defaultDevice; }
+    explicit tensorValues_t(Device d) : device(d) {}
+
+    ~tensorValues_t() noexcept {
+      if(values != nullptr)
+        mempool::tensorPool.giveback(values, device, size);
+    }
 
     tensorValues_t(const tensorValues_t& other) = delete;
     tensorValues_t& operator=(const tensorValues_t& other) = delete;
 
-    tensorValues_t(tensorValues_t&& other) noexcept;
-    tensorValues_t& operator=(tensorValues_t&& other) noexcept;
+    tensorValues_t(tensorValues_t&& other) noexcept
+      : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)}
+    {
+      // ensuring destructor does not return pointer to memory pool
+      other.values = nullptr;
+      other.size = 0;
+    }
+
+    tensorValues_t& operator=(tensorValues_t&& other) noexcept {
+      if(this == &other) return *this;
+      device = std::move(other.device);
+      size = std::move(other.size);
+      values = std::move(other.values);
+      // ensuring destructor does not return pointer to memory pool
+      other.values = nullptr;
+      other.size = 0;
+      return *this;
+    }
 
     void copyFromRaw(const ftype* src, tensorSize_t n);
 
     ftype* data() noexcept { return values; }
     const ftype* data() const noexcept { return values; }
-    
+
     explicit operator bool() const noexcept { return values != nullptr; }
 
     ftype operator[](tensorSize_t idx) const;
@@ -86,11 +107,7 @@ private:
     void resize(tensorSize_t size);
 
     void setDevice(Device d) noexcept;
-    Device getDevice() const noexcept;
-
-    Device Tensor::tensorValues_t::getDevice() const noexcept {
-      return device;
-    }
+    Device getDevice() const noexcept { return device; }
 
     void copyValues(tensorValues_t& target) const;
     void copyValues(tensorValues_t& target, tensorSize_t low, tensorSize_t high, tensorSize_t targetOffset) const;
@@ -107,26 +124,34 @@ private:
   std::shared_ptr<cgraph::GraphNode> cgNode = nullptr;
 
   static Tensor matMulImpl(const Tensor& left, const Tensor& right, bool transposeLeft, bool transposeRight);
-  
+
   template<bool transposeLeft, bool transposeRight>
   static void matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right,
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
-  
-                          template<bool transposeLeft, bool transposeRight>
+
+  template<bool transposeLeft, bool transposeRight>
   static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
 
   void makeContiguous() const;
 
-  // convenience functions that appear in multiple places
-  static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims);
+  static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>&& idx, const Dimension& dims) {
+    return computeLinearIdx(idx, dims);
+  }
   static tensorSize_t computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims);
 
-  static tensorDim_t mapDim(int dim, const Dimension& dims);
+  static tensorDim_t mapDim(int dim, const Dimension& dims) {
+    if(dim >= 0) return dim;
+    else if(dim + (int)dims.nDims() < 0) std::__throw_invalid_argument("Invalid dim value given.");
+    return dims.nDims() + dim;
+  }
 
-  Tensor(const Tensor& other, shallowCopyToken);
+  Tensor(const Tensor& other, shallowCopyToken)
+    : dims(other.dims.shallowCopy()), cgNode{other.cgNode}, values{other.values},
+      grads{other.grads}, requiresGrad{other.requiresGrad}
+  {}
 
 public:
   template <typename T>
@@ -136,24 +161,24 @@ public:
       // !!!needs dims.toVector() to not trigger the copy ctors!!!
   { }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad = false) 
+  explicit Tensor(const std::vector<tensorDim_t>& dims, bool requiresGrad = false)
     : dims{dims}, values{std::make_unique<tensorValues_t>()}, requiresGrad{requiresGrad}
   {
     values->resize(this->dims.getSize());
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad = false) 
+  explicit Tensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad = false)
     : dims{dims}, values{std::make_unique<tensorValues_t>(d)}, requiresGrad{requiresGrad}
   {
     values->resize(this->dims.getSize());
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad = false) 
+  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, bool requiresGrad = false)
     : Tensor{dims, std::move(initValues), Tensor::getDefaultDevice(), requiresGrad}
   {
   }
 
-  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad = false) 
+  explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad = false)
     : Tensor{dims, d, requiresGrad}
   {
     for (tensorSize_t i=0; i<initValues.size(); i++){
@@ -177,36 +202,54 @@ public:
   Tensor(const Tensor& other) = delete;
   Tensor& operator=(const Tensor& other) = delete;
 
-  Tensor createEmptyCopy() const;
-  Tensor createShallowCopy() const;
+  Tensor createEmptyCopy() const { return Tensor(dims, values->getDevice(), requiresGrad); }
+  Tensor createShallowCopy() const { return Tensor(*this, shallowCopyToken{}); }
   Tensor createContiguousCopy() const;
   Tensor createDeepCopy() const;
 
   /**
-   * @brief Moving. Move array of values
-   * to new instance as well.
+   * @brief Moving. Move array of values to new instance as well.
    */
-  Tensor(Tensor&& other) noexcept;
-  Tensor& operator=(Tensor&& other) noexcept;
+  Tensor(Tensor&& other) noexcept
+    : dims{std::move(other.dims)},
+      values{std::move(other.values)},
+      requiresGrad{other.requiresGrad},
+      cgNode{std::move(other.cgNode)},
+      grads{std::move(other.grads)}
+  {}
 
-  ftype* getData() const noexcept;
+  Tensor& operator=(Tensor&& other) noexcept {
+    if (this == &other) return *this;
+    dims = std::move(other.dims);
+    values = std::move(other.values);
+    requiresGrad = other.requiresGrad;
+    cgNode = std::move(other.cgNode);
+    grads = std::move(other.grads);
+    return *this;
+  }
+
+  ftype* getData() const noexcept {
+    if(values->getDevice() == Device::CPU)
+      std::__throw_runtime_error("Should only be called on CUDA tensor.");
+    return values->data();
+  }
 
   void reset(ftype x) noexcept;
   void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
 
-  const Dimension& getDims() const noexcept;
-  tensorSize_t getSize() const noexcept;
+  const Dimension& getDims() const noexcept { return dims; }
+  tensorSize_t getSize() const noexcept { return values->getSize(); }
 
   // Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
   Tensor matmul(const Tensor& other, bool transposeLeft=false, bool transposeRight=false) const;
 
   Tensor operator+(const Tensor& other) const;
-  Tensor add(const Tensor& other) const;
+  Tensor add(const Tensor& other) const { return *this + other; }
 
   // TODO: Tensor operator-(const Tensor& other) const;
 
   Tensor operator*(const Tensor& t) const;
-  Tensor elementwiseMul(const Tensor& other) const;
+  Tensor elementwiseMul(const Tensor& other) const { return *this * other; }
 
   Tensor& operator+=(const Tensor& other);
 
@@ -219,22 +262,33 @@ public:
   Tensor operator-(ftype scalar) const;
 
   // turn around the arguments as well: scalar *:+ tensor
-  friend Tensor operator*(ftype scalar, const Tensor& tensor);
-  friend Tensor operator+(ftype scalar, const Tensor& tensor);
+  friend Tensor operator*(ftype scalar, const Tensor& tensor) { return tensor * scalar; }
+  friend Tensor operator+(ftype scalar, const Tensor& tensor) { return tensor + scalar; }
 
   void backward();
 
-  std::shared_ptr<Tensor> getGrads() const;
-  void setGrads(std::shared_ptr<Tensor> grads) noexcept{
+  std::shared_ptr<Tensor> getGrads() const { return grads; }
+  void setGrads(std::shared_ptr<Tensor> grads) noexcept {
     this->grads = std::move(grads);
   }
   bool hasGrads() const noexcept { return grads!=nullptr; }
 
-  Tensor transpose(int dim1=-1, int dim2=-2);
-  void permute(const std::vector<tensorDim_t>& newOrder) noexcept;
+  Tensor transpose(int dim1=-1, int dim2=-2) {
+    Tensor result = createShallowCopy();
+    result.dims.swap(dim1, dim2);
+    return result;
+  }
+  void permute(const std::vector<tensorDim_t>& newOrder) noexcept {
+    assert(newOrder.size()==dims.nDims());
+    for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++)
+      dims.swap(i, newOrder[i]);
+  }
 
   bool isContiguous() const noexcept { return dims.inOriginalState(); }
-  Tensor getContiguous() const;
+  Tensor getContiguous() const {
+    if(dims.inOriginalState()) return createShallowCopy();
+    return createContiguousCopy();
+  }
 
   friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
@@ -297,18 +351,18 @@ public:
   Tensor getSlice(std::span<const tensorDim_t> indices) const;
 
   // these two should not be exposed to the python interface
-  static void setDefaultDevice(const Device d) noexcept;
-  static Device getDefaultDevice() noexcept;
+  static void setDefaultDevice(const Device d) noexcept { tensorValues_t::setDefaultDevice(d); }
+  static Device getDefaultDevice() noexcept { return tensorValues_t::getDefaultDevice(); }
 };
 
 /**
  * @brief Name says it all. Inplace operation on res.
- * 
- * Transposition baked into kernel. Assumption is that kernels are not transposed, but we treat them 
+ *
+ * Transposition baked into kernel. Assumption is that kernels are not transposed, but we treat them
  * as if they were for increased speed without the actual transposition happening.
  */
 template<bool transposeLeft, bool transposeRight>
-void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset,
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
   // physical, not logically as in the transposition
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
@@ -352,7 +406,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
         for (tensorSize_t k = 0; k < K; k++) {
           tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
                                               : leftOffset + i * nColsLeft + k;
-          
+
           tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
                                                 : rightOffset + k * nColsRight + j;
 
@@ -372,7 +426,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
         const tensorSize_t rightOffset = j * nColsRight;
 
         ftype sum = 0.0f;
-        for (tensorSize_t k = 0; k < nColsRight; k++) { 
+        for (tensorSize_t k = 0; k < nColsRight; k++) {
           sum += left[leftOffset + k] * right[rightOffset + k];
         }
 
@@ -428,9 +482,9 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
  * @brief Name says it all. Inplace operation on res.
  */
 /* template<bool transposeLeft, bool transposeRight>
-void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset, 
+void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset,
                            const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
-  
+
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
   const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
@@ -447,16 +501,16 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
       for (tensorSize_t k = 0; k < K; k++) {
         tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
                                              : leftOffset + i * nColsLeft + k;
-        
+
         tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
                                                : rightOffset + k * nColsRight + j;
 
       #if defined(USE_AVX512)
-        
+
       #elif defined(USE_AVX2)
-        
+
       #elif defined(USE_AVX)
-        
+
       #else
         std::__throw_runtime_error("Not compiled with AVX enabled");
       #endif

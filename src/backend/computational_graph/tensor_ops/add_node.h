@@ -12,6 +12,7 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "data_modeling/tensor_functions.h"
 
 namespace cgraph {
   class AddNode final : public GraphNode {
@@ -28,6 +29,16 @@ namespace cgraph {
           broadcasted = parents[0]->getDims() != parents[1]->getDims();
         }
 
-      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override {
+        assert(!upstreamGrad.getRequiresGrad());
+        auto weightGrad = std::make_shared<Tensor>(upstreamGrad.createDeepCopy());
+        
+        if(broadcasted){
+          auto biasGrad = std::make_shared<Tensor>(TensorFunctions::SumOverDims(*weightGrad));
+          return {weightGrad, biasGrad};
+        }
+        
+        return {weightGrad, weightGrad};
+      }
   };
 }

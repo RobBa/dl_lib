@@ -321,3 +321,21 @@ BM_MatMul_CPU/64/128/10            42.1 us         42.0 us        16639 GFLOP/s=
         32,255,795      cpu_core/L1-dcache-load-misses/  #    0.14% of all L1-dcache accesses 
          1,641,856      cpu_core/LLC-loads/                                                   
            697,471      cpu_core/LLC-load-misses/        #   42.48% of all LL-cache accesses
+
+```
+   15.35 :   6ca46:  sub    $0x18,%rsp // tensor.cpp:212
+    0.00 :   6ca4a:  mov    %fs:0x28,%rax
+    0.00 :   6ca53:  mov    %rax,0x8(%rsp)
+    0.00 :   6ca58:  xor    %eax,%eax
+         : 19    if(idx >= size)
+   16.86 :   6ca5a:  cmp    (%rdi),%esi // tensor.cpp:213
+    0.00 :   6ca5c:  jae    1175a <Tensor::tensorValues_t::operator[](unsigned int) const [clone .cold]>
+         : 22    throw std::out_of_range("Out of range for tensor");
+         :
+         : 24    switch(device){
+    0.00 :   6ca62:  mov    0x10(%rdi),%eax
+    0.00 :   6ca65:  test   %eax,%eax
+   17.87 :   6ca67:  je     6cac8 <Tensor::tensorValues_t::operator[](unsigned int) const+0x88> // tensor.cpp:216
+```
+
+We still see some functions that are being called. To reduce this noise from future profiling we go through the main classes tensor and dimension and inline what can be inlined.

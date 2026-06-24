@@ -21,6 +21,13 @@ namespace cgraph {
       explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {}
 
-      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override {
+        assert(!upstreamGrad.getRequiresGrad());
+    
+        return {
+          std::make_shared<Tensor>(upstreamGrad.matmul(*parents[1], false, true)), 
+          std::make_shared<Tensor>(parents[0]->matmul(upstreamGrad, true, false))
+        };
+      }
   };
 }
