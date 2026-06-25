@@ -42,6 +42,9 @@ namespace matmul {
       //void loadTransposedRight(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
       
       //void storeResult(T* const dst, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
+      void clearResult() noexcept {
+        std::fill(result.begin(), result.begin() + TileM * TileN, T{0.0f});
+      }
       void addResult(T* const dst, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
   };
 }
@@ -49,9 +52,10 @@ namespace matmul {
 /**
  * @brief Loads left from a tensor (src).
  * 
- * @param srcStride Stride as per usual.
  * @param row0 Row to start from.
  * @param col0 Col to start from.
+ * @param nRows Number of rows of src.
+ * @param nCols Number of columns of src.
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
@@ -89,9 +93,10 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
 /**
  * @brief Loads right tensor from a tensor (src).
  * 
- * @param srcStride Stride as per usual.
  * @param row0 Row to start from.
  * @param col0 Col to start from.
+ * @param nRows Number of rows of src.
+ * @param nCols Number of columns of src.
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
@@ -150,11 +155,12 @@ inline void matmul::MatmulTile<T, TileM, TileK, TileN>::loadTransposedLeft(const
 } */
 
 /**
- * @brief Store back into tensor (dst) from tile result.
+ * @brief Store back into tensor (dst) from tile result. Does an add-operation.
  * 
- * @param dstStride See load.
- * @param row0 See load.
- * @param col0 See load.
+ * @param row0 Row to start writing from.
+ * @param col0 Column to start writing from.
+ * @param nRows Number of rows of dst.
+ * @param nCols Number of columns of dst.
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>

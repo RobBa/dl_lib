@@ -407,57 +407,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
 
   if constexpr (!transposeLeft && !transposeRight) {
-    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
-      const tensorSize_t leftOffset = i * nColsLeft;
-      const tensorSize_t resOffset = i * nColsRight;
-
-      {
-        // tensors not zero initialized, therefore need one dry run pre-filling
-        const auto leftVal = left.values->data()[leftOffset];
-        for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] = leftVal * right.values->data()[j];
-        }
-      }
-
-      // compute the entire column of the left matrix
-      for (tensorSize_t k = 1; k < nRowsRight; k++) {
-        const tensorSize_t rightOffset = k * nColsRight;
-
-        const ftype leftVal = left.values->data()[leftOffset + k];
-        for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] += leftVal * right.values->data()[rightOffset + j];
-        }
-      }
-    }
-  }
-  else {
-    const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
-    const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
-    const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
-
-    for (tensorSize_t i = 0; i < M; i++) {
-      for (tensorSize_t j = 0; j < N; j++) {
-        ftype sum = 0;
-
-        for (tensorSize_t k = 0; k < K; k++) {
-          tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
-                                              : leftOffset + i * nColsLeft + k;
-
-          tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
-                                                : rightOffset + k * nColsRight + j;
-
-          sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
-        }
-
-        res.values->data()[resOffset + i * N + j] = sum;
-      }
-    }
-  }
-
-/*   if constexpr (!transposeLeft && !transposeRight) {
-    res.reset(0.0f); // TODO: necessary?
-
-    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / 4;
+    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype); // each tile fits neatly in cache-line
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
     for (tensorSize_t i = 0; i < nRowsLeft;) {
@@ -465,31 +415,33 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       const tensorSize_t resOffset = i * nColsRight;
 
       for(tensorSize_t j = 0; j < nColsRight;) {
-        tiles.loadLeft(left.values->data() + leftoffset, i, j);
-        tiles.load(&tiles.right, right.values->data(), nColsRight, i, j);
+        const tensorSize_t rightOffset = j * nColsRight;
+
+        tiles.loadLeft(left.values->data() + leftOffset, i, j, nRowsLeft, nColsLeft);
+        tiles.loadRight(right.values->data() + rightOffset, i, j, nRowsRight, nColsRight);
+
+        for (tensorSize_t m = 0; m < TILESIZE; m++) {
+          const tensorSize_t leftTileOffset = m * TILESIZE;
+          for (tensorSize_t n = 0; n < TILESIZE; n++) {
+
+            ftype sum = tiles.result[leftTileOffset + n];
+            for (tensorSize_t k = 0; k < TILESIZE; k++) {
+              sum += tiles.left[leftTileOffset + k] * tiles.right[k * TILESIZE + n];
+            }
+
+            tiles.result[leftTileOffset + n] = sum;
+          }
+        }
+
+        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
+        tiles.clearResult();
 
         j += TILESIZE;
       }
 
-      {
-        // tensors not zero initialized, therefore need one dry run pre-filling
-        const auto leftVal = left.values->data()[leftOffset];
-        for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] = leftVal * right.values->data()[j];
-        }
-      }
-
-      // compute the entire column of the left matrix
-      for (tensorSize_t k = 1; k < nRowsRight; k++) {
-        const tensorSize_t rightOffset = k * nColsRight;
-
-        const ftype leftVal = left.values->data()[leftOffset + k];
-        for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] += leftVal * right.values->data()[rightOffset + j];
-        }
-      }
+      i += TILESIZE;
     }
-  } */
+  }
 /*   else if constexpr (!transposeLeft && transposeRight) {
     for (tensorSize_t i = 0; i < nRowsLeft; i++) {
       const tensorSize_t leftOffset = i * nColsLeft;
@@ -549,8 +501,8 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       }
     }
   } */
-  //else {
-/*     const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
+  else {
+    const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
     const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
     const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
 
@@ -570,8 +522,8 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
         res.values->data()[resOffset + i * N + j] = sum;
       }
-    } */
-  //}
+    }
+  }
 }
 
 /**

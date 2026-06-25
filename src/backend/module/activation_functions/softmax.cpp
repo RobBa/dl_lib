@@ -66,7 +66,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
         const ftype recip = 1.0f / sum;
         assert(recip > 0.0f);
         for(tensorSize_t i = start; i < start + stride; i++){
-          res.getData()[i] = tmp.getData()[i] * recip;
+          res.getData()[i] = tmp.getData()[i] / recip;
         }
       };
 
