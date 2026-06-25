@@ -57,7 +57,7 @@ void RmsPropOptimizer::step() {
         auto tPtr = param.get();
         if(movingAvg[tPtr] == nullptr) {
           movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), Device::CUDA, false);
-          movingAvg[tPtr]->reset(0);
+          movingAvg[tPtr]->reset(0.0f);
         }
         cuda_impl::rmspropStep(*param, *movingAvg[tPtr], *(param->getGrads()), lr, decay);
       }

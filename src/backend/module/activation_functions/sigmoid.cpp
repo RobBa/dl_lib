@@ -31,8 +31,8 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
 
   switch(t.getDevice()) {
     case Device::CPU: {
-      constexpr ftype one = 1.0;
-      auto compute = [](ftype x){
+      constexpr ftype one = 1.0f;
+      auto compute = [](const ftype x){
         if(x >= 0){
           return one / (one + exp(-x));
         }
@@ -40,8 +40,8 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
         return e / (one + e);
       };
 
-      for(tensorSize_t i=0; i<t.getSize(); i++){
-        res.set(compute(t[i]), i);
+      for(tensorSize_t i = 0; i < t.getSize(); i++){
+        res.getData()[i] = compute(t.getData()[i]);
       }
       break;
     }

@@ -24,6 +24,8 @@ target_compile_options(bm_matmul PRIVATE -O2)
 set_target_properties(bm_matmul PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${BENCHMARK_BIN_DIR}")
 
+add_benchmark(bm_signbit bm_signbit.cpp)
+
 if(CUDA AND CMAKE_CUDA_COMPILER)
     add_subdirectory(cuda)
 endif()

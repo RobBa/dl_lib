@@ -20,7 +20,7 @@ using namespace std;
 
 Tensor TensorFunctions::Zeros(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
-  res.reset(0);
+  res.reset(0.0f);
   return res;
 }
     
@@ -30,7 +30,7 @@ Tensor TensorFunctions::Zeros(vector<tensorDim_t> dims, const bool requiresGrad)
 
 Tensor TensorFunctions::Ones(vector<tensorDim_t> dims, Device d, const bool requiresGrad) {
   auto res = Tensor(std::move(dims), d, requiresGrad);
-  res.reset(1);
+  res.reset(1.0f);
   return res;
 }
     
@@ -52,11 +52,11 @@ Tensor TensorFunctions::Gaussian(vector<tensorDim_t> dims, const ftype stddev,
 
 // Tensor manipulation
 void TensorFunctions::ToZeros(Tensor& t) noexcept {
-  t.reset(0);
+  t.reset(0.0f);
 }
 
 void TensorFunctions::ToOnes(Tensor& t) noexcept {
-  t.reset(1);
+  t.reset(1.0f);
 }
 
 void TensorFunctions::ToGaussian(Tensor& t, const ftype stddev) {

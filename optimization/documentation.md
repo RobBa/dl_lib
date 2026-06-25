@@ -345,4 +345,75 @@ We still see some functions that are being called. To reduce this noise from fut
 Before: 15.1904s
 After: 14.5321s
 
-## Step 2-4: 
+## Step 2-4: Tiled matmul implementations
+
+### Analysis
+
+```
+---------------------------------------------------------------------------------------
+Benchmark                             Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------
+BM_MatMul_CPU/64/64/64              146 us          146 us         4679 GFLOP/s=3.59966/s
+BM_MatMul_CPU/256/256/256          8786 us         8777 us           80 GFLOP/s=3.8228/s
+BM_MatMul_CPU/512/512/512         67861 us        67745 us           10 GFLOP/s=3.96243/s
+BM_MatMul_CPU/1024/1024/1024     534708 us       533912 us            1 GFLOP/s=4.02216/s
+BM_MatMul_CPU/64/784/256           6916 us         6904 us          102 GFLOP/s=3.72125/s
+BM_MatMul_CPU/64/256/128           1202 us         1199 us          583 GFLOP/s=3.49701/s
+BM_MatMul_CPU/64/128/10            43.8 us         43.8 us        16094 GFLOP/s=3.74131/s
+
+ Performance counter stats for './bm_matmul --benchmark_filter=BM_MatMul_CPU/':
+
+    23,092,239,160      cpu_core/cycles/                                                      
+   111,472,734,176      cpu_core/instructions/           #    4.83  insn per cycle            
+        13,992,253      cpu_core/cache-misses/                                                
+    22,104,773,261      cpu_core/L1-dcache-loads/                                             
+        31,511,720      cpu_core/L1-dcache-load-misses/  #    0.14% of all L1-dcache accesses 
+         1,835,219      cpu_core/LLC-loads/                                                   
+           752,361      cpu_core/LLC-load-misses/        #   41.00% of all LL-cache accesses  
+
+       6.233058179 seconds time elapsed
+
+       5.805175000 seconds user
+       0.370691000 seconds sys
+```
+
+```
+   30.47 :   6f722:  movss  (%r14,%r13,4),%xmm0 // tensor.h:392
+    0.06 :   6f728:  lea    (%r12,%r9,4),%r9
+    1.39 :   6f72c:  mulss  %xmm1,%xmm0
+    0.34 :   6f730:  addss  (%r9),%xmm0
+   32.13 :   6f735:  movss  %xmm0,(%r9)
+         : 461   for(tensorSize_t j = 0; j < nColsRight; j++) {
+    0.03 :   6f73a:  cmp    %edx,%eax
+   31.94 :   6f73c:  jne    6f718 <Tensor::matMulImpl(Tensor const&, Tensor const&, bool, bool)+0x448> // tensor.h:391
+```
+
+Problem: Read and write on each loop. To fix this we could swap the loops to write the result into an accumulator, keeping 
+the result in a register locally, but that would break the memory access pattern on the right side of the loop. We have 
+two choices now: 
+
+1. Use AVX to coalesce memory accesses. Better read/write behavior, less operations. 
+2. Use tiling techniques - same idea, allows us to rewrite loop to increase L3- (LLC-) cache hit rate. 
+
+We first use tiling to get memory patterns, and we can use AVX later on top of it for maximum performance squeeze.
+
+Note: We also use the chance to do away some of the safety features when we spot them. E.g. 
+
+```
+Tensor Tensor::operator+(const Tensor& other) const {
+#ifndef NDEBUG
+  if(this->dims != other.dims &&
+    !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
+    __throw_invalid_argument("Tensors need matching dimensions");
+  }
+  else if(values->getDevice()!=other.values->getDevice()){
+    __throw_runtime_error("Tensors on different devices.");
+  }
+#endif
+
+// .....
+}
+```
+
+We can find bugs quickly, but remove small instruction overhead. Possibly negligible, but still good to have.
+

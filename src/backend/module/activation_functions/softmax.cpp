@@ -29,9 +29,11 @@ using namespace module;
  * @return Tensor of shape (dim1, dim2, ..., n_classes) [== input.shape]
  */
 Tensor Softmax::operator()(const Tensor& t) const {
-  if(t.getDims().nDims()<2){
+#ifndef NDEBUG
+  if(t.getDims().nDims() < 2){
     __throw_invalid_argument("Softmax expects input shape of minimum two dimensions");
   }
+#endif
 
   auto res = t.createEmptyCopy();
 
@@ -45,11 +47,11 @@ Tensor Softmax::operator()(const Tensor& t) const {
       while(offset < t.getSize()) {
         ftype maxValue = -std::numeric_limits<ftype>::infinity();
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          maxValue = std::max(maxValue, t[i]);
+          maxValue = std::max(maxValue, t.getData()[i]);
         }
 
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          tmp.set(exp(t[i] - maxValue), i);
+          tmp.getData()[i] = exp(t.getData()[i] - maxValue);
         }
 
         offset += stride;
@@ -58,11 +60,13 @@ Tensor Softmax::operator()(const Tensor& t) const {
       auto compute = [&res, &tmp, stride](tensorSize_t start){
         ftype sum = 0.0f;
         for(tensorSize_t i = start; i < start + stride; i++){
-          sum += tmp[i];
+          sum += tmp.getData()[i];
         }
 
+        const ftype recip = 1.0f / sum;
+        assert(recip > 0.0f);
         for(tensorSize_t i = start; i < start + stride; i++){
-          res.set(tmp[i] / sum, i);
+          res.getData()[i] = tmp.getData()[i] * recip;
         }
       };
 

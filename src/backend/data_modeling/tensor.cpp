@@ -277,8 +277,11 @@ void Tensor::makeContiguous() const {
 
   // TODO: perhaps we do this one lazily too?
   if(grads){
-    if(grads->hasGrads())
-      __throw_runtime_error("Grads should never have grads themselves");
+    #ifndef NDEBUG
+      if(grads->hasGrads()) {
+        __throw_runtime_error("Grads should never have grads themselves");
+      }
+    #endif
 
     grads->makeContiguous();
   }
@@ -367,19 +370,6 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
 }
 
 /**
- * @brief Matrix multiplication. Transpose flags are optimizations to avoid a
- * physical transpose in memory before the computation. Transposition done on the last two
- * dimensions, the dimensions the matmul is executed on.
- */
-Tensor Tensor::matmul(const Tensor& other, const bool transposeLeft, const bool transposeRight) const {
-  if(values->getDevice()!=other.values->getDevice()){
-    __throw_runtime_error("Tensors on different devices.");
-  }
-
-  return matMulImpl(getContiguous(), other.getContiguous(), transposeLeft, transposeRight);
-}
-
-/**
  * @brief Addition of two tensors. This works in two ways:
  * 1. Shapes of the two tensors are identical. In this case it is simple
  * elementwise addition.
@@ -387,6 +377,7 @@ Tensor Tensor::matmul(const Tensor& other, const bool transposeLeft, const bool 
  * other.dims == (dimN) && this->dims == (dim0, dim1,..., dimN).
  */
 Tensor Tensor::operator+(const Tensor& other) const {
+#ifndef NDEBUG
   if(this->dims != other.dims &&
     !(other.dims.nDims() == 1 && other.dims.get(0) == dims.get(-1))){
     __throw_invalid_argument("Tensors need matching dimensions");
@@ -394,6 +385,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
   else if(values->getDevice()!=other.values->getDevice()){
     __throw_runtime_error("Tensors on different devices.");
   }
+#endif
 
   makeContiguous();
   other.makeContiguous();
@@ -401,7 +393,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
 
   switch(values->getDevice()){
     case Device::CPU:
-      if(dims==other.dims) [[unlikely]] {
+      if(dims == other.dims) [[unlikely]] {
         // elementwise add
         for(tensorSize_t i = 0; i < values->getSize(); i++){
           res.values->data()[i] = values->data()[i] + other.values->data()[i];
@@ -411,7 +403,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
       else [[likely]] {
         // broadcasted add
         const auto stride = static_cast<tensorSize_t>(other.dims.get(0)); // other is a vector
-        for(tensorSize_t offset=0; offset<values->getSize(); offset += stride){
+        for(tensorSize_t offset = 0; offset < values->getSize(); offset += stride){
           for(tensorSize_t i = 0; i < stride; i++){
             res.values->data()[offset + i] = values->data()[offset + i] + other.values->data()[i];
           }
@@ -420,7 +412,7 @@ Tensor Tensor::operator+(const Tensor& other) const {
       break;
     case Device::CUDA:
       #ifdef __CUDA
-        if(dims==other.dims) [[unlikely]] {
+        if(dims == other.dims) [[unlikely]] {
           cuda_impl::elementwiseadd(res, *this, other);
         }
         else [[likely]] {
@@ -507,9 +499,11 @@ Tensor Tensor::operator*(const ftype scalar) const {
 }
 
 Tensor Tensor::operator/(const ftype scalar) const {
-  if(scalar==0.0){
+#ifndef NDEBUG
+  if(scalar == 0.0) {
     __throw_runtime_error("Cannot divide by zero.");
   }
+#endif
 
   Tensor res(dims, values->getDevice(), requiresGrad);
   switch(values->getDevice()){
@@ -581,7 +575,7 @@ void Tensor::backward() {
   // last node has no incoming gradients -> factor 1
   if (!grads) {
     grads = make_shared<Tensor>(dims, values->getDevice(), false);
-    grads->reset(1);
+    grads->reset(1.0f);
   }
 
   vector<Tensor*> sortedTensors = cgraph::TopologicalSort::reverseSort(this);
@@ -666,9 +660,11 @@ void Tensor::setDevice(const Device d) noexcept {
  * @return Tensor The slices tensor.
  */
 Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
-  if(high<=low){
+#ifndef NDEBUG
+  if(high <= low){
     __throw_invalid_argument("Upper bound most be larger than lower bound.");
   }
+#endif
 
   makeContiguous();
 
@@ -688,7 +684,7 @@ Tensor Tensor::getSlice(const tensorSize_t low, const tensorSize_t high) const {
  * @return Tensor The result.
  */
 Tensor Tensor::getSlice(span<const tensorDim_t> indices) const {
-  assert(indices.size()>0);
+  assert(indices.size() > 0);
 
   makeContiguous();
   auto resDims = dims.toVector();
@@ -749,24 +745,4 @@ ostream& operator<<(ostream& os, const Tensor& t) noexcept {
     printVals(*t.grads);
   }
   return os;
-}
-
-/**
- * @brief Computes the 1D index from a set of indices.
- *
- * WARNING: Does not check for overflow.
- */
-tensorSize_t Tensor::computeLinearIdx(const std::vector<tensorDim_t>& idx, const Dimension& dims) {
-  if(idx.size()!=dims.nDims()) {
-    __throw_invalid_argument("Number of idxs must match number of dimensions.");
-  }
-  else if(idx.size()==0){
-    return 0;
-  }
-
-  tensorSize_t res = 0;
-  for(tensorDim_t i=0; i<idx.size(); i++){
-    res += idx[i] * dims.getStride(i);
-  }
-  return res;
 }

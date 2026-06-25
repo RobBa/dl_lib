@@ -125,6 +125,7 @@ namespace {
                    const ftype* beta, ftype* C, int ldc, long long strideC, int batchCount) {
     cublasSgemmStridedBatched(h, opA, opB, m, n, k, alpha, A, lda, strideA, B, ldb, strideB, beta, C, ldc, strideC, batchCount);
   }
+
 #else
 
   /**
@@ -353,8 +354,9 @@ namespace cuda_impl {
     }
 
 #else
-    constexpr int MATMUL_TILESIZE = 16; // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
+    constexpr int MATMUL_TILESIZE = 16;
     constexpr dim3 threadsPerBlock(MATMUL_TILESIZE, MATMUL_TILESIZE);
+    static_assert(MATMUL_TILESIZE == 16 || MATMUL_TILESIZE == 32); // choose 16 (threadsPerBlock=256) or 32 (threadsPerBlock=1024)
 
     const tensorSize_t nMultiplications = res.getSize() / resSize;
 

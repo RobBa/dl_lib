@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(unit_tests_backend
   backend/main.cpp
+  backend/test_data_structures.cpp
   backend/test_tensorops.cpp
   backend/test_module.cpp
   backend/test_losses.cpp
