@@ -538,6 +538,10 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   }
 }
 
+#if defined(USE_AVX)
+static_assert(false, "TODO: implement AVX 1 version of matmul kernel");
+#endif
+
 /**
  * @brief Name says it all. Inplace operation on res.
  *
