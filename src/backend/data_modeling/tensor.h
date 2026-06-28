@@ -32,6 +32,10 @@
 #include <type_traits>
 #include <cassert>
 
+#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+#include <immintrin.h>
+#endif
+
 // break circular dependency
 namespace cgraph
 {
@@ -132,10 +136,12 @@ private:
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
 
-  template<bool transposeLeft, bool transposeRight>
-  static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
-                          tensorSize_t resOffset, tensorSize_t leftOffset,
-                          tensorSize_t rightOffset);
+//#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+//  template<bool transposeLeft, bool transposeRight>
+//  static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
+//                          tensorSize_t resOffset, tensorSize_t leftOffset,
+//                          tensorSize_t rightOffset);
+//#endif
 
   void makeContiguous() const;
 
@@ -407,39 +413,36 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
 
   if constexpr (!transposeLeft && !transposeRight) {
-    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype); // each tile fits neatly in cache-line
+    res.reset(0.0f);
+
+    // tune in accordance with cache-line size
+    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-    for (tensorSize_t i = 0; i < nRowsLeft;) {
-      const tensorSize_t leftOffset = i * nColsLeft;
-      const tensorSize_t resOffset = i * nColsRight;
+    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+      for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+        tiles.clearResult();
 
-      for(tensorSize_t j = 0; j < nColsRight;) {
-        const tensorSize_t rightOffset = j * nColsRight;
+        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+          tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-        tiles.loadLeft(left.values->data() + leftOffset, i, j, nRowsLeft, nColsLeft);
-        tiles.loadRight(right.values->data() + rightOffset, i, j, nRowsRight, nColsRight);
+          for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
+          const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
-        for (tensorSize_t m = 0; m < TILESIZE; m++) {
-          const tensorSize_t leftTileOffset = m * TILESIZE;
-          for (tensorSize_t n = 0; n < TILESIZE; n++) {
+            for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
+              const tensorSize_t rightTileRowOffset = m * TILESIZE;
 
-            ftype sum = tiles.result[leftTileOffset + n];
-            for (tensorSize_t k = 0; k < TILESIZE; k++) {
-              sum += tiles.left[leftTileOffset + k] * tiles.right[k * TILESIZE + n];
+              const ftype leftVal = tiles.left[leftTileRowOffset + m];
+              for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
+                tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
+              }
             }
-
-            tiles.result[leftTileOffset + n] = sum;
           }
         }
 
         tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
-        tiles.clearResult();
-
-        j += TILESIZE;
       }
-
-      i += TILESIZE;
     }
   }
 /*   else if constexpr (!transposeLeft && transposeRight) {
@@ -458,34 +461,43 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
         res.values->data()[resOffset + j] = sum;
       }
     }
-  }
-  else if constexpr (transposeLeft && !transposeRight) {
-    // initialize whole res matrix
-    for (tensorSize_t i = 0; i < nColsLeft; i++) {
-      const tensorSize_t resOffset = i * nColsRight; // start of row
+  } */
+/*   else if constexpr (transposeLeft && !transposeRight) {
+    res.reset(0.0f);
 
-      // tensors not zero initialized, therefore need one dry run pre-filling
-      const ftype leftVal = left.values->data()[i];
-      for(tensorSize_t j = 0; j < nColsRight; j++) {
-        res.values->data()[resOffset + j] = leftVal * right.values->data()[j];
-      }
-    }
+    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype); // each tile fits neatly in cache-line
+    matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-    for(tensorSize_t k = 1; k < nRowsLeft; k++) {
-      const tensorSize_t leftOffset = k * nColsLeft;
-      const tensorSize_t rightOffset = k * nColsRight;
+    for(tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
+      for (tensorSize_t i = 0; i < nColsLeft; i += TILESIZE) {
+        for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+          tiles.clearResult();
 
-      for (tensorSize_t i = 0; i < nColsLeft; i++) {
-        const tensorSize_t resOffset = i * nColsRight;
+          for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+            tiles.loadLeftTransposed(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+            tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-        const ftype leftVal = left.values->data()[leftOffset + i];
-        for(tensorSize_t j = 0; j < nColsRight; j++) {
-          res.values->data()[resOffset + j] += leftVal * right.values->data()[rightOffset + j];
+            for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
+            const tensorSize_t leftTileRowOffset = n * TILESIZE;
+
+              for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
+                const tensorSize_t rightTileRowOffset = m * TILESIZE;
+
+                const ftype leftVal = tiles.left[leftTileRowOffset + m];
+                for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
+                  //sum += tiles.left[leftTileOffset + k] * tiles.right[k * TILESIZE + n];
+                  tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
+                }
+              }
+            }
+          }
+
+          tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
         }
       }
     }
-  }
-  else {
+  } */
+  /* else {
     for (tensorSize_t i = 0; i < nColsLeft; i++) {
       const tensorSize_t resOffset = i * nRowsRight;
 
@@ -528,45 +540,79 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
 /**
  * @brief Name says it all. Inplace operation on res.
+ *
+ * Transposition baked into kernel. Assumption is that kernels are not transposed, but we treat them
+ * as if they were for increased speed without the actual transposition happening.
  */
 /* template<bool transposeLeft, bool transposeRight>
 void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset,
-                           const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
-
+                               const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
+  // physical, not logically as in the transposition
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
   const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
   const auto nColsRight = static_cast<tensorSize_t>(right.dims.get(-1));
   const auto nRowsRight = static_cast<tensorSize_t>(right.dims.get(-2));
 
-  const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
-  const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
-  const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
+  if constexpr (!transposeLeft && !transposeRight) {
+    res.reset(0.0f);
 
-  for (tensorSize_t i = 0; i < M; i++) {
-    for (tensorSize_t j = 0; j < N; j++) {
-      ftype sum = 0.0f;
+    // tune in accordance with cache-line size
+    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
+    matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-      for (tensorSize_t k = 0; k < K; k++) {
-        tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
-                                             : leftOffset + i * nColsLeft + k;
+    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+      for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+        tiles.clearResult();
 
-        tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
-                                               : rightOffset + k * nColsRight + j;
+        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+          tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-      #if defined(USE_AVX512)
+          for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
+          const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
-      #elif defined(USE_AVX2)
+            for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
+              const tensorSize_t rightTileRowOffset = m * TILESIZE;
 
-      #elif defined(USE_AVX)
+              const ftype leftVal = tiles.left[leftTileRowOffset + m];
+              const __m256 leftValVec = _mm256_set1_ps(leftVal); // broadcasted load
 
-      #else
-        std::__throw_runtime_error("Not compiled with AVX enabled");
-      #endif
+              for (tensorSize_t kk = 0; kk < TILESIZE; kk += 8) {
+                __m256 rightVec  = _mm256_load_ps(&tiles.right[rightTileRowOffset + kk]);
+                __m256 resultVec = _mm256_load_ps(&tiles.result[leftTileRowOffset + kk]);
 
-        sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
+                resultVec = _mm256_fmadd_ps(leftValVec, rightVec, resultVec);
+                _mm256_store_ps(&tiles.result[leftTileRowOffset + kk], resultVec);
+              }
+            }
+          }
+        }
+
+        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
       }
+    }
+  }
+  else {
+    const tensorSize_t M = transposeLeft ? nColsLeft : nRowsLeft;
+    const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
+    const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
 
-      res.values->data()[resOffset + i * N + j] = sum;
+    for (tensorSize_t i = 0; i < M; i++) {
+      for (tensorSize_t j = 0; j < N; j++) {
+        ftype sum = 0;
+
+        for (tensorSize_t k = 0; k < K; k++) {
+          tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
+                                              : leftOffset + i * nColsLeft + k;
+
+          tensorSize_t rightIdx = transposeRight ? rightOffset + j * nColsRight + k
+                                                : rightOffset + k * nColsRight + j;
+
+          sum += left.values->data()[leftIdx] * right.values->data()[rightIdx];
+        }
+
+        res.values->data()[resOffset + i * N + j] = sum;
+      }
     }
   }
 } */
