@@ -65,7 +65,6 @@ If CUDA compilation not desired you can switch it off via
 cmake --DCUDA=Off ..
 ```
 
-
 ## Running Unit Tests
 
 Compile with building tests enabled: 
@@ -76,6 +75,16 @@ cmake -DBUILD_TESTS=On ..
 make
 ctest .
 ```
+
+### Some hints on performance tuning
+
+There are several knobs for tuning, and this currently has been adjusted using my personal 
+hardware. Some things you can do right away and experiment with are: 
+
+1. Choose an appropriate AVX version, see also flag ${AVX_VERSION} in the base CMakeLists.txt
+2. Enable CUDA if you can for the biggest wins
+3. Some of the CPU instructions keep the hardware layout in mind. You can adapt using file 'memory_layout.h' for a start and then experiment.
+4. If you want to go into the code, I plan to blog about profiler driven optimizations and tips and tricks on my [personal blog](https://robba.github.io/blog/)
 
 ## Required
 

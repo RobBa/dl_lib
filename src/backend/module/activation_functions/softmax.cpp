@@ -63,10 +63,15 @@ Tensor Softmax::operator()(const Tensor& t) const {
           sum += tmp.getData()[i];
         }
 
-        const ftype recip = 1.0f / sum;
-        assert(recip > 0.0f);
+      //  const ftype recip = 1.0f / sum;
+      //#ifndef NDEBUG
+      //  if(recip <= 0.0f) [[unlikely]] {
+      //    cerr << "Recip had value " << recip << endl;
+      //    __throw_runtime_error("Value");
+      //  }
+      //#endif
         for(tensorSize_t i = start; i < start + stride; i++){
-          res.getData()[i] = tmp.getData()[i] / recip;
+          res.getData()[i] = tmp.getData()[i] / sum; // * recip;
         }
       };
 

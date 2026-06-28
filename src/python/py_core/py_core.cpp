@@ -20,7 +20,7 @@
 #include "computational_graph/tensor_ops/graph_creation.h"
 
 #include "utility/utils.h"
-#include "utility/test_avx.h"
+#include "utility/avx_info.h"
 
 #include <boost/python.hpp>
 #include <boost/python/enum.hpp>
@@ -31,7 +31,7 @@
 
 BOOST_PYTHON_MODULE(_core)
 {
-  utility::checkAvxSupport();
+  utility::AvxInfo::verifyAvxSupport();
   FtypeWarning<ftype>::check();
 
   using namespace boost::python;

@@ -12,7 +12,7 @@
 #pragma once
 
 #include "shared/global_params.h"
-#include "shared/memory_layout.h"
+#include "utility/memory_layout.h"
 
 #include "utility/utils.h"
 
@@ -38,7 +38,7 @@ namespace matmul {
       void loadLeft(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       void loadRight(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       
-      //void loadTransposedLeft(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
+      //void loadLeftTransposed(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       //void loadTransposedRight(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
       
       //void storeResult(T* const dst, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
@@ -60,8 +60,8 @@ namespace matmul {
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
-                                                                 const tensorSize_t row0, const tensorSize_t col0, 
-                                                                 const tensorSize_t nRows, const tensorSize_t nCols) {
+                                                          const tensorSize_t row0, const tensorSize_t col0, 
+                                                          const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileM, nRows);
   const tensorSize_t maxIdxCols = std::min(col0 + TileK, nCols);
 
@@ -101,56 +101,74 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRight(const T* const src,
-                                                                 tensorSize_t row0, const tensorSize_t col0, 
-                                                                 const tensorSize_t nRows, const tensorSize_t nCols) {
+                                                           tensorSize_t row0, const tensorSize_t col0, 
+                                                           const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileK, nRows);
   const tensorSize_t maxIdxCols = std::min(col0 + TileN, nCols);
 
   const tensorSize_t validRows = maxIdxRows - row0;
   const tensorSize_t validCols = maxIdxCols - col0;
 
-    for (tensorSize_t row = row0; row < maxIdxRows; row++) {
-      const tensorSize_t srcRowOffset = nCols * row;
-      const tensorSize_t tileRowOffset = (row - row0) * TileN;
+  for (tensorSize_t row = row0; row < maxIdxRows; row++) {
+    const tensorSize_t srcRowOffset = nCols * row;
+    const tensorSize_t tileRowOffset = (row - row0) * TileN;
 
-      tensorSize_t tileCol = 0;
-      for (tensorSize_t col = col0; col < maxIdxCols; col++) {
-        right[tileRowOffset + tileCol] = src[srcRowOffset + col];
-        tileCol++;
-      }
-
-      if(validCols < TileN) {
-        std::fill(right.begin() + tileRowOffset + validCols,
-                  right.begin() + tileRowOffset + TileN,
-                  T{0.0f});
-      }
+    tensorSize_t tileCol = 0;
+    for (tensorSize_t col = col0; col < maxIdxCols; col++) {
+      right[tileRowOffset + tileCol] = src[srcRowOffset + col];
+      tileCol++;
     }
 
-    if(validRows < TileK) {
-      std::fill(right.begin() + validRows * TileN, right.end(), T{0.0f});
+    if(validCols < TileN) {
+      std::fill(right.begin() + tileRowOffset + validCols,
+                right.begin() + tileRowOffset + TileN,
+                T{0.0f});
     }
+  }
+
+  if(validRows < TileK) {
+    std::fill(right.begin() + validRows * TileN, right.end(), T{0.0f});
+  }
 }
 
 /**
- * @brief Like loadLeft, but transpose into tile.
+ * @brief Like load-left, but transposes the matrix when loading into tile.
+ * 
+ * @param row0 Row to start from.
+ * @param col0 Col to start from.
+ * @param nRows Number of rows of src.
+ * @param nCols Number of columns of src.
  */
 /* template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
-inline void matmul::MatmulTile<T, TileM, TileK, TileN>::loadTransposedLeft(const T* const src,
-                                                                 tensorSize_t row0, const tensorSize_t col0, 
-                                                                 const tensorSize_t nRows, const tensorSize_t nCols) {
+requires std::is_floating_point_v<T>
+void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* const src,
+                                                                    const tensorSize_t row0, const tensorSize_t col0, 
+                                                                    const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileM, nRows);
   const tensorSize_t maxIdxCols = std::min(col0 + TileK, nCols);
-  
-  tensorSize_t arrIdx = 0;
-  for(; row0 < maxIdxRows; row0++) {
-    tensorSize_t srcRowOffset = nCols * row0;
 
-    for(tensorSize_t col = col0; col < maxIdxCols; col0++) {
-      left[arrIdx] = src[srcRowOffset + col];
-      arrIdx++;
+  const tensorSize_t validRows = maxIdxRows - row0;
+  const tensorSize_t validCols = maxIdxCols - col0;
+  
+  for(tensorSize_t row = row0; row < maxIdxRows; row++) {
+    const tensorSize_t srcRowOffset = nCols * row;
+    const tensorSize_t tileRowOffset = (row - row0) * TileK;
+    
+    tensorSize_t tileCol = 0;
+    for(tensorSize_t col = col0; col < maxIdxCols; col++) {
+      left[tileRowOffset + tileCol] = src[srcRowOffset + col];
+      tileCol++;
     }
 
-    arrIdx = (arrIdx + TileK - 1) >> 1; // floor division
+    if (validCols < TileK) {
+      std::fill(left.begin() + tileRowOffset + validCols,
+                left.begin() + tileRowOffset + TileK,
+                T{0.0f});
+    }
+  }
+
+  if (validRows < TileM) {
+    std::fill(left.begin() + validRows * TileK, left.end(), T{0.0f});
   }
 } */
 

@@ -29,6 +29,10 @@
 #include "data_modeling/cuda/tensor_ops.cuh"
 #endif
 
+#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+#include "utility/avx_info.h"
+#endif
+
 using namespace std;
 
 /********************************************************************
@@ -332,10 +336,32 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
       tensorSize_t rightOffset = 0;
       tensorSize_t resOffset = 0;
 
-    //#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
-      //static bool avxWorks = true;
+    #if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+      static const bool avxVerified = utility::AvxInfo::getAvxAvailable();
+      if(avxVerified) [[likely]] {
+        while(leftOffset < left.getSize()){
+          if(!(transposeLeft || transposeRight)) {
+            matMul2DCpuAvx<false, false>(res, left, right, resOffset, leftOffset, rightOffset);
+          }
+          else if(transposeLeft && transposeRight) [[unlikely]] {
+            matMul2DCpuAvx<true, true>(res, left, right, resOffset, leftOffset, rightOffset);
+          }
+          else if(transposeLeft) {
+            matMul2DCpuAvx<true, false>(res, left, right, resOffset, leftOffset, rightOffset);
+          }
+          else if(transposeRight) {
+            matMul2DCpuAvx<false, true>(res, left, right, resOffset, leftOffset, rightOffset);
+          }
 
-    //#else
+          leftOffset += leftSize;
+          rightOffset += rightSize;
+          resOffset += resSize;
+        }
+        break;
+      }
+      else [[unlikely]] {
+    #endif
+
       while(leftOffset < left.getSize()){
         if(!(transposeLeft || transposeRight)) {
           matMul2DCpuScalar<false, false>(res, left, right, resOffset, leftOffset, rightOffset);
@@ -355,8 +381,11 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
         resOffset += resSize;
       }
       break;
-    //#endif
-    }
+
+    #if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+      } // close else-branch surrounding scalar matmul
+    #endif
+    } // close the device==Device::CPU branch
     case Device::CUDA:
       #ifdef __CUDA
         cuda_impl::matmul(res, left, right, transposeLeft, transposeRight);

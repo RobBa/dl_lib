@@ -21,7 +21,7 @@
 #include "shared/global_params.h"
 #include "shared/initializers.h"
 #include "shared/memory_pool.h"
-#include "shared/memory_layout.h"
+#include "utility/memory_layout.h"
 
 #include <memory>
 #include <span>
@@ -136,12 +136,12 @@ private:
                           tensorSize_t resOffset, tensorSize_t leftOffset,
                           tensorSize_t rightOffset);
 
-//#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
-//  template<bool transposeLeft, bool transposeRight>
-//  static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
-//                          tensorSize_t resOffset, tensorSize_t leftOffset,
-//                          tensorSize_t rightOffset);
-//#endif
+#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+  template<bool transposeLeft, bool transposeRight>
+  static void matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right,
+                          tensorSize_t resOffset, tensorSize_t leftOffset,
+                          tensorSize_t rightOffset);
+#endif
 
   void makeContiguous() const;
 
@@ -419,22 +419,22 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
     constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+    for(tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
       for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
         tiles.clearResult();
 
-        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+        for(tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
           tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
           tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-          for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
+          for(tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
           const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
-            for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
+            for(tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
               const tensorSize_t rightTileRowOffset = m * TILESIZE;
 
               const ftype leftVal = tiles.left[leftTileRowOffset + m];
-              for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
+              for(tensorSize_t kk = 0; kk < TILESIZE; kk++) {
                 tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
               }
             }
@@ -518,11 +518,11 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
     const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
     const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
 
-    for (tensorSize_t i = 0; i < M; i++) {
-      for (tensorSize_t j = 0; j < N; j++) {
+    for(tensorSize_t i = 0; i < M; i++) {
+      for(tensorSize_t j = 0; j < N; j++) {
         ftype sum = 0;
 
-        for (tensorSize_t k = 0; k < K; k++) {
+        for(tensorSize_t k = 0; k < K; k++) {
           tensorSize_t leftIdx = transposeLeft ? leftOffset + k * nColsLeft + i
                                               : leftOffset + i * nColsLeft + k;
 
@@ -544,9 +544,12 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
  * Transposition baked into kernel. Assumption is that kernels are not transposed, but we treat them
  * as if they were for increased speed without the actual transposition happening.
  */
-/* template<bool transposeLeft, bool transposeRight>
+
+#if defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)
+template<bool transposeLeft, bool transposeRight>
 void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right, const tensorSize_t resOffset,
                                const tensorSize_t leftOffset, const tensorSize_t rightOffset) {
+
   // physical, not logically as in the transposition
   const auto nRowsLeft = static_cast<tensorSize_t>(left.dims.get(-2));
   const auto nColsLeft = static_cast<tensorSize_t>(left.dims.get(-1));
@@ -560,24 +563,24 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
     constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+    for(tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
       for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
         tiles.clearResult();
 
-        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+        for(tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
           tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
           tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-          for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
+          for(tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
           const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
-            for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
+            for(tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
               const tensorSize_t rightTileRowOffset = m * TILESIZE;
 
               const ftype leftVal = tiles.left[leftTileRowOffset + m];
               const __m256 leftValVec = _mm256_set1_ps(leftVal); // broadcasted load
 
-              for (tensorSize_t kk = 0; kk < TILESIZE; kk += 8) {
+              for(tensorSize_t kk = 0; kk < TILESIZE; kk += 8) {
                 __m256 rightVec  = _mm256_load_ps(&tiles.right[rightTileRowOffset + kk]);
                 __m256 resultVec = _mm256_load_ps(&tiles.result[leftTileRowOffset + kk]);
 
@@ -597,8 +600,8 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
     const tensorSize_t K = transposeLeft ? nRowsLeft : nColsLeft;
     const tensorSize_t N = transposeRight ? nRowsRight : nColsRight;
 
-    for (tensorSize_t i = 0; i < M; i++) {
-      for (tensorSize_t j = 0; j < N; j++) {
+    for(tensorSize_t i = 0; i < M; i++) {
+      for(tensorSize_t j = 0; j < N; j++) {
         ftype sum = 0;
 
         for (tensorSize_t k = 0; k < K; k++) {
@@ -615,4 +618,5 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
       }
     }
   }
-} */
+}
+#endif // defined(USE_AVX512) || defined(USE_AVX2) || defined(USE_AVX)

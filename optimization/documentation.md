@@ -93,7 +93,7 @@ Minimal. No AVX used.
 - ~17.07s
 - Minimal improvement...
 
-# Step 2: Optimize matmul
+# Step 2: Optimize matmul for non transposed case
 
 ### Analysis and profiling
 
@@ -345,7 +345,7 @@ We still see some functions that are being called. To reduce this noise from fut
 Before: 15.1904s
 After: 14.5321s
 
-## Step 2-4: Tiled matmul implementations
+## Step 2-4: Tiled matmul implementation of forward non-transposed case
 
 ### Analysis
 
@@ -416,4 +416,160 @@ Tensor Tensor::operator+(const Tensor& other) const {
 ```
 
 We can find bugs quickly, but remove small instruction overhead. Possibly negligible, but still good to have.
+
+### Times after fix
+
+Before: 14.5321s
+After: 13.9477s
+
+# Step 2-5: Try AVX
+
+### Description
+
+We use AVX to get the matmul correct.
+
+### Times after fix:
+
+Before: 11.2718s
+After: 13.8033s
+
+Interestingly, CPU version got faster. Maybe temperature in room? 
+Do an analysis to compare two versions: 
+
+### Analysis of result
+
+Auto vectorized loops for scalar version now:
+
+```
+         : 448   const ftype leftVal = tiles.left[leftTileRowOffset + m];
+    0.00 :   6ea32:  movss  -0x4(%rcx),%xmm1
+    0.00 :   6ea37:  shufps $0x0,%xmm1,%xmm1
+         : 451   tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
+    0.03 :   6ea3b:  mulps  -0xb0(%rdx),%xmm1
+    0.00 :   6ea42:  addps  %xmm2,%xmm1
+    0.03 :   6ea45:  movaps %xmm1,0x8050(%rax)
+    0.00 :   6ea4c:  movaps -0x1a0(%rdx),%xmm2
+    0.18 :   6ea53:  mulps  %xmm0,%xmm2
+    0.00 :   6ea56:  addps  0x8060(%rax),%xmm2
+    0.00 :   6ea5d:  movaps %xmm2,0x8060(%rax)
+```
+
+Interestingly, the benchmarks prefer the AVX version. 
+
+**Scalar matmul**: 
+
+```
+---------------------------------------------------------------------------------------
+Benchmark                             Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------
+BM_MatMul_CPU/64/64/64             33.3 us         33.2 us        21099 GFLOP/s=15.7689/s
+BM_MatMul_CPU/256/256/256          1863 us         1863 us          378 GFLOP/s=18.0083/s
+BM_MatMul_CPU/512/512/512         14652 us        14650 us           47 GFLOP/s=18.3236/s
+BM_MatMul_CPU/1024/1024/1024     118488 us       118473 us            6 GFLOP/s=18.1264/s
+BM_MatMul_CPU/64/784/256           1486 us         1485 us          471 GFLOP/s=17.2944/s
+BM_MatMul_CPU/64/256/128            236 us          235 us         2977 GFLOP/s=17.8199/s
+BM_MatMul_CPU/64/128/10            55.7 us         55.7 us        12536 GFLOP/s=2.94307/s
+```
+
+```
+     6,119,158,859      task-clock                       #    0.983 CPUs utilized             
+               203      context-switches                 #   33.174 /sec                      
+                41      cpu-migrations                   #    6.700 /sec                      
+           327,558      page-faults                      #   53.530 K/sec                     
+    25,713,289,941      cpu_atom/instructions/           #    1.65  insn per cycle              (1.17%)
+    61,227,574,418      cpu_core/instructions/           #    2.75  insn per cycle              (34.70%)
+    15,549,578,061      cpu_atom/cycles/                 #    2.541 GHz                         (1.20%)
+    22,244,783,782      cpu_core/cycles/                 #    3.635 GHz                         (41.66%)
+     5,075,506,806      cpu_atom/branches/               #  829.445 M/sec                       (1.25%)
+     9,336,318,833      cpu_core/branches/               #    1.526 G/sec                       (48.61%)
+        69,486,119      cpu_atom/branch-misses/          #    1.37% of all branches             (1.29%)
+        84,171,032      cpu_core/branch-misses/          #    0.90% of all branches             (55.56%)
+ #     16.0 %  tma_backend_bound      
+                                                  #     20.7 %  tma_bad_speculation    
+                                                  #     37.1 %  tma_frontend_bound     
+                                                  #     26.2 %  tma_retiring             (62.51%)
+ #     16.3 %  tma_bad_speculation    
+                                                  #     33.9 %  tma_retiring             (1.33%)
+ #     25.7 %  tma_backend_bound      
+                                                  #     24.1 %  tma_frontend_bound       (1.36%)
+    12,923,830,681      cpu_atom/L1-dcache-loads/        #    2.112 G/sec                       (1.14%)
+    16,573,597,586      cpu_core/L1-dcache-loads/        #    2.708 G/sec                       (69.47%)
+     1,455,566,977      cpu_core/L1-dcache-load-misses/  #    8.78% of all L1-dcache accesses   (69.50%)
+     3,426,553,400      cpu_atom/LLC-loads/              #  559.971 M/sec                       (1.10%)
+        98,259,794      cpu_core/LLC-loads/              #   16.058 M/sec                       (69.51%)
+     9,613,462,195      cpu_atom/LLC-load-misses/        #  280.56% of all LL-cache accesses    (1.07%)
+        87,267,152      cpu_core/LLC-load-misses/        #   88.81% of all LL-cache accesses    (69.50%)
+    15,603,566,118      cpu_atom/L1-icache-loads/        #    2.550 G/sec                       (1.03%)
+       138,422,928      cpu_atom/L1-icache-load-misses/  #    0.89% of all L1-icache accesses   (1.01%)
+       173,264,212      cpu_core/L1-icache-load-misses/                                         (27.77%)
+    20,279,132,840      cpu_atom/dTLB-loads/             #    3.314 G/sec                       (0.99%)
+    16,516,515,061      cpu_core/dTLB-loads/             #    2.699 G/sec                       (27.75%)
+     2,684,543,596      cpu_atom/dTLB-load-misses/       #   13.24% of all dTLB cache accesses  (0.97%)
+         8,554,806      cpu_core/dTLB-load-misses/       #    0.05% of all dTLB cache accesses  (27.74%)
+     1,409,394,265      cpu_atom/iTLB-load-misses/                                              (0.97%)
+           295,925      cpu_core/iTLB-load-misses/                                              (27.74%)
+
+```
+
+**AVX matmul**
+
+```
+---------------------------------------------------------------------------------------
+Benchmark                             Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------
+BM_MatMul_CPU/64/64/64             21.4 us         21.4 us        32326 GFLOP/s=24.4923/s
+BM_MatMul_CPU/256/256/256          1127 us         1127 us          622 GFLOP/s=29.7775/s
+BM_MatMul_CPU/512/512/512          8615 us         8615 us           81 GFLOP/s=31.1598/s
+BM_MatMul_CPU/1024/1024/1024      68145 us        68139 us           10 GFLOP/s=31.5161/s
+BM_MatMul_CPU/64/784/256            890 us          890 us          787 GFLOP/s=28.8519/s
+BM_MatMul_CPU/64/256/128            145 us          144 us         4903 GFLOP/s=29.0298/s
+BM_MatMul_CPU/64/128/10            32.6 us         32.6 us        21446 GFLOP/s=5.02834/s
+```
+
+```
+     6,391,346,259      task-clock                       #    0.985 CPUs utilized             
+               181      context-switches                 #   28.320 /sec                      
+                21      cpu-migrations                   #    3.286 /sec                      
+           328,200      page-faults                      #   51.351 K/sec                     
+     5,774,671,185      cpu_atom/instructions/           #    0.51  insn per cycle              (0.03%)
+    57,183,112,275      cpu_core/instructions/           #    2.45  insn per cycle              (35.65%)
+    11,294,677,948      cpu_atom/cycles/                 #    1.767 GHz                         (0.03%)
+    23,350,587,606      cpu_core/cycles/                 #    3.653 GHz                         (42.79%)
+     2,443,486,731      cpu_atom/branches/               #  382.312 M/sec                       (0.05%)
+     8,167,530,576      cpu_core/branches/               #    1.278 G/sec                       (49.92%)
+       102,100,250      cpu_atom/branch-misses/          #    4.18% of all branches             (0.07%)
+        83,043,818      cpu_core/branch-misses/          #    1.02% of all branches             (57.05%)
+ #     14.8 %  tma_backend_bound      
+                                                  #     21.7 %  tma_bad_speculation    
+                                                  #     37.8 %  tma_frontend_bound     
+                                                  #     25.8 %  tma_retiring             (64.19%)
+ #     28.7 %  tma_bad_speculation    
+                                                  #     19.9 %  tma_retiring             (0.09%)
+ #     23.3 %  tma_backend_bound      
+                                                  #     28.1 %  tma_frontend_bound       (0.11%)
+    14,914,861,503      cpu_atom/L1-dcache-loads/        #    2.334 G/sec                       (0.11%)
+    16,085,612,407      cpu_core/L1-dcache-loads/        #    2.517 G/sec                       (71.31%)
+       839,696,484      cpu_core/L1-dcache-load-misses/  #    5.22% of all L1-dcache accesses   (71.33%)
+     1,162,191,375      cpu_atom/LLC-loads/              #  181.838 M/sec                       (0.12%)
+        95,471,293      cpu_core/LLC-loads/              #   14.938 M/sec                       (71.35%)
+           380,933      cpu_atom/LLC-load-misses/        #    0.03% of all LL-cache accesses    (0.12%)
+        82,961,062      cpu_core/LLC-load-misses/        #   86.90% of all LL-cache accesses    (71.36%)
+     3,827,853,742      cpu_atom/L1-icache-loads/        #  598.912 M/sec                       (0.10%)
+       347,314,327      cpu_atom/L1-icache-load-misses/  #    9.07% of all L1-icache accesses   (0.09%)
+       172,161,044      cpu_core/L1-icache-load-misses/                                         (28.51%)
+     1,412,703,863      cpu_atom/dTLB-loads/             #  221.034 M/sec                       (0.07%)
+    16,106,340,005      cpu_core/dTLB-loads/             #    2.520 G/sec                       (28.52%)
+        13,396,728      cpu_atom/dTLB-load-misses/       #    0.95% of all dTLB cache accesses  (0.05%)
+         8,002,265      cpu_core/dTLB-load-misses/       #    0.05% of all dTLB cache accesses  (28.53%)
+         7,357,983      cpu_atom/iTLB-load-misses/                                              (0.02%)
+           654,123      cpu_core/iTLB-load-misses/                                              (28.51%)
+```
+
+### Answer
+
+There appears to be much noise. In the scalar version the E-Cores of my CPU get much more heavily utilized. 
+Small workload with small tensors in MNIST indicate that noise can dominate. We do not investigate further, 
+but instead move on. We consider the benchmark results the more reliable data source.
+
+# Step 3 - Optimize matmul for transposed cases
 

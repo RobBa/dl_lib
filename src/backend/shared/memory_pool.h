@@ -13,7 +13,7 @@
 
 #include "shared/global_params.h"
 #include "data_modeling/device.h"
-#include "memory_layout.h"
+#include "utility/memory_layout.h"
 #include "utility/utils.h"
 
 #include <unordered_map>
