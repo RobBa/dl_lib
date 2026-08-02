@@ -38,10 +38,10 @@ namespace matmul {
       void loadLeft(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       void loadRight(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       
-      //void loadLeftTransposed(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
-      void loadRightTransposed(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
+      void loadLeftTransposed(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
+      //void loadRightTransposed(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
       
-      // TODO: this would be an optimization
+      // TODO: avoid the initial resetting to zero via clearResult. this would be an optimization
       //void storeResult(T* const dst, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       void clearResult() noexcept {
         std::fill(result.begin(), result.begin() + TileM * TileN, T{0.0f});
@@ -53,8 +53,8 @@ namespace matmul {
 /**
  * @brief Loads left from a tensor (src).
  * 
- * @param row0 Row to start from.
- * @param col0 Col to start from.
+ * @param row0 Row of src to start from.
+ * @param col0 Col of src to start from.
  * @param nRows Number of rows of src.
  * @param nCols Number of columns of src.
  */
@@ -94,8 +94,8 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
 /**
  * @brief Loads right tensor from a tensor (src).
  * 
- * @param row0 Row to start from.
- * @param col0 Col to start from.
+ * @param row0 Row of src to start from.
+ * @param col0 Col of src to start from.
  * @param nRows Number of rows of src.
  * @param nCols Number of columns of src.
  */
@@ -135,12 +135,15 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRight(const T* const src,
 /**
  * @brief Like loadLeft, but transposes the matrix when loading into tile.
  * 
- * @param row0 Row to start from.
- * @param col0 Col to start from.
- * @param nRows Number of rows of src.
- * @param nCols Number of columns of src.
+ * Dimensions still fit. I.e. left tile has dimensions M and K. The only difference
+ * to the non-transposed case is the indexing into the left tile.
+ * 
+ * @param row0 Physical, non-transposed row of src to start from.
+ * @param col0 Physical, non-transposed column of src to start from.
+ * @param nRows Number of physical, non-transposed rows of src.
+ * @param nCols Number of physical, non-transposed columns of src.
  */
-/* template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
+template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* const src,
                                                                     const tensorSize_t row0, const tensorSize_t col0, 
@@ -150,38 +153,40 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* con
 
   const tensorSize_t validRows = maxIdxRows - row0;
   const tensorSize_t validCols = maxIdxCols - col0;
-  
-  for(tensorSize_t row = row0; row < maxIdxRows; row++) {
-    const tensorSize_t srcRowOffset = nCols * row;
-    const tensorSize_t tileRowOffset = (row - row0) * TileK;
-    
+
+  for(tensorSize_t srcCol = col0; srcCol < maxIdxCols; srcCol++) {
+    const tensorSize_t tileRowOffset = (srcCol - col0) * TileK;
+
     tensorSize_t tileCol = 0;
-    for(tensorSize_t col = col0; col < maxIdxCols; col++) {
-      left[tileRowOffset + tileCol] = src[srcRowOffset + col];
+    for(tensorSize_t srcRow = row0; srcRow < maxIdxRows; srcRow++) {
+      left[tileRowOffset + tileCol] = src[srcRow * nCols + srcCol];
       tileCol++;
     }
 
-    if (validCols < TileK) {
-      std::fill(left.begin() + tileRowOffset + validCols,
+    if(validRows < TileK) {
+      std::fill(left.begin() + tileRowOffset + validRows,
                 left.begin() + tileRowOffset + TileK,
                 T{0.0f});
     }
   }
 
-  if (validRows < TileM) {
-    std::fill(left.begin() + validRows * TileK, left.end(), T{0.0f});
+  if(validCols < TileM) {
+    std::fill(left.begin() + validCols * TileK, left.end(), T{0.0f});
   }
-} */
+}
 
 /**
  * @brief Like loadRight, but transposes the matrix when loading into tile.
  * 
- * @param row0 Row to start from.
- * @param col0 Col to start from.
- * @param nRows Number of rows of src.
- * @param nCols Number of columns of src.
+ * Dimensions still fit. I.e. right tile has dimensions K and N. The only difference
+ * to the non-transposed case is the indexing into the right tile.
+ * 
+ * @param row0 Physical, non-transposed row of src to start from.
+ * @param col0 Physical, non-transposed column of src to start from.
+ * @param nRows Number of physical, non-transposed rows of src.
+ * @param nCols Number of physical, non-transposed columns of src.
  */
-template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
+/* template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* const src,
                                                            const tensorSize_t row0, const tensorSize_t col0, 
@@ -212,7 +217,7 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* co
   if(validRows < TileK) {
     std::fill(right.begin() + validRows * TileN, right.end(), T{0.0f});
   }
-}
+} */
 
 /**
  * @brief Store back into tensor (dst) from tile result. Does an add-operation.
