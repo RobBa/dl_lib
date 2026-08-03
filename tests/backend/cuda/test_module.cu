@@ -15,6 +15,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <gtest/gtest.h>
 
+#include "shared.h"
+
 #include "data_modeling/tensor_functions.h"
 #include "computational_graph/tensor_ops/graph_creation.h"
 
@@ -199,14 +201,14 @@ TEST(CudaActivationTest, SoftmaxForward64x10) {
   auto resCpu = sm(tCopy);
 
   resGpu.setDevice(Device::CUDA);
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < nSamples; i++) {
     for(int j = 0; j < nClasses; j++) {
-      EXPECT_NEAR(resCpu.get(i, j), resGpu.get(i, j), 1e-4)
-        << "Mismatch at (" << i << ", " << j << ")"
-        << " cpu=" << resCpu.get(i, j)
-        << " gpu=" << resGpu.get(i, j);
+      checker.check(resCpu.get(i, j), resGpu.get(i, j),
+                     "Mismatch at (" + std::to_string(i) + ", " + std::to_string(j) + ")");
     }
   }
+  checker.finalize();
 }
 
 TEST(CudaActivationTest, SoftmaxMediumLarge) {
@@ -292,7 +294,7 @@ TEST(CudaAutogradTest, SoftmaxBackwardBatched) {
   auto gradsGpu = tGpu->getGrads();
 
   for(int i = 0; i < tCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
+    ASSERT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
       << "Failed at index " << i 
       << " - GradsCpu[i]: " << (*gradsCpu)[i]
       << " - GradsGpu[i]: " << (*gradsGpu)[i];
@@ -340,12 +342,11 @@ TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   auto gradsCpu = tCpu->getGrads();
   auto gradsGpu = tGpu->getGrads();
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < tCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
-      << "Failed at index " << i 
-      << " - GradsCpu[i]: " << (*gradsCpu)[i]
-      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+    checker.check((*gradsCpu)[i], (*gradsGpu)[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }
 
 TEST(CudaLayerTest, TestFfLayer) {
@@ -370,9 +371,11 @@ TEST(CudaLayerTest, TestFfLayerLarge) {
   layer.setDevice(Device::CUDA);
   auto resGpu = layer(tGpu);
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < resCpu.getSize(); i++) {
-    EXPECT_NEAR(resCpu[i], resGpu[i], 1e-4);
+    checker.check(resCpu[i], resGpu[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }
 
 TEST(CudaAutogradTest, FfLayerBackward) {
@@ -464,15 +467,19 @@ TEST(CudaAutogradTest, FfLayerBackwardLarge) {
 
   auto xGradsCpu = xCpu->getGrads();
   auto xGradsGpu = xGpu->getGrads();
+  cuda_test::NumericalStabilityChecker xChecker(1e-4);
   for(int i = 0; i < xCpu->getSize(); i++) {
-    EXPECT_NEAR((*xGradsCpu)[i], (*xGradsGpu)[i], 1e-4);
+    xChecker.check((*xGradsCpu)[i], (*xGradsGpu)[i], "xGrads at index " + std::to_string(i));
   }
+  xChecker.finalize();
 
   auto wGradsCpu = layerCpu.getWeights()->getGrads();
   auto wGradsGpu = layerGpu.getWeights()->getGrads();
+  cuda_test::NumericalStabilityChecker wChecker(1e-4);
   for(int i = 0; i < wCpu->getSize(); i++) {
-    EXPECT_NEAR((*wGradsCpu)[i], (*wGradsGpu)[i], 1e-4);
+    wChecker.check((*wGradsCpu)[i], (*wGradsGpu)[i], "wGrads at index " + std::to_string(i));
   }
+  wChecker.finalize();
 }
 
 TEST(CudaAutogradTest, FfLayerBackwardWithBiasLarge) {
@@ -510,19 +517,23 @@ TEST(CudaAutogradTest, FfLayerBackwardWithBiasLarge) {
 
   auto xGradsCpu = xCpu->getGrads();
   auto xGradsGpu = xGpu->getGrads();
+  cuda_test::NumericalStabilityChecker xChecker(1e-4);
   for(int i = 0; i < xCpu->getSize(); i++) {
-    EXPECT_NEAR((*xGradsCpu)[i], (*xGradsGpu)[i], 1e-4);
+    xChecker.check((*xGradsCpu)[i], (*xGradsGpu)[i], "xGrads at index " + std::to_string(i));
   }
+  xChecker.finalize();
 
   auto wGradsCpu = layerCpu.getWeights()->getGrads();
   auto wGradsGpu = layerGpu.getWeights()->getGrads();
+  cuda_test::NumericalStabilityChecker wChecker(1e-4);
   for(int i = 0; i < wCpu->getSize(); i++) {
-    EXPECT_NEAR((*wGradsCpu)[i], (*wGradsGpu)[i], 1e-4);
+    wChecker.check((*wGradsCpu)[i], (*wGradsGpu)[i], "wGrads at index " + std::to_string(i));
   }
+  wChecker.finalize();
 
   auto bGradsCpu = layerCpu.getBias()->getGrads();
   auto bGradsGpu = layerGpu.getBias()->getGrads();
   for(int i = 0; i < bCpu->getSize(); i++) {
-    EXPECT_NEAR((*bGradsCpu)[i], (*bGradsGpu)[i], 1e-4);
+    ASSERT_NEAR((*bGradsCpu)[i], (*bGradsGpu)[i], 1e-4);
   }
 }

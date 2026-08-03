@@ -68,8 +68,8 @@ TEST(CudaInitializerTest, UniformXavier_GPU_ValuesInRange) {
   cudaFree(d_data);
 
   for(tensorSize_t i = 0; i < N; i++) {
-    EXPECT_GE(buf[i], -range - 1e-5f) << "Below -range at index " << i;
-    EXPECT_LE(buf[i],  range + 1e-5f) << "Above +range at index " << i;
+    ASSERT_GE(buf[i], -range - 1e-5f) << "Below -range at index " << i;
+    ASSERT_LE(buf[i],  range + 1e-5f) << "Above +range at index " << i;
   }
 }
 

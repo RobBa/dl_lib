@@ -15,6 +15,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <gtest/gtest.h>
 
+#include "shared.h"
+
 #include "data_modeling/tensor_functions.h"
 
 #include "training/loss_functions/rmse_loss.h"
@@ -146,12 +148,11 @@ TEST(CudaLossTest, CrossEntropyBackwardLarge) {
   auto gradsGpu = ypredGpu->getGrads();
   gradsGpu->setDevice(Device::CPU);
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < ypredCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
-      << "Failed at index " << i 
-      << " - GradsCpu[i]: " << (*gradsCpu)[i]
-      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+    checker.check((*gradsCpu)[i], (*gradsGpu)[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward64x10) {
@@ -177,12 +178,11 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward64x10) {
   auto gradsGpu = logitsGpu->getGrads();
   gradsGpu->setDevice(Device::CPU);
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < logitsCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4)
-      << "Failed at index " << i
-      << " - GradsCpu[i]: " << (*gradsCpu)[i]
-      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+    checker.check((*gradsCpu)[i], (*gradsGpu)[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxForward) {
@@ -404,12 +404,11 @@ TEST(CudaLossTest, BceBackwardLarge) {
   auto gradsGpu = ypredGpu->getGrads();
   gradsGpu->setDevice(Device::CPU);
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < ypredCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4) 
-      << "Failed at index " << i 
-      << " - GradsCpu[i]: " << (*gradsCpu)[i]
-      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+    checker.check((*gradsCpu)[i], (*gradsGpu)[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }
 
 TEST(CudaLossTest, RmseForward) {
@@ -489,10 +488,9 @@ TEST(CudaLossTest, RmseBackwardLarge) {
   auto gradsGpu = ypredGpu->getGrads();
   gradsGpu->setDevice(Device::CPU);
 
+  cuda_test::NumericalStabilityChecker checker(1e-4);
   for(int i = 0; i < ypredCpu->getSize(); i++) {
-    EXPECT_NEAR((*gradsCpu)[i], (*gradsGpu)[i], 1e-4)
-      << "Failed at index " << i
-      << " - GradsCpu[i]: " << (*gradsCpu)[i]
-      << " - GradsGpu[i]: " << (*gradsGpu)[i];
+    checker.check((*gradsCpu)[i], (*gradsGpu)[i], "Failed at index " + std::to_string(i));
   }
+  checker.finalize();
 }

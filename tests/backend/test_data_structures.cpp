@@ -40,10 +40,10 @@ static constexpr float kSrc4x4[16] = {
 TEST(MatmulTileTest, LoadLeft_FullTileAtOrigin) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadLeft(kSrc4x4, 0, 0, 4, 4);
-  EXPECT_FLOAT_EQ(tile.left[0],  1.f);
-  EXPECT_FLOAT_EQ(tile.left[1],  2.f);
-  EXPECT_FLOAT_EQ(tile.left[2],  5.f);
-  EXPECT_FLOAT_EQ(tile.left[3],  6.f);
+  ASSERT_FLOAT_EQ(tile.left[0],  1.f);
+  ASSERT_FLOAT_EQ(tile.left[1],  2.f);
+  ASSERT_FLOAT_EQ(tile.left[2],  5.f);
+  ASSERT_FLOAT_EQ(tile.left[3],  6.f);
 }
 
 // Load a full 2x2 left tile at offset (row=1, col=2).
@@ -51,10 +51,10 @@ TEST(MatmulTileTest, LoadLeft_FullTileAtOrigin) {
 TEST(MatmulTileTest, LoadLeft_FullTileAtOffset) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadLeft(kSrc4x4, 1, 2, 4, 4);
-  EXPECT_FLOAT_EQ(tile.left[0],  7.f);
-  EXPECT_FLOAT_EQ(tile.left[1],  8.f);
-  EXPECT_FLOAT_EQ(tile.left[2], 11.f);
-  EXPECT_FLOAT_EQ(tile.left[3], 12.f);
+  ASSERT_FLOAT_EQ(tile.left[0],  7.f);
+  ASSERT_FLOAT_EQ(tile.left[1],  8.f);
+  ASSERT_FLOAT_EQ(tile.left[2], 11.f);
+  ASSERT_FLOAT_EQ(tile.left[3], 12.f);
 }
 
 // Load a 2x3 left tile from a 4x4 matrix at origin.
@@ -62,12 +62,12 @@ TEST(MatmulTileTest, LoadLeft_FullTileAtOffset) {
 TEST(MatmulTileTest, LoadLeft_RectangularTile) {
   matmul::MatmulTile<float, 2, 3, 2> tile;
   tile.loadLeft(kSrc4x4, 0, 0, 4, 4);
-  EXPECT_FLOAT_EQ(tile.left[0], 1.f);
-  EXPECT_FLOAT_EQ(tile.left[1], 2.f);
-  EXPECT_FLOAT_EQ(tile.left[2], 3.f);
-  EXPECT_FLOAT_EQ(tile.left[3], 5.f);
-  EXPECT_FLOAT_EQ(tile.left[4], 6.f);
-  EXPECT_FLOAT_EQ(tile.left[5], 7.f);
+  ASSERT_FLOAT_EQ(tile.left[0], 1.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 2.f);
+  ASSERT_FLOAT_EQ(tile.left[2], 3.f);
+  ASSERT_FLOAT_EQ(tile.left[3], 5.f);
+  ASSERT_FLOAT_EQ(tile.left[4], 6.f);
+  ASSERT_FLOAT_EQ(tile.left[5], 7.f);
 }
 
 // Tile is wider than the available columns — only 1 column remains at col=3.
@@ -76,10 +76,10 @@ TEST(MatmulTileTest, LoadLeft_RectangularTile) {
 TEST(MatmulTileTest, LoadLeft_PartialColumns) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadLeft(kSrc4x4, 0, 3, 4, 4);
-  EXPECT_FLOAT_EQ(tile.left[0],  4.f);
-  EXPECT_FLOAT_EQ(tile.left[1],  0.f);  // zero-padded (tile is 2 wide, only 1 col available)
-  EXPECT_FLOAT_EQ(tile.left[2],  8.f);
-  EXPECT_FLOAT_EQ(tile.left[3],  0.f);
+  ASSERT_FLOAT_EQ(tile.left[0],  4.f);
+  ASSERT_FLOAT_EQ(tile.left[1],  0.f);  // zero-padded (tile is 2 wide, only 1 col available)
+  ASSERT_FLOAT_EQ(tile.left[2],  8.f);
+  ASSERT_FLOAT_EQ(tile.left[3],  0.f);
 }
 
 // Tile is taller than the available rows — only 1 row remains at row=3.
@@ -88,10 +88,59 @@ TEST(MatmulTileTest, LoadLeft_PartialColumns) {
 TEST(MatmulTileTest, LoadLeft_PartialRows) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadLeft(kSrc4x4, 3, 0, 4, 4);
-  EXPECT_FLOAT_EQ(tile.left[0], 13.f);
-  EXPECT_FLOAT_EQ(tile.left[1], 14.f);
-  EXPECT_FLOAT_EQ(tile.left[2],  0.f);  // zero-padded (tile is 2 tall, only 1 row available)
-  EXPECT_FLOAT_EQ(tile.left[3],  0.f);
+  ASSERT_FLOAT_EQ(tile.left[0], 13.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 14.f);
+  ASSERT_FLOAT_EQ(tile.left[2],  0.f);  // zero-padded (tile is 2 tall, only 1 row available)
+  ASSERT_FLOAT_EQ(tile.left[3],  0.f);
+}
+
+// --- loadLeftTransposed ---
+// loadLeftTransposed reads the same physical (row0, col0, nRows, nCols) block
+// of src that loadLeft would, but stores it transposed into tile.left.
+// I.e. loadLeftTransposed(...) == transpose(loadLeft(...)) for square tiles.
+
+// Physical block (rows 0-1, cols 0-1): { 1, 2, 5, 6 } -> transposed: { 1, 5, 2, 6 }
+TEST(MatmulTileTest, LoadLeftTransposed_FullTileAtOrigin) {
+  matmul::MatmulTile<float, 2, 2, 2> tile;
+  tile.loadLeftTransposed(kSrc4x4, 0, 0, 4, 4);
+  ASSERT_FLOAT_EQ(tile.left[0], 1.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 5.f);
+  ASSERT_FLOAT_EQ(tile.left[2], 2.f);
+  ASSERT_FLOAT_EQ(tile.left[3], 6.f);
+}
+
+// Physical block at (row=1, col=2), rows 1-2, cols 2-3: { 7, 8, 11, 12 } -> transposed: { 7, 11, 8, 12 }
+TEST(MatmulTileTest, LoadLeftTransposed_FullTileAtOffset) {
+  matmul::MatmulTile<float, 2, 2, 2> tile;
+  tile.loadLeftTransposed(kSrc4x4, 1, 2, 4, 4);
+  ASSERT_FLOAT_EQ(tile.left[0], 7.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 11.f);
+  ASSERT_FLOAT_EQ(tile.left[2], 8.f);
+  ASSERT_FLOAT_EQ(tile.left[3], 12.f);
+}
+
+// Tile's physical column range is wider than available columns — only col 3 remains at col=3.
+// For a 2x2 tile starting at (0, 3) in a 4x4 matrix: only physical col 3 available.
+// Physical block would be { 4, pad, 8, pad } -> transposed: { 4, 8, pad, pad }
+TEST(MatmulTileTest, LoadLeftTransposed_PartialColumns) {
+  matmul::MatmulTile<float, 2, 2, 2> tile;
+  tile.loadLeftTransposed(kSrc4x4, 0, 3, 4, 4);
+  ASSERT_FLOAT_EQ(tile.left[0], 4.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 8.f);
+  ASSERT_FLOAT_EQ(tile.left[2], 0.f);  // zero-padded
+  ASSERT_FLOAT_EQ(tile.left[3], 0.f);
+}
+
+// Tile's physical row range is taller than available rows — only row 3 remains at row=3.
+// For a 2x2 tile starting at (3, 0) in a 4x4 matrix: only physical row 3 available.
+// Physical block would be { 13, 14, pad, pad } -> transposed: { 13, pad, 14, pad }
+TEST(MatmulTileTest, LoadLeftTransposed_PartialRows) {
+  matmul::MatmulTile<float, 2, 2, 2> tile;
+  tile.loadLeftTransposed(kSrc4x4, 3, 0, 4, 4);
+  ASSERT_FLOAT_EQ(tile.left[0], 13.f);
+  ASSERT_FLOAT_EQ(tile.left[1], 0.f);  // zero-padded
+  ASSERT_FLOAT_EQ(tile.left[2], 14.f);
+  ASSERT_FLOAT_EQ(tile.left[3], 0.f);
 }
 
 // --- loadRight ---
@@ -101,10 +150,10 @@ TEST(MatmulTileTest, LoadLeft_PartialRows) {
 TEST(MatmulTileTest, LoadRight_FullTileAtOrigin) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadRight(kSrc4x4, 0, 0, 4, 4);
-  EXPECT_FLOAT_EQ(tile.right[0],  1.f);
-  EXPECT_FLOAT_EQ(tile.right[1],  2.f);
-  EXPECT_FLOAT_EQ(tile.right[2],  5.f);
-  EXPECT_FLOAT_EQ(tile.right[3],  6.f);
+  ASSERT_FLOAT_EQ(tile.right[0],  1.f);
+  ASSERT_FLOAT_EQ(tile.right[1],  2.f);
+  ASSERT_FLOAT_EQ(tile.right[2],  5.f);
+  ASSERT_FLOAT_EQ(tile.right[3],  6.f);
 }
 
 // Load a full 2x2 right tile at offset (row=2, col=1).
@@ -112,10 +161,10 @@ TEST(MatmulTileTest, LoadRight_FullTileAtOrigin) {
 TEST(MatmulTileTest, LoadRight_FullTileAtOffset) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadRight(kSrc4x4, 2, 1, 4, 4);
-  EXPECT_FLOAT_EQ(tile.right[0], 10.f);
-  EXPECT_FLOAT_EQ(tile.right[1], 11.f);
-  EXPECT_FLOAT_EQ(tile.right[2], 14.f);
-  EXPECT_FLOAT_EQ(tile.right[3], 15.f);
+  ASSERT_FLOAT_EQ(tile.right[0], 10.f);
+  ASSERT_FLOAT_EQ(tile.right[1], 11.f);
+  ASSERT_FLOAT_EQ(tile.right[2], 14.f);
+  ASSERT_FLOAT_EQ(tile.right[3], 15.f);
 }
 
 // Load a 3x2 right tile (TileK=3 rows, TileN=2 cols) from a 4x4 matrix at (1, 2).
@@ -123,12 +172,12 @@ TEST(MatmulTileTest, LoadRight_FullTileAtOffset) {
 TEST(MatmulTileTest, LoadRight_RectangularTile) {
   matmul::MatmulTile<float, 2, 3, 2> tile;
   tile.loadRight(kSrc4x4, 1, 2, 4, 4);
-  EXPECT_FLOAT_EQ(tile.right[0],  7.f);
-  EXPECT_FLOAT_EQ(tile.right[1],  8.f);
-  EXPECT_FLOAT_EQ(tile.right[2], 11.f);
-  EXPECT_FLOAT_EQ(tile.right[3], 12.f);
-  EXPECT_FLOAT_EQ(tile.right[4], 15.f);
-  EXPECT_FLOAT_EQ(tile.right[5], 16.f);
+  ASSERT_FLOAT_EQ(tile.right[0],  7.f);
+  ASSERT_FLOAT_EQ(tile.right[1],  8.f);
+  ASSERT_FLOAT_EQ(tile.right[2], 11.f);
+  ASSERT_FLOAT_EQ(tile.right[3], 12.f);
+  ASSERT_FLOAT_EQ(tile.right[4], 15.f);
+  ASSERT_FLOAT_EQ(tile.right[5], 16.f);
 }
 
 // Tile is wider than remaining columns at col=3 (only 1 col available for TileN=2).
@@ -137,10 +186,10 @@ TEST(MatmulTileTest, LoadRight_RectangularTile) {
 TEST(MatmulTileTest, LoadRight_PartialColumns) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.loadRight(kSrc4x4, 0, 3, 4, 4);
-  EXPECT_FLOAT_EQ(tile.right[0],  4.f);
-  EXPECT_FLOAT_EQ(tile.right[1],  0.f);
-  EXPECT_FLOAT_EQ(tile.right[2],  8.f);
-  EXPECT_FLOAT_EQ(tile.right[3],  0.f);
+  ASSERT_FLOAT_EQ(tile.right[0],  4.f);
+  ASSERT_FLOAT_EQ(tile.right[1],  0.f);
+  ASSERT_FLOAT_EQ(tile.right[2],  8.f);
+  ASSERT_FLOAT_EQ(tile.right[3],  0.f);
 }
 
 // --- addResult ---
@@ -154,13 +203,13 @@ TEST(MatmulTileTest, AddResult_FullTileAtOrigin) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.result = {10.f, 20.f, 30.f, 40.f};
   tile.addResult(dst, 0, 0, 4, 4);
-  EXPECT_FLOAT_EQ(dst[0],  10.f);
-  EXPECT_FLOAT_EQ(dst[1],  20.f);
-  EXPECT_FLOAT_EQ(dst[4],  30.f);
-  EXPECT_FLOAT_EQ(dst[5],  40.f);
+  ASSERT_FLOAT_EQ(dst[0],  10.f);
+  ASSERT_FLOAT_EQ(dst[1],  20.f);
+  ASSERT_FLOAT_EQ(dst[4],  30.f);
+  ASSERT_FLOAT_EQ(dst[5],  40.f);
   // rest must be untouched
-  EXPECT_FLOAT_EQ(dst[2],   0.f);
-  EXPECT_FLOAT_EQ(dst[6],   0.f);
+  ASSERT_FLOAT_EQ(dst[2],   0.f);
+  ASSERT_FLOAT_EQ(dst[6],   0.f);
 }
 
 // Verify += semantics: pre-existing dst values are preserved and accumulated.
@@ -170,12 +219,12 @@ TEST(MatmulTileTest, AddResult_Accumulates) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.result = {1.f, 1.f, 1.f, 1.f};
   tile.addResult(dst, 0, 0, 4, 4);
-  EXPECT_FLOAT_EQ(dst[0],  2.f);   // 1+1
-  EXPECT_FLOAT_EQ(dst[1],  3.f);   // 2+1
-  EXPECT_FLOAT_EQ(dst[4],  6.f);   // 5+1
-  EXPECT_FLOAT_EQ(dst[5],  7.f);   // 6+1
-  EXPECT_FLOAT_EQ(dst[2],  3.f);   // unchanged
-  EXPECT_FLOAT_EQ(dst[6],  7.f);   // unchanged
+  ASSERT_FLOAT_EQ(dst[0],  2.f);   // 1+1
+  ASSERT_FLOAT_EQ(dst[1],  3.f);   // 2+1
+  ASSERT_FLOAT_EQ(dst[4],  6.f);   // 5+1
+  ASSERT_FLOAT_EQ(dst[5],  7.f);   // 6+1
+  ASSERT_FLOAT_EQ(dst[2],  3.f);   // unchanged
+  ASSERT_FLOAT_EQ(dst[6],  7.f);   // unchanged
 }
 
 // Add a 2x2 result tile into a zero-initialised 4x4 dst at offset (row=1, col=2).
@@ -187,12 +236,12 @@ TEST(MatmulTileTest, AddResult_FullTileAtOffset) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.result = {100.f, 200.f, 300.f, 400.f};
   tile.addResult(dst, 1, 2, 4, 4);
-  EXPECT_FLOAT_EQ(dst[1*4+2], 100.f);
-  EXPECT_FLOAT_EQ(dst[1*4+3], 200.f);
-  EXPECT_FLOAT_EQ(dst[2*4+2], 300.f);
-  EXPECT_FLOAT_EQ(dst[2*4+3], 400.f);
-  EXPECT_FLOAT_EQ(dst[0],       0.f);  // untouched
-  EXPECT_FLOAT_EQ(dst[1*4+1],   0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[1*4+2], 100.f);
+  ASSERT_FLOAT_EQ(dst[1*4+3], 200.f);
+  ASSERT_FLOAT_EQ(dst[2*4+2], 300.f);
+  ASSERT_FLOAT_EQ(dst[2*4+3], 400.f);
+  ASSERT_FLOAT_EQ(dst[0],       0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[1*4+1],   0.f);  // untouched
 }
 
 // Tile extends past the last column (col=3, TileN=2 → only col 3 within bounds).
@@ -205,10 +254,10 @@ TEST(MatmulTileTest, AddResult_PartialColumns) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.result = {10.f, 20.f, 30.f, 40.f};
   tile.addResult(dst, 0, 3, 4, 4);
-  EXPECT_FLOAT_EQ(dst[3],  10.f);
-  EXPECT_FLOAT_EQ(dst[7],  30.f);
-  EXPECT_FLOAT_EQ(dst[0],   0.f);  // untouched
-  EXPECT_FLOAT_EQ(dst[4],   0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[3],  10.f);
+  ASSERT_FLOAT_EQ(dst[7],  30.f);
+  ASSERT_FLOAT_EQ(dst[0],   0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[4],   0.f);  // untouched
 }
 
 // Tile extends past the last row (row=3, TileM=2 → only row 3 within bounds).
@@ -221,8 +270,8 @@ TEST(MatmulTileTest, AddResult_PartialRows) {
   matmul::MatmulTile<float, 2, 2, 2> tile;
   tile.result = {10.f, 20.f, 30.f, 40.f};
   tile.addResult(dst, 3, 0, 4, 4);
-  EXPECT_FLOAT_EQ(dst[3*4+0], 10.f);
-  EXPECT_FLOAT_EQ(dst[3*4+1], 20.f);
-  EXPECT_FLOAT_EQ(dst[0],      0.f);  // untouched
-  EXPECT_FLOAT_EQ(dst[1],      0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[3*4+0], 10.f);
+  ASSERT_FLOAT_EQ(dst[3*4+1], 20.f);
+  ASSERT_FLOAT_EQ(dst[0],      0.f);  // untouched
+  ASSERT_FLOAT_EQ(dst[1],      0.f);  // untouched
 }

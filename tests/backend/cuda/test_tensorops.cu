@@ -15,6 +15,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 
 #include <gtest/gtest.h>
 
+#include "shared.h"
+
 #include "data_modeling/tensor.h"
 #include "data_modeling/tensor_functions.h"
 
@@ -260,7 +262,7 @@ TEST(CudaTensorOpsTest, MatMul) {
 
   for(auto i=0; i<t1.getDims().get(0); i++) {
     for(auto j=0; j<t1.getDims().get(1); j++) {
-      EXPECT_NEAR(res.get(i, j), cmpRes.get(i, j), 1e-5);
+      ASSERT_NEAR(res.get(i, j), cmpRes.get(i, j), 1e-5);
     }
   }
 }
@@ -302,7 +304,7 @@ TEST(CudaTensorOpsTest, MatMulTransposeLeft) {
   ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
   for(int i = 0; i < resCpu.getDims().get(0); i++)
     for(int j = 0; j < resCpu.getDims().get(1); j++)
-      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+      ASSERT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
         << "Mismatch at (" << i << ", " << j << ")";
 }
 
@@ -319,7 +321,7 @@ TEST(CudaTensorOpsTest, MatMulTransposeRight) {
   ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
   for(int i = 0; i < resCpu.getDims().get(0); i++)
     for(int j = 0; j < resCpu.getDims().get(1); j++)
-      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+      ASSERT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
         << "Mismatch at (" << i << ", " << j << ")";
 }
 
@@ -336,7 +338,7 @@ TEST(CudaTensorOpsTest, MatMulTransposeBoth) {
   ASSERT_EQ(resGpu.getDims().toVector(), resCpu.getDims().toVector());
   for(int i = 0; i < resCpu.getDims().get(0); i++)
     for(int j = 0; j < resCpu.getDims().get(1); j++)
-      EXPECT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
+      ASSERT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
         << "Mismatch at (" << i << ", " << j << ")";
 }
 
@@ -385,23 +387,23 @@ TEST(CudaAutogradTest, MatMul) {
   auto t1GpuGrads = t1Gpu->getGrads();
   auto t2GpuGrads = t2Gpu->getGrads();
 
+  cuda_test::NumericalStabilityChecker t1Checker(1e-5);
   for(auto i = 0; i < t1Grads->getDims().get(0); i++) {
-    for(auto j = 0; j < t1Grads->getDims().get(1); j++) {    
-      EXPECT_NEAR(t1Grads->get(i, j), t1GpuGrads->get(i, j), 1e-5)
-        << "Mismatch at (" << i << ", " << j << ")"
-        << " cpu=" << t1Grads->get(i, j) 
-        << " gpu=" << t1GpuGrads->get(i, j);
+    for(auto j = 0; j < t1Grads->getDims().get(1); j++) {
+      t1Checker.check(t1Grads->get(i, j), t1GpuGrads->get(i, j),
+                       "Mismatch at (" + std::to_string(i) + ", " + std::to_string(j) + ")");
     }
   }
+  t1Checker.finalize();
 
+  cuda_test::NumericalStabilityChecker t2Checker(1e-5);
   for(auto i = 0; i < t2Grads->getDims().get(0); i++) {
-    for(auto j = 0; j < t2Grads->getDims().get(1); j++) {    
-      EXPECT_NEAR(t2Grads->get(i, j), t2GpuGrads->get(i, j), 1e-5)
-        << "Mismatch at (" << i << ", " << j << ")"
-        << " cpu=" << t2Grads->get(i, j) 
-        << " gpu=" << t2GpuGrads->get(i, j);
+    for(auto j = 0; j < t2Grads->getDims().get(1); j++) {
+      t2Checker.check(t2Grads->get(i, j), t2GpuGrads->get(i, j),
+                       "Mismatch at (" + std::to_string(i) + ", " + std::to_string(j) + ")");
     }
   }
+  t2Checker.finalize();
 }
 
 TEST(CudaTensorOpsTest, MatrixTranspose1) {
