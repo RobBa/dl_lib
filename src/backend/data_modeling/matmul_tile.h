@@ -39,7 +39,7 @@ namespace matmul {
       void loadRight(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       
       void loadLeftTransposed(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
-      //void loadRightTransposed(const T* const src, tensorSize_t srcStride, tensorSize_t row0, tensorSize_t col0);
+      void loadRightTransposed(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       
       // TODO: avoid the initial resetting to zero via clearResult. this would be an optimization
       //void storeResult(T* const dst, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
@@ -148,8 +148,8 @@ requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* const src,
                                                                     const tensorSize_t row0, const tensorSize_t col0, 
                                                                     const tensorSize_t nRows, const tensorSize_t nCols) {
-  const tensorSize_t maxIdxRows = std::min(row0 + TileM, nRows);
-  const tensorSize_t maxIdxCols = std::min(col0 + TileK, nCols);
+  const tensorSize_t maxIdxRows = std::min(row0 + TileK, nRows);
+  const tensorSize_t maxIdxCols = std::min(col0 + TileM, nCols);
 
   const tensorSize_t validRows = maxIdxRows - row0;
   const tensorSize_t validCols = maxIdxCols - col0;
@@ -186,38 +186,37 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* con
  * @param nRows Number of physical, non-transposed rows of src.
  * @param nCols Number of physical, non-transposed columns of src.
  */
-/* template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
+template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
 void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* const src,
                                                            const tensorSize_t row0, const tensorSize_t col0, 
                                                            const tensorSize_t nRows, const tensorSize_t nCols) {
-  const tensorSize_t maxIdxRows = std::min(row0 + TileK, nRows);
-  const tensorSize_t maxIdxCols = std::min(col0 + TileN, nCols);
+  const tensorSize_t maxIdxRows = std::min(row0 + TileN, nRows);
+  const tensorSize_t maxIdxCols = std::min(col0 + TileK, nCols);
 
   const tensorSize_t validRows = maxIdxRows - row0;
   const tensorSize_t validCols = maxIdxCols - col0;
 
-  for (tensorSize_t row = row0; row < maxIdxRows; row++) {
-    const tensorSize_t srcRowOffset = nCols * row;
-    const tensorSize_t tileRowOffset = (row - row0) * TileN;
+  for(tensorSize_t srcCol = col0; srcCol < maxIdxCols; srcCol++) {
+    const tensorSize_t tileRowOffset = (srcCol - col0) * TileN;
 
     tensorSize_t tileCol = 0;
-    for (tensorSize_t col = col0; col < maxIdxCols; col++) {
-      right[tileRowOffset + tileCol] = src[srcRowOffset + col];
+    for(tensorSize_t srcRow = row0; srcRow < maxIdxRows; srcRow++) {
+      right[tileRowOffset + tileCol] = src[srcRow * nCols + srcCol];
       tileCol++;
     }
 
-    if(validCols < TileN) {
-      std::fill(right.begin() + tileRowOffset + validCols,
+    if(validRows < TileN) {
+      std::fill(right.begin() + tileRowOffset + validRows,
                 right.begin() + tileRowOffset + TileN,
                 T{0.0f});
     }
   }
 
-  if(validRows < TileK) {
-    std::fill(right.begin() + validRows * TileN, right.end(), T{0.0f});
+  if(validCols < TileK) {
+    std::fill(right.begin() + validCols * TileN, right.end(), T{0.0f});
   }
-} */
+}
 
 /**
  * @brief Store back into tensor (dst) from tile result. Does an add-operation.

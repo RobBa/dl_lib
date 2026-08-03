@@ -192,6 +192,66 @@ TEST(MatmulTileTest, LoadRight_PartialColumns) {
   ASSERT_FLOAT_EQ(tile.right[3],  0.f);
 }
 
+// --- loadRightTransposed ---
+// loadRightTransposed reads a physical (row0, col0, nRows, nCols) block of src
+// where physical rows correspond to the N dimension and physical cols to the K
+// dimension (mirroring loadLeftTransposed, whose physical rows/cols correspond
+// to K/M respectively), and stores it transposed into tile.right (K rows x N cols).
+
+// Physical block (rows 0-1, cols 0-2): { 1, 2, 3, 5, 6, 7 } -> transposed: { 1, 5, 2, 6, 3, 7 }
+TEST(MatmulTileTest, LoadRightTransposed_FullTileAtOrigin) {
+  matmul::MatmulTile<float, 2, 3, 2> tile;
+  tile.loadRightTransposed(kSrc4x4, 0, 0, 4, 4);
+  ASSERT_FLOAT_EQ(tile.right[0], 1.f);
+  ASSERT_FLOAT_EQ(tile.right[1], 5.f);
+  ASSERT_FLOAT_EQ(tile.right[2], 2.f);
+  ASSERT_FLOAT_EQ(tile.right[3], 6.f);
+  ASSERT_FLOAT_EQ(tile.right[4], 3.f);
+  ASSERT_FLOAT_EQ(tile.right[5], 7.f);
+}
+
+// Physical block at (row=1, col=1), rows 1-2, cols 1-3: { 6, 7, 8, 10, 11, 12 } -> transposed: { 6, 10, 7, 11, 8, 12 }
+TEST(MatmulTileTest, LoadRightTransposed_FullTileAtOffset) {
+  matmul::MatmulTile<float, 2, 3, 2> tile;
+  tile.loadRightTransposed(kSrc4x4, 1, 1, 4, 4);
+  ASSERT_FLOAT_EQ(tile.right[0], 6.f);
+  ASSERT_FLOAT_EQ(tile.right[1], 10.f);
+  ASSERT_FLOAT_EQ(tile.right[2], 7.f);
+  ASSERT_FLOAT_EQ(tile.right[3], 11.f);
+  ASSERT_FLOAT_EQ(tile.right[4], 8.f);
+  ASSERT_FLOAT_EQ(tile.right[5], 12.f);
+}
+
+// Tile's physical column range (K dimension) is wider than available columns —
+// only col 3 remains at col=3. For a (TileK=3, TileN=2) tile starting at (0, 3)
+// in a 4x4 matrix: only physical col 3 available.
+// Physical block would be { 4, 8 } (col 3, rows 0-1) -> transposed: { 4, 8, pad, pad, pad, pad }
+TEST(MatmulTileTest, LoadRightTransposed_PartialColumns) {
+  matmul::MatmulTile<float, 2, 3, 2> tile;
+  tile.loadRightTransposed(kSrc4x4, 0, 3, 4, 4);
+  ASSERT_FLOAT_EQ(tile.right[0], 4.f);
+  ASSERT_FLOAT_EQ(tile.right[1], 8.f);
+  ASSERT_FLOAT_EQ(tile.right[2], 0.f);  // zero-padded
+  ASSERT_FLOAT_EQ(tile.right[3], 0.f);
+  ASSERT_FLOAT_EQ(tile.right[4], 0.f);
+  ASSERT_FLOAT_EQ(tile.right[5], 0.f);
+}
+
+// Tile's physical row range (N dimension) is taller than available rows — only
+// row 3 remains at row=3. For a (TileK=3, TileN=2) tile starting at (3, 0) in a
+// 4x4 matrix: only physical row 3 available.
+// Physical block would be { 13, 14, 15 } (row 3, cols 0-2) -> transposed: { 13, pad, 14, pad, 15, pad }
+TEST(MatmulTileTest, LoadRightTransposed_PartialRows) {
+  matmul::MatmulTile<float, 2, 3, 2> tile;
+  tile.loadRightTransposed(kSrc4x4, 3, 0, 4, 4);
+  ASSERT_FLOAT_EQ(tile.right[0], 13.f);
+  ASSERT_FLOAT_EQ(tile.right[1], 0.f);  // zero-padded
+  ASSERT_FLOAT_EQ(tile.right[2], 14.f);
+  ASSERT_FLOAT_EQ(tile.right[3], 0.f);
+  ASSERT_FLOAT_EQ(tile.right[4], 15.f);
+  ASSERT_FLOAT_EQ(tile.right[5], 0.f);
+}
+
 // --- addResult ---
 
 // Add a full 2x2 result tile into a zero-initialised 4x4 dst at origin.
