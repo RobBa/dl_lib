@@ -292,6 +292,51 @@ TEST(TensorOpsTest, MatMulTransposeBoth) {
       ASSERT_NEAR(res.get(i, j), expected.get(i, j), 1e-5);
 }
 
+// Rectangular (non-square) transpose cases. Square 2x2 tiles can hide bugs
+// that only show up once a matrix spans more than one tile column/row.
+TEST(TensorOpsTest, MatMulTransposeLeftRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 2}, {1, 0, 0, 1});
+
+  auto res = left.matmul(right, /*transposeLeft=*/true, /*transposeRight=*/false);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{3, 2}));
+  ASSERT_NEAR(res.get(0, 0), 1.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 2.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 0), 3.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 1), 6.0f, 1e-5f);
+}
+
+TEST(TensorOpsTest, MatMulTransposeRightRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 3}, {1, 0, 0, 0, 1, 0});
+
+  auto res = left.matmul(right, /*transposeLeft=*/false, /*transposeRight=*/true);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{2, 2}));
+  ASSERT_NEAR(res.get(0, 0), 1.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 2.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+}
+
+TEST(TensorOpsTest, MatMulTransposeBothRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 2}, {1, 1, 0, 1});
+
+  auto res = left.matmul(right, /*transposeLeft=*/true, /*transposeRight=*/true);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{3, 2}));
+  ASSERT_NEAR(res.get(0, 0), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 7.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 0), 9.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 1), 6.0f, 1e-5f);
+}
+
 TEST(AutogradTest, MatMul) {
   auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
   auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
