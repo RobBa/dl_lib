@@ -416,7 +416,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
     res.reset(0.0f);
 
     // tune in accordance with cache-line size
-    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
+    constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
     for(tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
@@ -462,41 +462,38 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       }
     }
   } */
-/*   else if constexpr (transposeLeft && !transposeRight) {
+  else if constexpr (transposeLeft && !transposeRight) {
     res.reset(0.0f);
 
-    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype); // each tile fits neatly in cache-line
+    constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-    for(tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
-      for (tensorSize_t i = 0; i < nColsLeft; i += TILESIZE) {
-        for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
-          tiles.clearResult();
+    for (tensorSize_t i = 0; i < nColsLeft; i += TILESIZE) {
+      for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+        tiles.clearResult();
 
-          for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
-            tiles.loadLeftTransposed(left.values->data(), i, k0, nRowsLeft, nColsLeft);
-            tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
+        for (tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
+          tiles.loadLeftTransposed(left.values->data(), k0, i, nRowsLeft, nColsLeft);
+          tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
-            for (tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
-            const tensorSize_t leftTileRowOffset = n * TILESIZE;
+          for (tensorSize_t n = 0; n < TILESIZE; n++) {
+          const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
-              for (tensorSize_t m = 0; m < TILESIZE; m++) { // cols left
-                const tensorSize_t rightTileRowOffset = m * TILESIZE;
+            for (tensorSize_t m = 0; m < TILESIZE; m++) {
+              const tensorSize_t rightTileRowOffset = m * TILESIZE;
+              const ftype leftVal = tiles.left[leftTileRowOffset + m];
 
-                const ftype leftVal = tiles.left[leftTileRowOffset + m];
-                for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
-                  //sum += tiles.left[leftTileOffset + k] * tiles.right[k * TILESIZE + n];
-                  tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
-                }
+              for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
+                tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
               }
             }
           }
-
-          tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
         }
+
+        tiles.addResult(res.values->data() + resOffset, i, j, nColsLeft, nColsRight);
       }
     }
-  } */
+  }
   /* else {
     for (tensorSize_t i = 0; i < nColsLeft; i++) {
       const tensorSize_t resOffset = i * nRowsRight;
@@ -564,7 +561,7 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
     res.reset(0.0f);
 
     // tune in accordance with cache-line size
-    constexpr tensorSize_t TILESIZE = MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype) * 4;
+    constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
     matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
     for(tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
