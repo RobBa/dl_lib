@@ -571,5 +571,17 @@ There appears to be much noise. In the scalar version the E-Cores of my CPU get 
 Small workload with small tensors in MNIST indicate that noise can dominate. We do not investigate further, 
 but instead move on. We consider the benchmark results the more reliable data source.
 
-# Step 3 - Optimize matmul for transposed cases
+# Step 3 - Optimize matmul for transposed left case
+
+### Step 3.1
+
+Optimize left transpose for scalar case using tiled matmul approach.
+
+Times after fix: 7.7133s
+
+### Step 3.2
+
+Do the left transposed matmul in AVX as well.
+
+Times after fix: 7.0693s
 
