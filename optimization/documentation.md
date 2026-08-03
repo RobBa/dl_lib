@@ -602,3 +602,9 @@ Times after fix: 3.5931s
 # Step 5 - Optimize matmul for both transposed case
 
 Will have no impact on our MNIST benchmark, since not used. However, improvement very likely.
+
+# Step 6 - Add AVX (1) support
+
+Minor addition in matmul. We end up with times: 
+
+Times after fix: 3.7613s

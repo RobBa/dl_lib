@@ -500,10 +500,6 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   }
 }
 
-#if defined(USE_AVX)
-static_assert(false, "TODO: implement AVX 1 version of matmul kernel");
-#endif
-
 /**
  * @brief Name says it all. Inplace operation on res.
  *
@@ -543,7 +539,14 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
           __m256 rightVec  = _mm256_load_ps(&tiles.right[rightTileRowOffset + kk]);
           __m256 resultVec = _mm256_load_ps(&tiles.result[leftTileRowOffset + kk]);
 
+        #if defined(USE_AVX2)
           resultVec = _mm256_fmadd_ps(leftValVec, rightVec, resultVec);
+        #elif defined(USE_AVX)
+          // AVX does not have fmadd
+          __m256 mulVec = _mm256_mul_ps(leftValVec, rightVec);
+          resultVec = _mm256_add_ps(resultVec, mulVec);
+        #endif
+
           _mm256_store_ps(&tiles.result[leftTileRowOffset + kk], resultVec);
         }
       }
