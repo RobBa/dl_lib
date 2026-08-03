@@ -600,3 +600,5 @@ Do the right transposed matmul in AVX as well.
 Times after fix: 3.5931s
 
 # Step 5 - Optimize matmul for both transposed case
+
+Will have no impact on our MNIST benchmark, since not used. However, improvement very likely.
