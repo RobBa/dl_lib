@@ -445,23 +445,38 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
       }
     }
   }
-/*   else if constexpr (!transposeLeft && transposeRight) {
-    for (tensorSize_t i = 0; i < nRowsLeft; i++) {
-      const tensorSize_t leftOffset = i * nColsLeft;
-      const tensorSize_t resOffset = i * nRowsRight;
+  else if constexpr (!transposeLeft && transposeRight) {
+    res.reset(0.0f);
 
-      for(tensorSize_t j = 0; j < nRowsRight; j++) {
-        const tensorSize_t rightOffset = j * nColsRight;
+    constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
+    matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
 
-        ftype sum = 0.0f;
-        for (tensorSize_t k = 0; k < nColsRight; k++) {
-          sum += left.values->data()[leftOffset + k] * right.values->data()[rightOffset + k];
+    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+      for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
+        tiles.clearResult();
+
+        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+          tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
+
+          for (tensorSize_t n = 0; n < TILESIZE; n++) {
+          const tensorSize_t leftTileRowOffset = n * TILESIZE;
+
+            for (tensorSize_t m = 0; m < TILESIZE; m++) {
+              const tensorSize_t rightTileRowOffset = m * TILESIZE;
+              const ftype leftVal = tiles.left[leftTileRowOffset + m];
+
+              for (tensorSize_t kk = 0; kk < TILESIZE; kk++) {
+                tiles.result[leftTileRowOffset + kk] += leftVal * tiles.right[rightTileRowOffset + kk];
+              }
+            }
+          }
         }
 
-        res.values->data()[resOffset + j] = sum;
+        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nRowsRight);
       }
     }
-  } */
+  }
   else if constexpr (transposeLeft && !transposeRight) {
     res.reset(0.0f);
 
@@ -596,6 +611,44 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
       }
     }
   }
+  else if constexpr (!transposeLeft && transposeRight) {
+    res.reset(0.0f);
+
+    constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
+    matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE> tiles;
+
+    for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
+      for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
+        tiles.clearResult();
+
+        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+          tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
+
+          for (tensorSize_t n = 0; n < TILESIZE; n++) {
+            const tensorSize_t leftTileRowOffset = n * TILESIZE;
+
+            for (tensorSize_t m = 0; m < TILESIZE; m++) {
+              const tensorSize_t rightTileRowOffset = m * TILESIZE;
+              
+              const ftype leftVal = tiles.left[leftTileRowOffset + m];
+              const __m256 leftValVec = _mm256_set1_ps(leftVal); // broadcasted load
+
+              for(tensorSize_t kk = 0; kk < TILESIZE; kk += 8) {
+                __m256 rightVec  = _mm256_load_ps(&tiles.right[rightTileRowOffset + kk]);
+                __m256 resultVec = _mm256_load_ps(&tiles.result[leftTileRowOffset + kk]);
+
+                resultVec = _mm256_fmadd_ps(leftValVec, rightVec, resultVec);
+                _mm256_store_ps(&tiles.result[leftTileRowOffset + kk], resultVec);
+              }
+            }
+          }
+        }
+
+        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nRowsRight);
+      }
+    }
+  }
   else if constexpr (transposeLeft && !transposeRight) {
     res.reset(0.0f);
 
@@ -611,7 +664,7 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
           tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
 
           for (tensorSize_t n = 0; n < TILESIZE; n++) {
-          const tensorSize_t leftTileRowOffset = n * TILESIZE;
+            const tensorSize_t leftTileRowOffset = n * TILESIZE;
 
             for (tensorSize_t m = 0; m < TILESIZE; m++) {
               const tensorSize_t rightTileRowOffset = m * TILESIZE;

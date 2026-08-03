@@ -585,3 +585,18 @@ Do the left transposed matmul in AVX as well.
 
 Times after fix: 7.0693s
 
+# Step 4 - Optimize matmul for transposed right case
+
+### Step 4.1
+
+Optimize right transpose for scalar case using tiled matmul approach.
+
+Times after fix: 4.6222s
+
+### Step 4.2
+
+Do the right transposed matmul in AVX as well.
+
+Times after fix: 3.5931s
+
+# Step 5 - Optimize matmul for both transposed case
