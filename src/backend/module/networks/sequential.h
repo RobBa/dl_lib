@@ -12,7 +12,7 @@
 #pragma once
 
 #include "module/module_base.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <vector>
 #include <memory>

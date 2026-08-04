@@ -16,7 +16,7 @@
 
 #include "training/optimizers/optimizer_base.h"
 #include "training/loss_functions/loss_base.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <memory>
 #include <utility>

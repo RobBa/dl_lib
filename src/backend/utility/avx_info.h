@@ -13,6 +13,8 @@
 
 #include <iostream>
 
+#include "utility/utils.h"
+
 #if defined(USE_AVX512)
 static_assert(false, 
   "This version currently does not support AVX-512 due to hardware not accessible. Recompile with a lower version"
@@ -20,7 +22,7 @@ static_assert(false,
 #endif // defined(USE_AVX512)
 
 namespace utility {
-  struct AvxInfo final {
+  struct DLLIB_API AvxInfo final {
     private:
       inline static bool avxAvailable = false;
 

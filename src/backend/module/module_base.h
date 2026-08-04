@@ -13,7 +13,7 @@
 
 #include "data_modeling/tensor.h"
 #include "shared/global_params.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <optional>
 #include <memory>

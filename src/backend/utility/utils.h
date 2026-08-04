@@ -41,3 +41,10 @@ struct FtypeWarning<double> {
 #ifndef __CUDA
 #define ASSERT_HOST_PTR(ptr) { }
 #endif
+
+// A macro that enables us to use -fvisibility=hidden.
+#if defined(__GNUC__) || defined(__clang__)
+  #define DLLIB_API __attribute__((visibility("default")))
+#else
+  #define DLLIB_API
+#endif

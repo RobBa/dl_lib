@@ -699,9 +699,56 @@ Looking into matmul:
 This goes through the PLT (Procedure Linkage Table), a rather conservative decision from the compiler to not inline our get() and instead 
 introduce indirections in the backend itself. We adjust the compile time options:
 
+```
+# optim: avoid PLT on internal calls
+target_compile_options(BackendCore PRIVATE
+                       -fvisibility=hidden
+                       -fvisibility-inlines-hidden)
+```
+
+And we have to add this attribute to exposed classes: 
+
+```
+#define DLLIB_API __attribute__((visibility("default")))
+```
+
 ### Times after fix
 
 3.5511s
 
 No significant improvement.
+
+# Step 8
+
+## Analysis
+
+### AVX version
+
+```
+     5,099,919,835      task-clock                       #    0.974 CPUs utilized             
+               300      context-switches                 #   58.824 /sec                      
+                20      cpu-migrations                   #    3.922 /sec                      
+           337,068      page-faults                      #   66.093 K/sec                     
+    10,853,495,257      cpu_atom/instructions/           #    1.05  insn per cycle              (0.47%)
+    35,447,083,699      cpu_core/instructions/           #    1.93  insn per cycle              (99.46%)
+    10,358,963,175      cpu_atom/cycles/                 #    2.031 GHz                         (0.52%)
+    18,350,858,653      cpu_core/cycles/                 #    3.598 GHz                         (99.46%)
+     2,151,481,525      cpu_atom/branches/               #  421.866 M/sec                       (0.52%)
+     6,596,259,569      cpu_core/branches/               #    1.293 G/sec                       (99.46%)
+        78,846,050      cpu_atom/branch-misses/          #    3.66% of all branches             (0.52%)
+        79,407,361      cpu_core/branch-misses/          #    1.20% of all branches             (99.46%)
+ #     41.2 %  tma_backend_bound      
+                                                  #     11.0 %  tma_bad_speculation    
+                                                  #     17.3 %  tma_frontend_bound     
+                                                  #     30.5 %  tma_retiring             (99.46%)
+ #     23.9 %  tma_bad_speculation    
+                                                  #     22.8 %  tma_retiring             (0.52%)
+ #     23.3 %  tma_backend_bound      
+                                                  #     29.9 %  tma_frontend_bound       (0.52%)
+
+       5.234938073 seconds time elapsed
+
+       3.847173000 seconds user
+       1.351480000 seconds sys
+```
 

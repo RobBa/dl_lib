@@ -21,7 +21,7 @@
 #include "shared/global_params.h"
 #include "shared/initializers.h"
 #include "shared/memory_pool.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 #include "utility/memory_layout.h"
 
 #include <memory>

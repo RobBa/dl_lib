@@ -10,7 +10,7 @@
  */
 
 #include "optimizer_base.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 #include "shared/global_params.h"
 
 #include <unordered_map>

@@ -12,7 +12,7 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 namespace cgraph {
   class DLLIB_API CrossEntropySoftmaxNode final : public GraphNode {
