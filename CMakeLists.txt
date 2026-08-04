@@ -146,11 +146,13 @@ endif()
 # Debug: gdb symbols + safe STL.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   add_compile_options(
-    "$<$<CONFIG:RELEASE>:-g;-UDEBUG>"
+    "$<$<CONFIG:RELEASE>:-UDEBUG>"
     "$<$<CONFIG:DEBUG>:-ggdb3;-D_GLIBCXX_DEBUG>"
     -Wreturn-type
   )
 endif()
+
+option(PROFILE_BACKEND "Build BackendCore/BackendCoreStatic with -g in Release, for profiling. Increases binary size." OFF)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fcompare-debug-second) # suppress notes in gcc output
 endif()

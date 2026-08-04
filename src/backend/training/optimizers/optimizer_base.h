@@ -13,12 +13,13 @@
 
 #include "data_modeling/tensor.h"
 #include "training/loss_functions/loss_base.h"
+#include "shared/export.h"
 
 #include <memory>
 #include <utility>
 
 namespace train {
-  class OptimizerBase {
+  class DLLIB_API OptimizerBase {
     protected:
       const ftype lr;
       const std::vector< std::shared_ptr<Tensor> > params;

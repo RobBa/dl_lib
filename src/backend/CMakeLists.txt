@@ -27,6 +27,10 @@ function(configure_backend_target TARGET_NAME)
     ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+  if(PROFILE_BACKEND)
+    target_compile_options(${TARGET_NAME} PRIVATE -g)
+  endif()
+
   if(AVX_RESOLVED STREQUAL "AVX512")
     target_compile_options(${TARGET_NAME} PRIVATE ${AVX512_FLAG}) # hand flag to compiler
     target_compile_definitions(${TARGET_NAME} PRIVATE USE_AVX512) # hand macro to source code/preprocessor
@@ -61,6 +65,10 @@ function(configure_backend_target TARGET_NAME)
 endfunction()
 
 add_library(BackendCore SHARED ${CORE_SOURCES})
+# optim: avoid PLT on internal calls
+target_compile_options(BackendCore PRIVATE
+                       -fvisibility=hidden
+                       -fvisibility-inlines-hidden)
 set_target_properties(BackendCore PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${PYTHON_MODULE_DIR}" # make sure Python-modules see backend
 )

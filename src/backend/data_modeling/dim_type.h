@@ -12,6 +12,7 @@
 #pragma once
 
 #include "shared/global_params.h"
+#include "shared/export.h"
 
 #include "utility/utils.h"
 #include "utility/safe_arithmetics.h"
@@ -24,7 +25,7 @@
 #include <iostream>
 #include <cassert>
 
-class Dimension final {
+class DLLIB_API Dimension final {
   using dim_t = std::array<tensorSize_t, MAX_NDIMS>;
   struct shallowCopyToken {};
 
@@ -205,5 +206,5 @@ class Dimension final {
       return !(*this == other);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
+    friend DLLIB_API std::ostream& operator<<(std::ostream& os, const Dimension& d) noexcept;
 };

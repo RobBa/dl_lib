@@ -12,9 +12,10 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class ElementwiseMulNode final : public GraphNode {
+  class DLLIB_API ElementwiseMulNode final : public GraphNode {
     public:
       explicit ElementwiseMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
         : GraphNode({std::move(t1), std::move(t2)}) {}

@@ -12,9 +12,10 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class BceSigmoidNode final : public GraphNode {
+  class DLLIB_API BceSigmoidNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> yTrue;
 

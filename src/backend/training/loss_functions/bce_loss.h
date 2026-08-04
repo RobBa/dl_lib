@@ -12,9 +12,10 @@
 #pragma once
 
 #include "loss_base.h"
+#include "shared/export.h"
 
 namespace train {
-  class BceLoss final : public LossBase {
+  class DLLIB_API BceLoss final : public LossBase {
     public:
       std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor> y, 
                                          const std::shared_ptr<Tensor> ypred) const override;

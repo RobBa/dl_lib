@@ -12,11 +12,12 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 #include <memory>
 
 namespace cgraph {
-  class LeakyReLuNode final : public GraphNode {
+  class DLLIB_API LeakyReLuNode final : public GraphNode {
     private:
       const ftype eps;
 

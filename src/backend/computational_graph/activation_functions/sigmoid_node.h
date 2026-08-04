@@ -13,12 +13,13 @@
 
 #include "computational_graph/graph_node.h"
 #include "data_modeling/tensor.h"
+#include "shared/export.h"
 
 #include <memory>
 #include <utility>
 
 namespace cgraph {
-  class SigmoidNode final : public GraphNode {
+  class DLLIB_API SigmoidNode final : public GraphNode {
     private:
       // cache the result of the forward function
       std::shared_ptr<const Tensor> sigmoid;

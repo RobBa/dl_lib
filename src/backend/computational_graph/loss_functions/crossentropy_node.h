@@ -13,9 +13,10 @@
 
 #include "computational_graph/graph_node.h"
 #include "shared/global_params.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class CrossEntropyNode final : public GraphNode {
+  class DLLIB_API CrossEntropyNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> yTrue;
 

@@ -12,11 +12,12 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 #include <memory>
 
 namespace cgraph {
-  class ReLuNode final : public GraphNode {
+  class DLLIB_API ReLuNode final : public GraphNode {
     public:
       explicit ReLuNode(std::shared_ptr<Tensor> t) 
         : GraphNode({std::move(t)}) {}

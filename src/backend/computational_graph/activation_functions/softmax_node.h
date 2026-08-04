@@ -12,10 +12,12 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+
 #include "shared/global_params.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class SoftmaxNode final : public GraphNode {
+  class DLLIB_API SoftmaxNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> softmax;
 

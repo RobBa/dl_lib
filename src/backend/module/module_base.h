@@ -13,6 +13,7 @@
 
 #include "data_modeling/tensor.h"
 #include "shared/global_params.h"
+#include "shared/export.h"
 
 #include <optional>
 #include <memory>
@@ -29,7 +30,7 @@ namespace module {
   /** 
    * The base class for all the layers that we have. Not instantiable.
    */
-  class ModuleBase {
+  class DLLIB_API ModuleBase {
     public:
       ModuleBase() = default;
 
@@ -63,6 +64,6 @@ namespace module {
 
       virtual void setDevice(Device d) noexcept {}
 
-      friend std::ostream& operator<<(std::ostream& os, const ModuleBase& t) noexcept;
+      friend DLLIB_API std::ostream& operator<<(std::ostream& os, const ModuleBase& t) noexcept;
   };
 }

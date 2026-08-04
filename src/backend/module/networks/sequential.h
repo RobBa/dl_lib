@@ -12,12 +12,13 @@
 #pragma once
 
 #include "module/module_base.h"
+#include "shared/export.h"
 
 #include <vector>
 #include <memory>
 
 namespace module {
-  class Sequential : public ModuleBase {
+  class DLLIB_API Sequential : public ModuleBase {
     protected:
       std::vector< std::shared_ptr<module::ModuleBase> > layers;
 

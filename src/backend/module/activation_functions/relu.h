@@ -12,9 +12,10 @@
 #pragma once
 
 #include "module/module_base.h"
+#include "shared/export.h"
 
 namespace module {
-  class ReLu final : public ModuleBase {
+  class DLLIB_API ReLu final : public ModuleBase {
     public:
       ReLu() = default;
       
