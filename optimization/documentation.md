@@ -608,3 +608,60 @@ Will have no impact on our MNIST benchmark, since not used. However, improvement
 Minor addition in matmul. We end up with times: 
 
 Times after fix: 3.7613s
+
+### Analysis of why AVX works better than scalar version
+
+[GodBolt](https://godbolt.org/z/Eesbh6Y1r)
+
+Here we can see that compiler chose loop unrolling, not vectorization of inner loop.
+
+# Step 7 
+
+## Analysis
+
+### AVX version
+
+```
+    22,603,600,588      task-clock                       #    0.984 CPUs utilized             
+             1,652      context-switches                 #   73.086 /sec                      
+                84      cpu-migrations                   #    3.716 /sec                      
+         1,571,805      page-faults                      #   69.538 K/sec                     
+    52,582,262,001      cpu_atom/instructions/           #    1.11  insn per cycle              (0.20%)
+   276,718,746,728      cpu_core/instructions/           #    3.30  insn per cycle              (35.58%)
+    47,447,603,971      cpu_atom/cycles/                 #    2.099 GHz                         (0.20%)
+    83,879,028,747      cpu_core/cycles/                 #    3.711 GHz                         (42.70%)
+    10,367,524,657      cpu_atom/branches/               #  458.667 M/sec                       (0.20%)
+    47,812,250,940      cpu_core/branches/               #    2.115 G/sec                       (49.82%)
+        64,074,152      cpu_atom/branch-misses/          #    0.62% of all branches             (0.17%)
+       131,455,461      cpu_core/branch-misses/          #    0.27% of all branches             (56.93%)
+ #     14.2 %  tma_backend_bound      
+                                                  #     20.4 %  tma_bad_speculation    
+                                                  #     39.0 %  tma_frontend_bound     
+                                                  #     26.4 %  tma_retiring             (64.04%)
+ #      9.5 %  tma_bad_speculation    
+                                                  #     30.4 %  tma_retiring             (0.17%)
+ #     39.2 %  tma_backend_bound      
+                                                  #     20.9 %  tma_frontend_bound       (0.16%)
+    42,941,198,696      cpu_atom/L1-dcache-loads/        #    1.900 G/sec                       (0.14%)
+   107,563,443,581      cpu_core/L1-dcache-loads/        #    4.759 G/sec                       (71.16%)
+     1,051,653,728      cpu_core/L1-dcache-load-misses/  #    0.98% of all L1-dcache accesses   (71.17%)
+    18,054,371,905      cpu_atom/LLC-loads/              #  798.739 M/sec                       (0.14%)
+       151,626,984      cpu_core/LLC-loads/              #    6.708 M/sec                       (71.19%)
+    27,301,494,922      cpu_atom/LLC-load-misses/        #  151.22% of all LL-cache accesses    (0.14%)
+       105,557,952      cpu_core/LLC-load-misses/        #   69.62% of all LL-cache accesses    (71.19%)
+    41,810,285,455      cpu_atom/L1-icache-loads/        #    1.850 G/sec                       (0.13%)
+       333,809,988      cpu_atom/L1-icache-load-misses/  #    0.80% of all L1-icache accesses   (0.16%)
+       251,520,387      cpu_core/L1-icache-load-misses/                                         (28.47%)
+    41,144,419,666      cpu_atom/dTLB-loads/             #    1.820 G/sec                       (0.17%)
+   107,250,186,385      cpu_core/dTLB-loads/             #    4.745 G/sec                       (28.47%)
+     6,929,389,786      cpu_atom/dTLB-load-misses/       #   16.84% of all dTLB cache accesses  (0.18%)
+        10,092,769      cpu_core/dTLB-load-misses/       #    0.01% of all dTLB cache accesses  (28.46%)
+     6,874,382,326      cpu_atom/iTLB-load-misses/                                              (0.18%)
+         1,139,100      cpu_core/iTLB-load-misses/                                              (28.46%)
+
+      22.964492129 seconds time elapsed
+
+      20.489733000 seconds user
+       2.454709000 seconds sys
+```
+

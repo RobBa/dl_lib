@@ -79,4 +79,8 @@ endif()
 if(BUILD_BENCHMARKS)
   add_library(BackendCoreStatic STATIC ${CORE_SOURCES})
   configure_backend_target(BackendCoreStatic)
+
+  # Benchmarks link the prebuilt (non-_GLIBCXX_DEBUG) system libbenchmark, so this
+  # variant must not use debug-STL types either, or their ABIs won't match at the link step.
+  target_compile_options(BackendCoreStatic PRIVATE -U_GLIBCXX_DEBUG)
 endif()
