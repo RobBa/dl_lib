@@ -12,9 +12,10 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class CrossEntropySoftmaxNode final : public GraphNode {
+  class DLLIB_API CrossEntropySoftmaxNode final : public GraphNode {
     private:
       const std::shared_ptr<const Tensor> yTrue;
 

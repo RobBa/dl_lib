@@ -12,9 +12,10 @@
 #pragma once
 
 #include "loss_base.h"
+#include "shared/export.h"
 
 namespace train {
-  class CrossEntropySoftmaxLoss final : public LossBase {
+  class DLLIB_API CrossEntropySoftmaxLoss final : public LossBase {
     public:
       std::shared_ptr<Tensor> operator()(const std::shared_ptr<Tensor> y, 
                                          const std::shared_ptr<Tensor> logits) const override;

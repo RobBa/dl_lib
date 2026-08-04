@@ -10,12 +10,13 @@
  */
 
 #include "optimizer_base.h"
+#include "shared/export.h"
 #include "shared/global_params.h"
 
 #include <unordered_map>
 
 namespace train {
-  class RmsPropOptimizer final : public OptimizerBase {
+  class DLLIB_API RmsPropOptimizer final : public OptimizerBase {
     private:
       const ftype decay;
       std::unordered_map<Tensor*, std::unique_ptr<Tensor>> movingAvg;

@@ -14,44 +14,45 @@
 
 #include "tensor.h"
 #include "shared/initializers.h"
+#include "shared/export.h"
 
 #include <utility>
 
 /**
  * @brief Class providing functions that can be used to create/manipulate tensors.
  * For convenience.
- * 
+ *
  * This is defined as a class so we can make some functions private while allowing for
  * templates.
  */
 namespace TensorFunctions { // class name acts as namespace for us
   // Tensor creation
-  Tensor Zeros(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
-  Tensor Zeros(std::vector<tensorDim_t> dims, bool requiresGrad=false);
+  DLLIB_API Tensor Zeros(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
+  DLLIB_API Tensor Zeros(std::vector<tensorDim_t> dims, bool requiresGrad=false);
 
-  Tensor Ones(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
-  Tensor Ones(std::vector<tensorDim_t> dims, bool requiresGrad=false);
+  DLLIB_API Tensor Ones(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
+  DLLIB_API Tensor Ones(std::vector<tensorDim_t> dims, bool requiresGrad=false);
 
-  Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev, Device d, bool requiresGrad=false);
-  Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev=1, bool requiresGrad=false);
+  DLLIB_API Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev, Device d, bool requiresGrad=false);
+  DLLIB_API Tensor Gaussian(std::vector<tensorDim_t> dims, ftype stddev=1, bool requiresGrad=false);
 
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false);
+  DLLIB_API std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, bool requiresGrad=false);
 
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false);
+  DLLIB_API std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, Device d, bool requiresGrad=false);
 
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           const std::vector<ftype>& initValues, 
+  DLLIB_API std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims,
+                                           const std::vector<ftype>& initValues,
                                            bool requiresGrad=false);
 
-  std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims, 
-                                           const std::vector<ftype>& initValues, 
+  DLLIB_API std::shared_ptr<Tensor> makeSharedTensor(const std::vector<tensorDim_t>& dims,
+                                           const std::vector<ftype>& initValues,
                                            Device d, bool requiresGrad=false);
 
   // Tensor manipulation
-  void ToZeros(Tensor& t) noexcept;
-  void ToOnes(Tensor& t) noexcept;
-  void ToGaussian(Tensor& t, ftype stddev);
+  DLLIB_API void ToZeros(Tensor& t) noexcept;
+  DLLIB_API void ToOnes(Tensor& t) noexcept;
+  DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
 
   // Arithmetics
-  Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size
+  DLLIB_API Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size
 }

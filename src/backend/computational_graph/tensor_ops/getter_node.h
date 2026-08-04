@@ -12,6 +12,7 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 #include <vector>
 #include <variant>
@@ -23,7 +24,7 @@ namespace cgraph{
    * the myTensor[i] and the myTensor object. Hence this node.
    * 
    */
-  class GetterNode final : public GraphNode {
+  class DLLIB_API GetterNode final : public GraphNode {
     using multiDimIdx_t = std::vector<tensorDim_t>;
 
     private:

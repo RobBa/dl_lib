@@ -13,10 +13,11 @@
 #pragma once
 
 #include "data_modeling/device.h"
+#include "shared/export.h"
 
 namespace sys {
-  void setDevice(Device d) noexcept;
-  Device getDevice() noexcept;
+  DLLIB_API void setDevice(Device d) noexcept;
+  DLLIB_API Device getDevice() noexcept;
 
-  void setRandomSeed(unsigned int s) noexcept;
+  DLLIB_API void setRandomSeed(unsigned int s) noexcept;
 }

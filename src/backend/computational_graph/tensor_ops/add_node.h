@@ -13,9 +13,10 @@
 
 #include "computational_graph/graph_node.h"
 #include "data_modeling/tensor_functions.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class AddNode final : public GraphNode {
+  class DLLIB_API AddNode final : public GraphNode {
     private:
       // if t2 has been a vector we broadcast t2 into t1, see Tensor::add()
       bool broadcasted = false;

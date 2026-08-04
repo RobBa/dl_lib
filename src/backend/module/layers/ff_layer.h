@@ -13,11 +13,12 @@
 
 #include "module/module_base.h"
 #include "shared/initializers.h"
+#include "shared/export.h"
 
 #include <optional>
 
 namespace module {
-  class FfLayer : public ModuleBase {
+  class DLLIB_API FfLayer : public ModuleBase {
     bool requiresGrad = false;
 
     std::shared_ptr<Tensor> weights = nullptr;

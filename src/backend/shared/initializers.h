@@ -12,6 +12,7 @@
 #pragma once
 
 #include "global_params.h"
+#include "export.h"
 
 #include <random>
 #include <algorithm>
@@ -24,7 +25,7 @@
 #endif
 
 namespace utility {
-  class InitializerBase {
+  class DLLIB_API InitializerBase {
     protected: 
       static inline std::optional<unsigned int> randomSeed_opt = std::nullopt;
 
@@ -66,7 +67,7 @@ namespace utility {
       virtual void fillRangeGpu(double* const data, tensorSize_t size) const = 0;
   };
 
-  class GaussianInitializer final : public InitializerBase {
+  class DLLIB_API GaussianInitializer final : public InitializerBase {
     private:
       const ftype stddev;
 
@@ -95,7 +96,7 @@ namespace utility {
         void fillRangeGpu(double* const data, tensorSize_t size) const override;
   };
 
-  class UniformXavierInitializer final : public InitializerBase {
+  class DLLIB_API UniformXavierInitializer final : public InitializerBase {
     private:
       const ftype range;
 
@@ -125,7 +126,7 @@ namespace utility {
         void fillRangeGpu(double* const data, tensorSize_t size) const override;  
   };
 
-  class NormalXavierInitializer final : public InitializerBase {
+  class DLLIB_API NormalXavierInitializer final : public InitializerBase {
     private:
       const ftype sigma;
 

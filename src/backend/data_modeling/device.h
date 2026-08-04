@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "shared/export.h"
+
 #include <ostream>
 
 enum class Device {
@@ -18,7 +20,7 @@ enum class Device {
     CUDA
 };
 
-const char* DeviceToString(Device d);
+DLLIB_API const char* DeviceToString(Device d);
 
 inline std::ostream& operator<<(std::ostream& os, Device d) {
   return os << DeviceToString(d);

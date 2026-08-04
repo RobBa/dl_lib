@@ -665,3 +665,43 @@ Here we can see that compiler chose loop unrolling, not vectorization of inner l
        2.454709000 seconds sys
 ```
 
+We find that matmul is still the biggest piece:
+
+```
++   80.62%     0.00%  python3         libBackendCore.so                                            [.] Tensor::matMulImpl(Tensor const&, Tensor const&, bool, bool)      ▒
++   56.50%     0.00%  python3         _core.so                                                     [.] boost::python::objects::caller_py_function_impl<boost::python::det▒
++   56.50%     0.00%  python3         _core.so                                                     [.] boost::python::detail::caller_arity<1u>::impl<void (Tensor::*)(), ▒
++   56.50%     0.00%  python3         _core.so                                                     [.] _object* boost::python::detail::invoke<int, void (Tensor::*)(), bo▒
++   56.50%     0.00%  python3         libBackendCore.so                                            [.] Tensor::backward()                                                ▒
++   53.80%     0.00%  python3         _core.so                                                     [.] cgraph::MatMulNode::backward(Tensor const&)                       ▒
++   50.16%    45.68%  python3         libBackendCore.so                                            [.] std::array<float, 4096ul>::operator[](unsigned long) 
+```
+
+Looking into matmul:
+
+```
+  11.11 │       mov     -0x88(%rbp),%rax                                                                                                                                 ▒
+        │       add     $0x10,%rax                                                                                                                                       ▒
+        │       mov     $0xffffffff,%esi                                                                                                                                 ▒
+        │       mov     %rax,%rdi                                                                                                                                        ▒
+        │     → call    Dimension::get(int) const@plt                                                                                                                    ◆
+        │       imul    %ebx,%eax                                                                                                                                        ▒
+        │       mov     %eax,-0x54(%rbp)                                                                                                                                 ▒
+        │       movl    $0x0,-0x68(%rbp)                                                                                                                                 ▒
+        │       movl    $0x0,-0x64(%rbp)                                                                                                                                 ▒
+        │       movl    $0x0,-0x60(%rbp)                                                                                                                                 ▒
+  22.21 │       movzbl  guard variable for Tensor::matMulImpl(Tensor const&, Tensor const&, bool, bool)::avxVerified,%eax                                                ▒
+        │       test    %al,%al                                                                                                                                          ▒
+        │       sete    %al                                                                                                                                              ▒
+        │       test    %al,%al 
+```
+
+This goes through the PLT (Procedure Linkage Table), a rather conservative decision from the compiler to not inline our get() and instead 
+introduce indirections in the backend itself. We adjust the compile time options:
+
+### Times after fix
+
+3.5511s
+
+No significant improvement.
+

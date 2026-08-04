@@ -12,9 +12,10 @@
 #pragma once
 
 #include "module/module_base.h"
+#include "shared/export.h"
 
 namespace module {
-  class LeakyReLu final : public ModuleBase {
+  class DLLIB_API LeakyReLu final : public ModuleBase {
     private:
       const ftype eps;
 

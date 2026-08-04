@@ -16,12 +16,13 @@
 
 #include "training/optimizers/optimizer_base.h"
 #include "training/loss_functions/loss_base.h"
+#include "shared/export.h"
 
 #include <memory>
 #include <utility>
 
 namespace train {
-  class BaseTrainLoop {
+  class DLLIB_API BaseTrainLoop {
     protected:
       const size_t epochs;
       const tensorDim_t bsize;

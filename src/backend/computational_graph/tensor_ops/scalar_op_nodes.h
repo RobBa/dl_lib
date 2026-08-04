@@ -12,9 +12,10 @@
 #pragma once
 
 #include "computational_graph/graph_node.h"
+#include "shared/export.h"
 
 namespace cgraph {
-  class ScalarAddNode final : public GraphNode {  
+  class DLLIB_API ScalarAddNode final : public GraphNode {
     public:
       explicit ScalarAddNode(std::shared_ptr<Tensor> t) 
         : GraphNode({std::move(t)}) {}
@@ -33,7 +34,7 @@ namespace cgraph {
       }
   };
 
-  class ScalarMulNode final : public GraphNode {
+  class DLLIB_API ScalarMulNode final : public GraphNode {
     private:
       const ftype factor;
     

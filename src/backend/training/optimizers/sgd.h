@@ -10,11 +10,12 @@
  */
 
 #include "optimizer_base.h"
+#include "shared/export.h"
 
 #include "shared/global_params.h"
 
 namespace train {
-  class SgdOptimizer final : public OptimizerBase {
+  class DLLIB_API SgdOptimizer final : public OptimizerBase {
     public:
         SgdOptimizer(std::vector< std::shared_ptr<Tensor> > params, ftype lr) 
           : OptimizerBase(std::move(params), lr) { }

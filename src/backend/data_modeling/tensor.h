@@ -21,6 +21,7 @@
 #include "shared/global_params.h"
 #include "shared/initializers.h"
 #include "shared/memory_pool.h"
+#include "shared/export.h"
 #include "utility/memory_layout.h"
 
 #include <memory>
@@ -43,7 +44,7 @@ namespace cgraph
   class TopologicalSort;
 }
 
-class Tensor final : public std::enable_shared_from_this<Tensor>
+class DLLIB_API Tensor final : public std::enable_shared_from_this<Tensor>
 {
   friend class cgraph::TopologicalSort;
 
@@ -57,7 +58,7 @@ private:
    * Structured as a flat array, the logic for multiple dimensions
    * encapsulated by surrounding tensor object.
    */
-  class tensorValues_t final
+  class DLLIB_API tensorValues_t final
   {
   private:
     tensorSize_t size = 0;
@@ -332,7 +333,7 @@ public:
     return createContiguousCopy();
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
+  friend DLLIB_API std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
   // for convenience we provide some simple getters
   ftype get(const std::vector<tensorDim_t>& idx) const {
