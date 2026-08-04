@@ -13,7 +13,7 @@
 
 #include "computational_graph/graph_node.h"
 #include "data_modeling/tensor_functions.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 namespace cgraph {
   class DLLIB_API AddNode final : public GraphNode {

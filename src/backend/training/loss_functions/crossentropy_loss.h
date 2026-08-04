@@ -12,7 +12,7 @@
 #pragma once
 
 #include "loss_base.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 namespace train {
   class DLLIB_API CrossEntropyLoss final : public LossBase {

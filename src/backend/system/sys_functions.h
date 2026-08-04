@@ -13,7 +13,7 @@
 #pragma once
 
 #include "data_modeling/device.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 namespace sys {
   DLLIB_API void setDevice(Device d) noexcept;

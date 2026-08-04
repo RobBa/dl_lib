@@ -12,7 +12,7 @@
 #pragma once
 
 #include "module/module_base.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 namespace module {
   class DLLIB_API Softmax final : public ModuleBase {

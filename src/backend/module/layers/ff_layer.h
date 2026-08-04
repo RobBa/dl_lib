@@ -13,7 +13,7 @@
 
 #include "module/module_base.h"
 #include "shared/initializers.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <optional>
 

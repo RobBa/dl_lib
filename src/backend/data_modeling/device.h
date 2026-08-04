@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <ostream>
 

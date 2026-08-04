@@ -12,7 +12,6 @@
 #pragma once
 
 #include "shared/global_params.h"
-#include "shared/export.h"
 
 #include "utility/utils.h"
 #include "utility/safe_arithmetics.h"

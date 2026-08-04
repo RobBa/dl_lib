@@ -14,7 +14,7 @@
 
 #include "tensor.h"
 #include "shared/initializers.h"
-#include "shared/export.h"
+#include "utility/utils.h"
 
 #include <utility>
 
