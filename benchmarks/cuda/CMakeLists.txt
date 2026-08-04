@@ -17,4 +17,5 @@ set_target_properties(bm_matmul_cuda PROPERTIES
 
 target_compile_options(bm_matmul_cuda PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-O2>
+    -U_GLIBCXX_DEBUG
 )
