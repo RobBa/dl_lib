@@ -93,8 +93,13 @@ namespace mempool_impl {
           return ptr;
         }
 
-        T* ptr = std::is_same_v<T, ftype> ? 
-                 static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, n * sizeof(T))) :
+        // aligned_alloc requires size to be an integral multiple of alignment
+        const tensorSize_t alignedByteSize =
+          ((n * sizeof(T) + MemoryLayout::CPU_TENSOR_ALIGNMENT - 1) / MemoryLayout::CPU_TENSOR_ALIGNMENT)
+          * MemoryLayout::CPU_TENSOR_ALIGNMENT;
+
+        T* ptr = std::is_same_v<T, ftype> ?
+                 static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, alignedByteSize)) :
                  static_cast<T*>(std::malloc(n * sizeof(T)));
 
         if(ptr == nullptr) {
@@ -102,7 +107,7 @@ namespace mempool_impl {
           flush(Device::CPU);
 
           if constexpr (std::is_same_v<T, ftype>) {
-            ptr = static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, n * sizeof(T)));
+            ptr = static_cast<T*>(std::aligned_alloc(MemoryLayout::CPU_TENSOR_ALIGNMENT, alignedByteSize));
           }
           else {
             ptr = static_cast<T*>(std::malloc(n * sizeof(T)));
