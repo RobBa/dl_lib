@@ -31,14 +31,15 @@ namespace utility {
       virtual ftype drawNumber() const = 0;
 
     #ifdef __CUDA
-      curandGenerator_t cuGen;
+      curandGenerator_t cuGen{};
+      bool cuGenValid = false;
     #endif
 
     public:
       InitializerBase() {
       #ifdef __CUDA
-        curandCreateGenerator(&cuGen, CURAND_RNG_PSEUDO_DEFAULT);
-        if(randomSeed_opt) {
+        cuGenValid = curandCreateGenerator(&cuGen, CURAND_RNG_PSEUDO_DEFAULT) == CURAND_STATUS_SUCCESS;
+        if(cuGenValid && randomSeed_opt) {
           curandSetPseudoRandomGeneratorSeed(cuGen, randomSeed_opt.value());
         }
       #endif
@@ -46,14 +47,18 @@ namespace utility {
 
       InitializerBase(unsigned int seed) {
       #ifdef __CUDA
-        curandCreateGenerator(&cuGen, CURAND_RNG_PSEUDO_DEFAULT);
-        curandSetPseudoRandomGeneratorSeed(cuGen, seed);
+        cuGenValid = curandCreateGenerator(&cuGen, CURAND_RNG_PSEUDO_DEFAULT) == CURAND_STATUS_SUCCESS;
+        if(cuGenValid) {
+          curandSetPseudoRandomGeneratorSeed(cuGen, seed);
+        }
       #endif
       }
 
       virtual ~InitializerBase() {
       #ifdef __CUDA
-        curandDestroyGenerator(cuGen);
+        if(cuGenValid) {
+          curandDestroyGenerator(cuGen);
+        }
       #endif
       }
 
