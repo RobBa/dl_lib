@@ -72,6 +72,7 @@ TEST(LossTest, CrossEntropyUniformPrediction) {
 }
 
 TEST(LossTest, CrossEntropyThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto y = TensorFunctions::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, false);
   auto ypred = TensorFunctions::makeSharedTensor(
@@ -79,6 +80,9 @@ TEST(LossTest, CrossEntropyThrowsOnDimMismatch) {
 
   CrossEntropyLoss loss;
   ASSERT_THROW(loss(y, ypred), std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(LossTest, CrossEntropyBackward) {
@@ -154,6 +158,7 @@ TEST(LossTest, BceRandomPrediction) {
 }
 
 TEST(LossTest, BceThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto y = TensorFunctions::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, false);
   auto ypred = TensorFunctions::makeSharedTensor(
@@ -161,6 +166,9 @@ TEST(LossTest, BceThrowsOnDimMismatch) {
 
   BceLoss loss;
   ASSERT_THROW(loss(y, ypred), std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(LossTest, BceNoInfOrNanOnNearZeroPred) {

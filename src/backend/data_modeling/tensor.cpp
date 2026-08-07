@@ -621,14 +621,12 @@ Tensor Tensor::operator-(const ftype scalar) const {
 }
 
 void Tensor::backward() {
-#ifndef NDEBUG
   if(!requiresGrad){
     __throw_runtime_error("Invoking backward on Tensor with no grad");
   }
   else if(!cgNode){
     __throw_runtime_error("Invoking backward on Tensor not created by a differentiable operation");
   }
-#endif
 
   // last node has no incoming gradients -> factor 1
   if (!grads) {

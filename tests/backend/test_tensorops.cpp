@@ -72,10 +72,14 @@ TEST(TensorOpsTest, TensorAdd) {
 }
 
 TEST(TensorOpsTest, TensorAddThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto t1 = TensorFunctions::Ones({2, 2});
   auto t2 = TensorFunctions::Ones({2, 3}) * 4;
 
   ASSERT_THROW(t1 + t2, std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(AutogradTest, TensorAdd) {
@@ -124,10 +128,14 @@ TEST(TensorOpsTest, BroadcastAdd2D) {
 }
 
 TEST(TensorOpsTest, BroadcastAddNotCommutative) {
+#ifndef NDEBUG
   auto t1 = TensorFunctions::Ones({3, 2, 2});
   auto t2 = Tensor({2}, {2, 3});
 
   ASSERT_THROW(t2 + t1, std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(AutogradTest, BroadcastAdd) {
