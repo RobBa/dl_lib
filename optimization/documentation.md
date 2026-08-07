@@ -718,7 +718,7 @@ And we have to add this attribute to exposed classes:
 
 No significant improvement.
 
-# Step 8
+# Step 8 - Fix NDEBUG flag
 
 ## Analysis
 
@@ -751,4 +751,42 @@ No significant improvement.
        3.847173000 seconds user
        1.351480000 seconds sys
 ```
+
+Checking out source code we find that this is where we spend most of our horsepower: ```operator[]``` of values_t. Looking insidde: 
+
+```
+ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
+#ifdef NDEBUG
+  if(idx >= size)
+    throw std::out_of_range("Out of range for tensor");
+#endif
+
+  switch(device){
+    case Device::CPU:
+      return values[idx];
+    case Device::CUDA:
+      #ifdef __CUDA
+      {
+        ftype res;
+        cudaErrchk(cudaMemcpy(&res, values + idx, sizeof(ftype), cudaMemcpyDeviceToHost));
+        return res;
+      }
+      #else
+        __throw_invalid_argument("Not compiled with CUDA");
+        break;
+      #endif
+  }
+
+  __throw_runtime_error("Should never reach here.");
+  return 0; // suppress warnings
+}
+```
+
+The beginning should be ifndef for release mode. However, fixing that we realize it bloats the code -> NDEBUG is not set in release mode. 
+
+### Times after fix
+
+CPU: 3.4333s
+
+# Step 9 
 
