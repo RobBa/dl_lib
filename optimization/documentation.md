@@ -837,4 +837,5 @@ Perf record gives us this:
 ```
 
 The memmove is interesting, but at the moment the analysis is cluttered with calls to operator[], get() and set() of tensorvalues_t still. 
-We will refactor that, removing those operators to use 
+We will refactor that, removing those operators to use the data directly in CPU mode, copying what CUDA did as well. We also kick out a few checks like dimension checks in release mode. Worse error messages, but in practive logging the input is enough to debug the problem. -> message/performance trade-off
+
