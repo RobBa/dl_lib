@@ -160,7 +160,7 @@ void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
 }
 
 ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
-#ifdef NDEBUG
+#ifndef NDEBUG
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
 #endif
@@ -185,9 +185,12 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
   return 0; // suppress warnings
 }
 
+// TODO: delete?
 void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
+#ifndef NDEBUG
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
+#endif
 
   switch(device){
     case Device::CPU:
@@ -203,9 +206,12 @@ void Tensor::tensorValues_t::set(ftype v, tensorSize_t idx) {
   }
 }
 
+// TODO: delete?
 ftype Tensor::tensorValues_t::get(tensorSize_t idx) {
+#ifndef NDEBUG
   if(idx >= size)
     throw std::out_of_range("Out of range for tensor");
+#endif
 
   switch(device){
     case Device::CPU:
