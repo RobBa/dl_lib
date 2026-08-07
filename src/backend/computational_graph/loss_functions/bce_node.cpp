@@ -32,11 +32,11 @@ vector< shared_ptr<Tensor> > BceNode::backward(const Tensor& upstreamGrad) {
       const ftype bSize = yPred->getDims()[0];
 
       for(tensorSize_t i = 0; i < yPred->getDims()[0]; i++){
-        const auto yi = (*yTrue)[i];
-        const auto yiHat = (*yPred)[i];
+        const auto yi = yTrue->data()[i];
+        const auto yiHat = yPred->data()[i];
         
-        const auto g = -yi / std::max(yiHat, EPS_BCE) + (1 - yi) / std::max(1 - yiHat, EPS_BCE);
-        res->set(g / bSize, i);
+        const auto g = -yi / std::max(yiHat, EPS_BCE) + (1.0f - yi) / std::max(1.0f - yiHat, EPS_BCE);
+        res->data()[i] = g / bSize;
       }
       break;
     }

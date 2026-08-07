@@ -47,11 +47,11 @@ Tensor Softmax::operator()(const Tensor& t) const {
       while(offset < t.getSize()) {
         ftype maxValue = -std::numeric_limits<ftype>::infinity();
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          maxValue = std::max(maxValue, t.getData()[i]);
+          maxValue = std::max(maxValue, t.data()[i]);
         }
 
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          tmp.getData()[i] = exp(t.getData()[i] - maxValue);
+          tmp.data()[i] = exp(t.data()[i] - maxValue);
         }
 
         offset += stride;
@@ -60,7 +60,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
       auto compute = [&res, &tmp, stride](tensorSize_t start){
         ftype sum = 0.0f;
         for(tensorSize_t i = start; i < start + stride; i++){
-          sum += tmp.getData()[i];
+          sum += tmp.data()[i];
         }
 
       const ftype recip = 1.0f / sum;
@@ -71,7 +71,7 @@ Tensor Softmax::operator()(const Tensor& t) const {
         }
       #endif
         for(tensorSize_t i = start; i < start + stride; i++){
-          res.getData()[i] = tmp.getData()[i] * recip;
+          res.data()[i] = tmp.data()[i] * recip;
         }
       };
 

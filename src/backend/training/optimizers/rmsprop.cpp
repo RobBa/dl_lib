@@ -31,23 +31,23 @@ void RmsPropOptimizer::step() {
 
         if(vPtr != nullptr) [[likely]] {
           for(tensorSize_t i = 0; i < gPtr->getSize(); i++){
-            auto g = (*gPtr)[i];
-            auto update = decay * (*vPtr)[i] + (1 - decay) * g * g;
-            vPtr->set(update, i);
+            const auto g = (*gPtr)[i];
+            const auto update = decay * (*vPtr)[i] + (1 - decay) * g * g;
+            vPtr->data()[i] = update;
           }
         }
         else [[unlikely]] {
           movingAvg[tPtr] = make_unique<Tensor>(tPtr->getDims(), Device::CPU, false);
           vPtr = movingAvg[tPtr].get();
           for(tensorSize_t i = 0; i < tPtr->getSize(); i++) {
-            auto g = (*gPtr)[i];
-            vPtr->set((1 - decay) * g * g, i);
+            const auto g = (*gPtr)[i];
+            vPtr->data()[i] = (1 - decay) * g * g;
           }
         }
 
         for(tensorSize_t i = 0; i < tPtr->getSize(); i++) {
-          auto update = (*tPtr)[i] - (lr * (*gPtr)[i] / (sqrt((*vPtr)[i]) + EPS_RMSPROP));
-          tPtr->set(update, i);
+          const auto update = (*tPtr)[i] - (lr * (*gPtr)[i] / (sqrt((*vPtr)[i]) + EPS_RMSPROP));
+          tPtr->data()[i] = update;
         }
         break;
       }

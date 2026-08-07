@@ -122,7 +122,7 @@ Tensor TensorFunctions::SumOverDims(const Tensor& t, tensorDim_t dim) {
             tensorSize_t srcIdx = outer * t.getDims()[dim] * stride + k * stride + i;
             tensorSize_t dstIdx = outer * stride + i;
             
-            res.set(res.get(dstIdx) + t.get(srcIdx), dstIdx);
+            res.data()[dstIdx] = res.data()[dstIdx] + t.data()[srcIdx];
           }
         }
       }

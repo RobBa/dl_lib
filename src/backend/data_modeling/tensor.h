@@ -99,6 +99,7 @@ private:
     }
 
     void copyFromRaw(const ftype* src, tensorSize_t n);
+    void copyFromHost(const ftype* src, tensorSize_t n);
 
     ftype* data() noexcept { return values; }
     const ftype* data() const noexcept { return values; }
@@ -211,9 +212,7 @@ public:
   explicit Tensor(const std::vector<tensorDim_t>& dims, const std::vector<ftype>& initValues, Device d, bool requiresGrad = false)
     : Tensor{dims, d, requiresGrad}
   {
-    for (tensorSize_t i=0; i<initValues.size(); i++){
-      values->set(initValues[i], i);
-    }
+    values->copyFromHost(initValues.data(), initValues.size());
   }
 
   Tensor(const std::vector<tensorDim_t>& dims, const ftype *data, tensorSize_t dataSize,
@@ -260,8 +259,6 @@ public:
 
     return *this;
   }
-
-  ftype* getData() const noexcept { return values->data(); }
 
   void reset(ftype x) noexcept;
   void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
@@ -335,7 +332,11 @@ public:
 
   friend DLLIB_API std::ostream& operator<<(std::ostream& os, const Tensor& t) noexcept;
 
-  // for convenience we provide some simple getters
+  // only for inside backend, should never face Python binding!
+  ftype* data() noexcept { return values->data(); }
+  const ftype* data() const noexcept { return values->data(); }
+
+  // getters for Python binding and convenience
   ftype get(const std::vector<tensorDim_t>& idx) const {
     makeContiguous();
     return (*values)[computeLinearIdx(idx, dims)];
@@ -345,7 +346,7 @@ public:
   ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const { return get({idx0, idx1, idx2, idx3}); }
 
   // non-const version of operator[] does not exist because of CUDA
-  ftype operator[](tensorSize_t idx) const { return (*values)[idx]; }
+  ftype operator[](tensorSize_t idx) const { return values->data()[idx]; }
 
   /**
    * @brief Special getter, indexes the contained underlying array linearly.
@@ -353,7 +354,7 @@ public:
    */
   ftype get(tensorSize_t idx) const { return (*this)[idx]; }
 
-  // for convenience we provide some simple setters
+  // setters for Python binding and covenience
   void set(ftype item, tensorDim_t idx0, tensorDim_t idx1) { set(item, {idx0, idx1}); }
   void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2) { set(item, {idx0, idx1, idx2}); }
   void set(ftype item, tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) { set(item, {idx0, idx1, idx2, idx3}); }
@@ -366,7 +367,7 @@ public:
    * @brief Special setter, indexes the contained underlying array linearly.
    * Can lead to unexpected results in multidimensional tensors.
    */
-  void set(ftype item, tensorDim_t idx) { values->set(item, idx); }
+  void set(ftype item, tensorDim_t idx) { values->data()[idx] = item; }
 
   void setDevice(const Device d) noexcept;
   Device getDevice() const noexcept { return values->getDevice(); }

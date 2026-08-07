@@ -28,8 +28,8 @@ Tensor ReLu::operator()(const Tensor& t) const {
     case Device::CPU:
       for(tensorSize_t i = 0; i < t.getSize(); i++){
         constexpr ftype zero = 0.0f;
-        if(t.getData()[i] < zero){
-          res.getData()[i] = zero;
+        if(t.data()[i] < zero){
+          res.data()[i] = zero;
         }
       }
       break;

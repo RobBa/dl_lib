@@ -32,7 +32,7 @@ vector< shared_ptr<Tensor> > BceSigmoidNode::backward(const Tensor& upstreamGrad
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
       auto sigmoid = [](ftype x){
-        constexpr ftype one = 1.0;
+        constexpr ftype one = 1.0f;
         if(x >= 0) {
           return one / (one + exp(-x));
         }
@@ -42,10 +42,9 @@ vector< shared_ptr<Tensor> > BceSigmoidNode::backward(const Tensor& upstreamGrad
 
       const ftype bSize = logits->getDims()[0];
       for(tensorSize_t i = 0; i < logits->getDims()[0]; i++){
-        auto y = (*yTrue)[i];
-        auto s = sigmoid((*logits)[i]);
-        auto g = s - y;
-        res->set(g / bSize, i);
+        const auto y = yTrue->data()[i];
+        const auto s = sigmoid(logits->data()[i]);
+        res->data()[i] = (s - y) / bSize;
       }
       break;
     }

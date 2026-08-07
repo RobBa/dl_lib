@@ -27,7 +27,7 @@ void SgdOptimizer::step() {
       case Device::CPU:
         for(auto idx = 0; idx < t->getSize(); idx++){
           auto updatedWeight = (*t)[idx] - lr * (*grads)[idx];
-          t->set(updatedWeight, idx);
+          t->data()[idx] = updatedWeight;
         }
         break;
       case Device::CUDA:

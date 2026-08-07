@@ -41,7 +41,7 @@ Tensor Sigmoid::operator()(const Tensor& t) const {
       };
 
       for(tensorSize_t i = 0; i < t.getSize(); i++){
-        res.getData()[i] = compute(t.getData()[i]);
+        res.data()[i] = compute(t.data()[i]);
       }
       break;
     }

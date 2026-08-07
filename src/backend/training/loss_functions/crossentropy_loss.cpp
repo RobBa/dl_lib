@@ -28,6 +28,7 @@ using namespace train;
  * @return Tensor of shape (1)
  */
 shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
+#ifndef NDEBUG
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
   }
@@ -37,6 +38,7 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
   else if(y->getDims()!=ypred->getDims()){
     __throw_invalid_argument("Tensors must be of same shape");
   }
+#endif
 
   shared_ptr<Tensor> res = nullptr;
 
@@ -47,7 +49,7 @@ shared_ptr<Tensor> CrossEntropyLoss::operator()(const shared_ptr<Tensor> y, cons
 
       ftype loss = 0.0f;
       for (tensorSize_t i = 0; i < y->getSize(); i++) {
-        loss += (*y)[i] * log(std::max((*ypred)[i], EPS_CROSSENTROPY));
+        loss += y->data()[i] * log(std::max(ypred->data()[i], EPS_CROSSENTROPY));
       }
 
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nSamples}, y->getDevice(), true);

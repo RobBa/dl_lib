@@ -39,8 +39,8 @@ vector< shared_ptr<Tensor> > CrossEntropySoftmaxNode::backward(const Tensor& ups
       for(tensorSize_t b = 0; b < bSize; b++){
         for(tensorSize_t i = 0; i < stride; i++){
           const tensorSize_t flatIdx = b * stride + i;
-          auto g = s[flatIdx] - (*yTrue)[flatIdx];
-          res->set(g / bSize, flatIdx);
+          const auto g = s.data()[flatIdx] - yTrue->data()[flatIdx];
+          res->data()[flatIdx] = g / bSize;
         }
       }
       break;

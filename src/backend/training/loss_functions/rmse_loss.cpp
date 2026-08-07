@@ -29,6 +29,7 @@ using namespace train;
  * @return Tensor of shape (1)
  */
 shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
+#ifndef NDEBUG
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
   }
@@ -38,13 +39,14 @@ shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared
   else if(y->getDims()!=ypred->getDims()){
     __throw_invalid_argument("Tensors must be of same shape");
   }
+#endif
 
   shared_ptr<Tensor> res = nullptr;
 
   switch(y->getDevice()) {
     case Device::CPU: {
-      auto diffPow = [](ftype y, ftype ypred){
-        auto diff = y - ypred;
+      auto diffPow = [](const ftype y, const ftype ypred){
+        const auto diff = y - ypred;
         return diff * diff;
       };
 
@@ -52,24 +54,25 @@ shared_ptr<Tensor> RmseLoss::operator()(const shared_ptr<Tensor> y, const shared
       
       ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nSamples; i++){
-        loss += diffPow((*y)[i], (*ypred)[i]);
+        loss += diffPow(y->data()[i], ypred->data()[i]);
       }
       loss = sqrt(loss / nSamples);
 
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss}, y->getDevice(), true);
+      res->setCgNode(make_shared<cgraph::RmseNode>(y, ypred, res->data()[0]));
       break;
     }
     case Device::CUDA:
     #ifdef __CUDA
       res = make_shared<Tensor>(vector<tensorDim_t>{1}, Device::CUDA, true);
       cuda_impl::rmseLoss(*res, *y, *ypred);
+      res->setCgNode(make_shared<cgraph::RmseNode>(y, ypred, res->get(0)));
     #else
       __throw_invalid_argument("Attempted to give CUDA tensor");
     #endif
       break;
   }
 
-  res->setCgNode(make_shared<cgraph::RmseNode>(y, ypred, res->get(0)));
   assert(res->getRequiresGrad());
   return res;
 }

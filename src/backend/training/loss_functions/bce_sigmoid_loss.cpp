@@ -28,6 +28,7 @@ using namespace train;
  * @return Tensor of shape (1)
  */
 shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> logits) const {
+#ifndef NDEBUG
   if(!logits->getRequiresGrad()) {
     __throw_invalid_argument("logits must have gradient enabled");
   }
@@ -37,6 +38,7 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
   else if(y->getDims()!=logits->getDims()){
     __throw_invalid_argument("Tensors must be of same shape");
   }
+#endif
 
   shared_ptr<Tensor> res = nullptr;
 
@@ -50,7 +52,7 @@ shared_ptr<Tensor> BceSigmoidLoss::operator()(const shared_ptr<Tensor> y, const 
       const auto nBatches = y->getDims()[0];
       ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nBatches; i++){
-        loss += bceSimplified((*y)[i], (*logits)[i]);
+        loss += bceSimplified(y->data()[i], logits->data()[i]);
       }
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{loss / nBatches}, y->getDevice(), true);
       break;

@@ -262,7 +262,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    reluKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
+    reluKernel<<<blocks, threadsPerBlock>>>(res.data(), in.data(), in.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -273,7 +273,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    leakyReluKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), eps, in.getSize());
+    leakyReluKernel<<<blocks, threadsPerBlock>>>(res.data(), in.data(), eps, in.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -284,7 +284,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (in.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    sigmoidKernel<<<blocks, threadsPerBlock>>>(res.getData(), in.getData(), in.getSize());
+    sigmoidKernel<<<blocks, threadsPerBlock>>>(res.data(), in.data(), in.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -317,19 +317,19 @@ namespace cuda_impl {
       const int blocks = (nStrides + warpsPerBlock - 1) / warpsPerBlock;
 
       if(stride <= 2) {
-        findMaxKernelOneWarp<1><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<1><<<blocks, blockDims>>>(maxValues, in.data(), stride, nStrides);
       }
       else if(stride <= 4) {
-        findMaxKernelOneWarp<2><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<2><<<blocks, blockDims>>>(maxValues, in.data(), stride, nStrides);
       }
       else if(stride <= 8) {
-        findMaxKernelOneWarp<4><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<4><<<blocks, blockDims>>>(maxValues, in.data(), stride, nStrides);
       }
       else if(stride <= 16) {
-        findMaxKernelOneWarp<8><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<8><<<blocks, blockDims>>>(maxValues, in.data(), stride, nStrides);
       }
       else if(stride <= 32) {
-        findMaxKernelOneWarp<16><<<blocks, blockDims>>>(maxValues, in.getData(), stride, nStrides);
+        findMaxKernelOneWarp<16><<<blocks, blockDims>>>(maxValues, in.data(), stride, nStrides);
       }
       
       #ifndef NDEBUG
@@ -337,19 +337,19 @@ namespace cuda_impl {
       #endif
 
       if(stride <= 2) {
-        stableSoftmaxKernelOneWarp<1><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<1><<<blocks, blockDims>>>(res.data(), in.data(), maxValues, stride, in.getSize());
       }
       else if(stride <= 4) {
-        stableSoftmaxKernelOneWarp<2><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<2><<<blocks, blockDims>>>(res.data(), in.data(), maxValues, stride, in.getSize());
       }
       else if(stride <= 8) {
-        stableSoftmaxKernelOneWarp<4><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<4><<<blocks, blockDims>>>(res.data(), in.data(), maxValues, stride, in.getSize());
       }
       else if(stride <= 16) {
-        stableSoftmaxKernelOneWarp<8><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<8><<<blocks, blockDims>>>(res.data(), in.data(), maxValues, stride, in.getSize());
       }
       else if(stride <= 32) {
-        stableSoftmaxKernelOneWarp<16><<<blocks, blockDims>>>(res.getData(), in.getData(), maxValues, stride, in.getSize());
+        stableSoftmaxKernelOneWarp<16><<<blocks, blockDims>>>(res.data(), in.data(), maxValues, stride, in.getSize());
       }
       
       #ifndef NDEBUG
@@ -366,12 +366,12 @@ namespace cuda_impl {
 
       const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock; // gerneralized version iff multiple strides per block allowed
 
-      findMaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(maxValues, in.getData(), stride);
+      findMaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(maxValues, in.data(), stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif
 
-      stableSoftmaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(res.getData(), in.getData(), maxValues, 
+      stableSoftmaxKernelOneBlock<<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(res.data(), in.data(), maxValues, 
                                                                                                            stride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
@@ -396,7 +396,7 @@ namespace cuda_impl {
       // pass 1: reduce each chunk of 512 elements to one partial max
       // launch blocksPerStride blocks per stride
       findMaxKernelLargePass1<<<totalBlocks, maxThreadsPerBlock, (maxThreadsPerBlock << 1) * sizeof(ftype)>>>(
-                                partialMaxValues, in.getData(), stride, blocksPerStride);
+                                partialMaxValues, in.data(), stride, blocksPerStride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif
@@ -415,7 +415,7 @@ namespace cuda_impl {
       ftype* partialSums = mempool::tensorPool.request(Device::CUDA, nPartialMax);
 
       stableSoftmaxLargePass1<ftype><<<totalBlocks, maxThreadsPerBlock, (maxThreadsPerBlock << 1) * sizeof(ftype)>>>(
-                        res.getData(), partialSums, in.getData(), maxValues, stride, blocksPerStride);
+                        res.data(), partialSums, in.data(), maxValues, stride, blocksPerStride);
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif
@@ -428,7 +428,7 @@ namespace cuda_impl {
 
       // final division pass: divide each exp value by its stride's sum
       const int nBlocksDivision = (in.getSize() + maxThreadsPerBlock - 1) / maxThreadsPerBlock;
-      divideKernel<<<nBlocksDivision, maxThreadsPerBlock>>>(res.getData(), partialSums, stride, in.getSize());
+      divideKernel<<<nBlocksDivision, maxThreadsPerBlock>>>(res.data(), partialSums, stride, in.getSize());
       #ifndef NDEBUG
       cudaErrchk(cudaDeviceSynchronize());
       #endif

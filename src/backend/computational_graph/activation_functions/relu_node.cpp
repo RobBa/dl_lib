@@ -30,9 +30,9 @@ vector<shared_ptr<Tensor>> ReLuNode::backward(const Tensor& upstreamGrad) {
 
   switch(upstreamGrad.getDevice()) {
     case Device::CPU: {
-      constexpr ftype zero = 0.0;
+      constexpr ftype zero = 0.0f;
       for(tensorSize_t i = 0; i < upstreamGrad.getSize(); i++){
-        res->set((*parent)[i] > zero ? upstreamGrad[i] : zero, i);
+        res->data()[i] = parent->data()[i] > zero ? upstreamGrad.data()[i] : zero;
       }
       break;
     }

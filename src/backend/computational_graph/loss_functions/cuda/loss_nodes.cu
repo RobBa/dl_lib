@@ -115,7 +115,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    bceBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), yPred.getDims()[0], yTrue.getSize());
+    bceBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), yPred.data(), yTrue.data(), yPred.getDims()[0], yTrue.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -126,7 +126,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (logits.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), logits.getData(), yTrue.getData(), logits.getDims()[0], logits.getSize());
+    bceSigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), logits.data(), yTrue.data(), logits.getDims()[0], logits.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -140,7 +140,7 @@ namespace cuda_impl {
     const tensorSize_t stride = yPred.getDims()[-1];
     const ftype nSamples = static_cast<ftype>(yPred.getSize() / stride);
 
-    crossEntropyBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), nSamples, yTrue.getSize());
+    crossEntropyBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), yPred.data(), yTrue.data(), nSamples, yTrue.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -157,7 +157,7 @@ namespace cuda_impl {
     const tensorSize_t stride = logits.getDims().get(-1);
     const auto nSamples = static_cast<ftype>(logits.getSize() / stride);
 
-    crossEntropySoftmaxBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), softmaxedLogits.getData(), yTrue.getData(), nSamples, logits.getSize());
+    crossEntropySoftmaxBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), softmaxedLogits.data(), yTrue.data(), nSamples, logits.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -168,7 +168,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (yPred.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    rmseBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), yPred.getData(), yTrue.getData(), rmse, static_cast<ftype>(yPred.getDims()[0]), yPred.getSize());
+    rmseBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), yPred.data(), yTrue.data(), rmse, static_cast<ftype>(yPred.getDims()[0]), yPred.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());

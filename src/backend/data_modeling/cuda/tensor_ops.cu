@@ -263,7 +263,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalaraddKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    scalaraddKernel<<<blocks, threadsPerBlock>>>(res.data(), src.data(), scalar, src.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -274,7 +274,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (src.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    scalarmulKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), scalar, src.getSize());
+    scalarmulKernel<<<blocks, threadsPerBlock>>>(res.data(), src.data(), scalar, src.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -288,7 +288,7 @@ namespace cuda_impl {
     const int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
 
     broadcastaddKernel<<<blocks, threadsPerBlock>>>(
-      res.getData(), matrix.getData(), vec.getData(), vec.getDims()[0], matrix.getSize());
+      res.data(), matrix.data(), vec.data(), vec.getDims()[0], matrix.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -299,7 +299,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    elementwiseaddKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    elementwiseaddKernel<<<blocks, threadsPerBlock>>>(res.data(), left.data(), right.data(), left.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -310,7 +310,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (left.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    elementwisemulKernel<<<blocks, threadsPerBlock>>>(res.getData(), left.getData(), right.getData(), left.getSize());
+    elementwisemulKernel<<<blocks, threadsPerBlock>>>(res.data(), left.data(), right.data(), left.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -341,15 +341,15 @@ namespace cuda_impl {
 
     if(batchCount == 1) {
       cublasGemmT<ftype>(cublasHandle(), opA, opB, m, n, k,
-                         &alpha, right.getData(), lda, left.getData(), ldb,
-                         &beta,  res.getData(),   ldc);
+                         &alpha, right.data(), lda, left.data(), ldb,
+                         &beta,  res.data(),   ldc);
     } else {
       cublasGemmStridedBatchedT<ftype>(cublasHandle(), opA, opB, m, n, k,
                          &alpha,
-                         right.getData(), lda, static_cast<long long>(rightSize),
-                         left.getData(),  ldb, static_cast<long long>(leftSize),
+                         right.data(), lda, static_cast<long long>(rightSize),
+                         left.data(),  ldb, static_cast<long long>(leftSize),
                          &beta,
-                         res.getData(),   ldc, static_cast<long long>(resSize),
+                         res.data(),   ldc, static_cast<long long>(resSize),
                          batchCount);
     }
 
@@ -366,10 +366,10 @@ namespace cuda_impl {
     dim3 numBlocks(blocksX, blocksY, nMultiplications);
 
     //const auto smemSize = min(resSize, threadsPerBlock) * sizeof(ftype);
-    //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.getData() + resOffset, left.getData() + leftOffset, right.getData() + rightOffset,
+    //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.data() + resOffset, left.data() + leftOffset, right.data() + rightOffset,
     if(!(transposeLeft || transposeRight)) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, false><<<numBlocks, threadsPerBlock>>>(
-                                                      res.getData(), left.getData(), right.getData(),
+                                                      res.data(), left.data(), right.data(),
                                                       left.getDims().get(-2), left.getDims().get(-1),
                                                       right.getDims().get(-2), right.getDims().get(-1),
                                                       res.getDims().get(-2), res.getDims().get(-1),
@@ -377,7 +377,7 @@ namespace cuda_impl {
     }
     else if(transposeLeft && transposeRight) [[unlikely]] {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, true><<<numBlocks, threadsPerBlock>>>(
-                                                    res.getData(), left.getData(), right.getData(),
+                                                    res.data(), left.data(), right.data(),
                                                     left.getDims().get(-2), left.getDims().get(-1),
                                                     right.getDims().get(-2), right.getDims().get(-1),
                                                     res.getDims().get(-2), res.getDims().get(-1),
@@ -385,7 +385,7 @@ namespace cuda_impl {
     }
     else if(transposeLeft) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, false><<<numBlocks, threadsPerBlock>>>(
-                                                     res.getData(), left.getData(), right.getData(),
+                                                     res.data(), left.data(), right.data(),
                                                      left.getDims().get(-2), left.getDims().get(-1),
                                                      right.getDims().get(-2), right.getDims().get(-1),
                                                      res.getDims().get(-2), res.getDims().get(-1),
@@ -393,7 +393,7 @@ namespace cuda_impl {
     }
     else if(transposeRight) {
       matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, true><<<numBlocks, threadsPerBlock>>>(
-                                                     res.getData(), left.getData(), right.getData(),
+                                                     res.data(), left.data(), right.data(),
                                                      left.getDims().get(-2), left.getDims().get(-1),
                                                      right.getDims().get(-2), right.getDims().get(-1),
                                                      res.getDims().get(-2), res.getDims().get(-1),
@@ -415,7 +415,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (res.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    sumOverDimsKernel<<<blocks, threadsPerBlock>>>(res.getData(), input.getData(), stride, input.getDims()[dim], res.getSize());
+    sumOverDimsKernel<<<blocks, threadsPerBlock>>>(res.data(), input.data(), stride, input.getDims()[dim], res.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -423,7 +423,7 @@ namespace cuda_impl {
   }
 
   void scalarFill(Tensor& t, ftype value) {
-    ftype* ptr = t.getData();
+    ftype* ptr = t.data();
     thrust::fill(thrust::device_pointer_cast(ptr),
                  thrust::device_pointer_cast(ptr + t.getSize()), value);
     
@@ -447,7 +447,7 @@ namespace cuda_impl {
     cudaErrchk(cudaMemcpy(d_dims, src.getDims().data(), ndims* sizeof(tensorDim_t), cudaMemcpyHostToDevice));
 
     createContiguousCopyKernel<<<blocks, threadsPerBlock>>>(
-      res.getData(), src.getData(), d_strides, d_dims, ndims, size);
+      res.data(), src.data(), d_strides, d_dims, ndims, size);
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -465,7 +465,7 @@ namespace cuda_impl {
     cudaErrchk(cudaMemcpy(idx_d, idx.data(), idx.size() * sizeof(tensorDim_t), cudaMemcpyHostToDevice));
 
     const auto sizeOfDim = res.getDims().getStride(0);
-    getSliceKernel<<<blocks, threadsPerBlock>>>(res.getData(), src.getData(), idx_d, sizeOfDim, res.getSize());
+    getSliceKernel<<<blocks, threadsPerBlock>>>(res.data(), src.data(), idx_d, sizeOfDim, res.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());

@@ -29,7 +29,7 @@ vector<shared_ptr<Tensor>> cgraph::ScalarMulNode::backward(const Tensor& upstrea
     case Device::CPU:
     {
       for(tensorSize_t i=0; i<res->getSize(); i++){
-        res->set(res->get(i) * factor, i);
+        res->data()[i] = res->data()[i] * factor;
       }
       break;
     }

@@ -16,12 +16,10 @@ using namespace cgraph;
 
 vector< shared_ptr<Tensor> > GetterNode::backward(const Tensor& upstreamGrad) {
   // upstreamGrad is scalar by definition
-  assert(!upstreamGrad.getRequiresGrad() && upstreamGrad.getDims().nDims()==1);
+  assert(!upstreamGrad.getRequiresGrad() && upstreamGrad.getDims().nDims() == 1);
 
   auto res = make_shared<Tensor>(parents[0]->getDims(), parents[0]->getDevice(), false);
-  for(tensorSize_t i=0; i<res->getSize(); i++){
-    res->set(0, i);
-  }
+  res->reset(0.0f);
 
   if(std::holds_alternative<tensorSize_t>(idx)){
     res->set(upstreamGrad.get(0), std::get<tensorSize_t>(idx));

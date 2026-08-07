@@ -50,7 +50,8 @@ void Tensor::tensorValues_t::resize(const tensorSize_t size) {
 }
 
 /**
- * @brief Copy from pointer into this object.
+ * @brief Copy from pointer into this object. Assumes src resides on the same
+ * device as this object (device-to-device for CUDA).
  */
 void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
   assert(n == size);
@@ -61,6 +62,26 @@ void Tensor::tensorValues_t::copyFromRaw(const ftype* src, tensorSize_t n) {
     case Device::CUDA:
       #ifdef __CUDA
         cudaErrchk(cudaMemcpy(values, src, n * sizeof(ftype), cudaMemcpyDeviceToDevice));
+      #else
+        __throw_runtime_error("Not compiled with CUDA");
+      #endif
+      break;
+  }
+}
+
+/**
+ * @brief Copy from a host-resident pointer into this object, regardless of
+ * this object's own device.
+ */
+void Tensor::tensorValues_t::copyFromHost(const ftype* src, tensorSize_t n) {
+  assert(n == size);
+  switch(device){
+    case Device::CPU:
+      std::memcpy(values, src, n * sizeof(ftype));
+      break;
+    case Device::CUDA:
+      #ifdef __CUDA
+        cudaErrchk(cudaMemcpy(values, src, n * sizeof(ftype), cudaMemcpyHostToDevice));
       #else
         __throw_runtime_error("Not compiled with CUDA");
       #endif
@@ -258,7 +279,7 @@ Tensor Tensor::createContiguousCopy() const {
           remainder /= dims[i];
         }
 
-        res.values->data()[flatIdx] = (*values)[srcOffset];
+        res.values->data()[flatIdx] = values->data()[srcOffset];
       }
       break;
     }
@@ -600,12 +621,14 @@ Tensor Tensor::operator-(const ftype scalar) const {
 }
 
 void Tensor::backward() {
+#ifndef NDEBUG
   if(!requiresGrad){
     __throw_runtime_error("Invoking backward on Tensor with no grad");
   }
   else if(!cgNode){
     __throw_runtime_error("Invoking backward on Tensor not created by a differentiable operation");
   }
+#endif
 
   // last node has no incoming gradients -> factor 1
   if (!grads) {

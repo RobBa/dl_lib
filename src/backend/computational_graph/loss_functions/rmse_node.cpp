@@ -34,13 +34,11 @@ vector< shared_ptr<Tensor> > RmseNode::backward(const Tensor& upstreamGrad) {
     {
       const ftype bSize = yPred->getDims()[0];
       for(tensorSize_t i = 0; i < yPred->getSize(); i++){
-        auto yi = (*yTrue)[i];
-        auto yiHat = (*yPred)[i];
+        const auto yi = yTrue->data()[i];
+        const auto yiHat = yPred->data()[i];
 
-        auto denom = rmse * bSize + EPS_RMSE;
-        auto g = (yiHat - yi) / denom;
-        
-        res->set(g, i);
+        const auto denom = rmse * bSize + EPS_RMSE;        
+        res->data()[i] = (yiHat - yi) / denom;
       }
       break;
     }
