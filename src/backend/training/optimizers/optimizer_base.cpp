@@ -40,36 +40,33 @@ void OptimizerBase::clipGradients(ftype maxNorm) noexcept
     {
       // compute global L2 norm across all parameters
       ftype totalNorm = 0.0f;
-      for (const auto &param : params)
-      {
+      for(const auto &param : params) {
         auto grads = param->getGrads();
-        if (!grads)
+        if(!grads)
           continue;
-        for (tensorSize_t i = 0; i < grads->getSize(); i++)
-        {
-          auto g = (*grads)[i];
+
+        for(tensorSize_t i = 0; i < grads->getSize(); i++) {
+          const auto g = grads->data()[i];
           totalNorm += g * g;
         }
       }
       totalNorm = std::sqrt(totalNorm);
 
-      if (totalNorm > maxNorm)
-      {
+      if(totalNorm > maxNorm) {
         const ftype scale = maxNorm / (totalNorm + EPS_OPTIM_GRADCLIP);
-        for (const auto &param : params)
-        {
+        for (const auto &param : params) {
           auto grads = param->getGrads();
-          if (!grads)
+          if(!grads)
             continue;
-          for (tensorSize_t i = 0; i < grads->getSize(); i++)
-          {
-            grads->set((*grads)[i] * scale, i);
+
+          for(tensorSize_t i = 0; i < grads->getSize(); i++) {
+            grads->data()[i] = grads->data()[i] * scale;
           }
         }
       }
     }
     break;
-    case Device::CUDA:
+    case Device::CUDA: 
     {
     #ifdef __CUDA
       cuda_impl::clipGradients(params, maxNorm);

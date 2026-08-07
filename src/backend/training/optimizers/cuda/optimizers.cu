@@ -197,7 +197,7 @@ namespace cuda_impl {
         ftype* tmp = mempool::tensorPool.request(Device::CUDA, blocks);
 
         powerTwoSumKernel<true><<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
-                                  tmp, grads->getData(), maxNorm, /*sentinel value*/ -1, grads->getSize());
+                                  tmp, grads->data(), maxNorm, /*sentinel value*/ -1, grads->getSize());
         #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
         #endif
@@ -214,7 +214,7 @@ namespace cuda_impl {
       }
       else {
         powerTwoSumKernel<false><<<blocks, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
-                                  totalNorm, grads->getData(), maxNorm, paramIdx, grads->getSize());
+                                  totalNorm, grads->data(), maxNorm, paramIdx, grads->getSize());
         #ifndef NDEBUG
         cudaErrchk(cudaDeviceSynchronize());
         #endif
@@ -242,7 +242,7 @@ namespace cuda_impl {
       int blocks = (grads->getSize() + threadsPerBlock - 1) / threadsPerBlock;
       blocks = max(1, blocks >> 2); // each thread tries to cover two elements
 
-      clipGradientsKernel<<<blocks, threadsPerBlock>>>(grads->getData(), totalNorm, maxNorm, grads->getSize());
+      clipGradientsKernel<<<blocks, threadsPerBlock>>>(grads->data(), totalNorm, maxNorm, grads->getSize());
     }
 
     #ifndef NDEBUG
@@ -256,7 +256,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    stepSgdKernel<<<blocks, threadsPerBlock>>>(param.getData(), grads.getData(), lr, param.getSize());
+    stepSgdKernel<<<blocks, threadsPerBlock>>>(param.data(), grads.data(), lr, param.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -267,7 +267,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (param.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    stepRmsPropKernel<<<blocks, threadsPerBlock>>>(param.getData(), movingAvg.getData(), grads.getData(), lr, decay, param.getSize());
+    stepRmsPropKernel<<<blocks, threadsPerBlock>>>(param.data(), movingAvg.data(), grads.data(), lr, decay, param.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());

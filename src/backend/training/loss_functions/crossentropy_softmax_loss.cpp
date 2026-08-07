@@ -28,6 +28,7 @@ using namespace train;
  * @return Tensor of shape (1)
  */
 shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> logits) const {
+#ifndef NDEBUG
   if(!logits->getRequiresGrad()) {
     __throw_invalid_argument("logits must have gradient enabled");
   }
@@ -37,6 +38,7 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
   else if(y->getDims()!=logits->getDims()){
     __throw_invalid_argument("Tensors must be of same shape");
   }
+#endif
 
   shared_ptr<Tensor> res = nullptr;
 
@@ -52,13 +54,13 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
       while(offset < logits->getSize()) {
         ftype maxV = -std::numeric_limits<ftype>::infinity();
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          maxV = std::max(maxV, (*logits)[i]);
+          maxV = std::max(maxV, logits->data()[i]);
         }
 
         maxValues[offset / stride] = maxV;
 
         for(tensorSize_t i = offset; i < offset + stride; i++) {
-          tmp.set(exp((*logits)[i] - maxV), i);
+          tmp.data()[i] = exp(logits->data()[i] - maxV);
         }
 
         offset += stride;
@@ -74,14 +76,14 @@ shared_ptr<Tensor> CrossEntropySoftmaxLoss::operator()(const shared_ptr<Tensor> 
       auto compute = [&loss, &y, &logits, &tmp, &maxValues, stride](tensorSize_t start) {
         ftype lsum = 0.0f;
         for(tensorSize_t i = start; i < start + stride; i++){
-          lsum += tmp[i];
+          lsum += tmp.data()[i];
         }
         lsum = log(lsum);
 
         const tensorSize_t j = start / stride;
         for(tensorSize_t i = start; i < start + stride; i++) {
           // y[i] is one-hot encoded
-          loss += (*y)[i] * (-(*logits)[i] + maxValues[j] + lsum);
+          loss += y->data()[i] * (-logits->data()[i] + maxValues[j] + lsum);
         }
       };
 

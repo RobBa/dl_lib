@@ -154,7 +154,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    reluBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), parent.getData(), res.getSize());
+    reluBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), upstreamGrad.data(), parent.data(), res.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -165,7 +165,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    leakyReluBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), parent.getData(), eps, res.getSize());
+    leakyReluBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), upstreamGrad.data(), parent.data(), eps, res.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -176,7 +176,7 @@ namespace cuda_impl {
     constexpr int threadsPerBlock = 256;
     const int blocks = (upstreamGrad.getSize() + threadsPerBlock - 1) / threadsPerBlock;
 
-    sigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.getData(), upstreamGrad.getData(), sigmoid.getData(), res.getSize());
+    sigmoidBackwardKernel<<<blocks, threadsPerBlock>>>(res.data(), upstreamGrad.data(), sigmoid.data(), res.getSize());
     
     #ifndef NDEBUG
     cudaErrchk(cudaDeviceSynchronize());
@@ -207,7 +207,7 @@ namespace cuda_impl {
       const int blocks = (nStrides + stridesPerBlock - 1) / stridesPerBlock;
 
       softmaxBackwardKernelOneBlock<<<blocks, threadsPerBlock, 2 * strideWidthPerBlock * sizeof(ftype)>>>(
-          res.getData(), upstreamGrad.getData(), softmax.getData(), stride, strideWidthPerBlock, threadsPerStride, softmax.getSize());
+          res.data(), upstreamGrad.data(), softmax.data(), stride, strideWidthPerBlock, threadsPerStride, softmax.getSize());
     }
     else {
       constexpr int maxThreadsPerBlock = 256; 
@@ -217,7 +217,7 @@ namespace cuda_impl {
       const int blocksPerStride = (stride + threadsPerBlock - 1) / threadsPerBlock; 
 
       softmaxBackwardKernelLargePass<<<blocksPerStride * nStrides, threadsPerBlock, (threadsPerBlock << 1) * sizeof(ftype)>>>(
-                                       res.getData(), upstreamGrad.getData(), softmax.getData(), blocksPerStride, stride);
+                                       res.data(), upstreamGrad.data(), softmax.data(), blocksPerStride, stride);
     }
 
     #ifndef NDEBUG

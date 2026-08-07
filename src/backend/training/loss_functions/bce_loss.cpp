@@ -28,6 +28,7 @@ using namespace train;
  * @return Tensor of shape (1)
  */
 shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_ptr<Tensor> ypred) const {
+#ifndef NDEBUG
   if(!ypred->getRequiresGrad()) {
     __throw_invalid_argument("ypred must have gradient enabled");
   }
@@ -37,6 +38,7 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
   else if(y->getDims()!=ypred->getDims()){
     __throw_invalid_argument("Tensors must be of same shape");
   }
+#endif
 
   shared_ptr<Tensor> res = nullptr;
 
@@ -44,13 +46,13 @@ shared_ptr<Tensor> BceLoss::operator()(const shared_ptr<Tensor> y, const shared_
     case Device::CPU: 
     {
       auto bce = [](const ftype y, const ftype ypred){
-        return y * log(std::max(ypred, EPS_BCE)) + (1 - y) * log(std::max(1 - ypred, EPS_BCE));
+        return y * log(std::max(ypred, EPS_BCE)) + (1.0f - y) * log(std::max(1.0f - ypred, EPS_BCE));
       };
 
       const auto nBatches = y->getDims()[0];
       ftype loss = 0.0f;
       for(tensorSize_t i = 0; i < nBatches; i++){
-        loss += bce((*y)[i], (*ypred)[i]);
+        loss += bce(y->data()[i], ypred->data()[i]);
       }
       
       res = make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{-loss / nBatches}, Device::CPU, true);

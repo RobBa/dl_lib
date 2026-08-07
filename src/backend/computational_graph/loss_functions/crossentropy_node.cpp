@@ -36,8 +36,8 @@ vector< shared_ptr<Tensor> > CrossEntropyNode::backward(const Tensor& upstreamGr
       const tensorSize_t stride = yPred->getDims()[-1];
       const ftype bSize = static_cast<ftype>(yPred->getSize() / stride);
       for(tensorSize_t i = 0; i < yPred->getSize(); i++) {
-        auto g = -(*yTrue)[i] / std::max((*yPred)[i], EPS_CROSSENTROPY);
-        res->set(g / bSize, i);
+        const auto g = -yTrue->data()[i] / std::max(yPred->data()[i], EPS_CROSSENTROPY);
+        res->data()[i] = g / bSize;
       }
       break;
     }

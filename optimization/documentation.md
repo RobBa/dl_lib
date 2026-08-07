@@ -784,9 +784,57 @@ ftype Tensor::tensorValues_t::operator[](const tensorSize_t idx) const {
 
 The beginning should be ifndef for release mode. However, fixing that we realize it bloats the code -> NDEBUG is not set in release mode. 
 
-### Times after fix
+## Times after fix
 
 CPU: 3.4333s
 
 # Step 9 
 
+## Analysis
+
+```
+             1,264      context-switches                 #     60.6 cs/sec  cs_per_second     
+                51      cpu-migrations                   #      2.4 migrations/sec  migrations_per_second
+         1,576,794      page-faults                      #  75625.4 faults/sec  page_faults_per_second
+         20,850.06 msec task-clock                       #      1.0 CPUs  CPUs_utilized       
+       124,292,380      cpu_core/branch-misses/          #      0.3 %  branch_miss_rate         (99.87%)
+    45,702,464,699      cpu_core/branches/               #   2192.0 M/sec  branch_frequency     (99.87%)
+    78,178,161,324      cpu_core/cpu-cycles/             #      3.7 GHz  cycles_frequency       (99.87%)
+   253,442,402,566      cpu_core/instructions/           #      3.2 instructions  insn_per_cycle  (99.87%)
+        13,597,279      cpu_atom/branch-misses/          #      0.1 %  branch_miss_rate         (0.06%)
+    18,837,028,680      cpu_atom/branches/               #    903.5 M/sec  branch_frequency     (0.06%)
+    46,637,108,491      cpu_atom/cpu-cycles/             #      2.2 GHz  cycles_frequency       (0.06%)
+    70,830,711,657      cpu_atom/instructions/           #      1.7 instructions  insn_per_cycle  (0.08%)
+             TopdownL1 (cpu_core)                        #     12.6 %  tma_bad_speculation    
+                                                         #     16.4 %  tma_frontend_bound       (99.87%)
+                                                         #     36.3 %  tma_backend_bound      
+                                                         #     34.7 %  tma_retiring             (99.87%)
+             TopdownL1 (cpu_atom)                        #     18.1 %  tma_backend_bound        (0.12%)
+                                                         #     28.8 %  tma_frontend_bound       (0.12%)
+                                                         #      0.1 %  tma_bad_speculation    
+                                                         #     53.0 %  tma_retiring             (0.09%)
+```
+
+Perf record gives us this:
+
+```
+   6.45%  python3  libc.so.6                                          [.] __memmove_avx_unaligned_erms                                                                 ◆
+   4.34%  python3  [kernel.kallsyms]                                  [k] osDevReadReg032                                                                              ▒
+   2.85%  python3  [kernel.kallsyms]                                  [k] kernel_init_pages                                                                            ▒
+   2.73%  python3  parsers.cpython-314-x86_64-linux-gnu.so            [.] 0x000000000003aef8                                                                           ▒
+   2.59%  python3  python3.14                                         [.] _PyEval_EvalFrameDefault                                                                     ▒
+   2.44%  python3  libBackendCore.so                                  [.] Tensor::tensorValues_t::operator[](unsigned int) const                                       ▒
+   2.30%  python3  libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<true, false>(Tensor&, Tensor const&, Tensor const&, unsigned i▒
+   1.97%  python3  libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<false, false>(Tensor&, Tensor const&, Tensor const&, unsigned ▒
+   1.92%  python3  libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<false, true>(Tensor&, Tensor const&, Tensor const&, unsigned i▒
+   1.33%  python3  libBackendCore.so                                  [.] train::RmsPropOptimizer::step()                                                              ▒
+   1.17%  python3  parsers.cpython-314-x86_64-linux-gnu.so            [.] 0x000000000003aefc                                                                           ▒
+   1.07%  python3  libBackendCore.so                                  [.] train::OptimizerBase::clipGradients(float)                                                   ▒
+   1.03%  python3  libz.so.1.3.1                                      [.] crc32_z                                                                                      ▒
+   1.01%  python3  libBackendCore.so                                  [.] Tensor::tensorValues_t::set(float, unsigned int)                                             ▒
+   0.82%  python3  _multiarray_umath.cpython-314-x86_64-linux-gnu.so  [.] 0x000000000006f929                                                                           ▒
+   0.80%  python3  libBackendCore.so                                  [.] Tensor::tensorValues_t::operator[](unsigned int) const@plt  
+```
+
+The memmove is interesting, but at the moment the analysis is cluttered with calls to operator[], get() and set() of tensorvalues_t still. 
+We will refactor that, removing those operators to use 

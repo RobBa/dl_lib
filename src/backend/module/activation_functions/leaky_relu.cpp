@@ -27,8 +27,8 @@ Tensor LeakyReLu::operator()(const Tensor& t) const {
   switch(t.getDevice()) {
     case Device::CPU:
       for(tensorSize_t i = 0; i < t.getSize(); i++){
-        const ftype v = t.getData()[i];
-        res.getData()[i] = std::max(v, v * eps);
+        const ftype v = t.data()[i];
+        res.data()[i] = std::max(v, v * eps);
       }
       break;
     case Device::CUDA:

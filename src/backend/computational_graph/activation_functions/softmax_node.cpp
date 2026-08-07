@@ -40,14 +40,14 @@ vector< shared_ptr<Tensor> > SoftmaxNode::backward(const Tensor& upstreamGrad) {
       while(offset < yPred->getSize()) {
         for(tensorSize_t i = 0; i < stride; i++) {
           ftype grad = 0.0f;
-          const ftype yi = softmax->get(offset + i);
+          const ftype yi = softmax->data()[offset + i];
 
           for(tensorSize_t j = 0; j < stride; j++) {
-            const ftype yj = softmax->get(offset + j);
+            const ftype yj = softmax->data()[offset + j];
             const ftype jacobian = (i == j) ? yi * (1 - yj) : -yi * yj;
-            grad += upstreamGrad.get(offset + j) * jacobian;
+            grad += upstreamGrad.data()[offset + j] * jacobian;
           }
-          res->set(grad, offset + i);
+          res->data()[offset + i] = grad;
         }
         offset += stride;
       }
