@@ -1057,5 +1057,21 @@ Result: Multithreaded version wins even on small matrices.
                                                          #     52.3 %  tma_retiring             (11.71%)
 ```
 
-Use lots of E-cores. Therefore: Core pinning. 
+Use lots of E-cores. Therefore: Core pinning. Finding the P-cores via ```lscpu --extended``` reveals:
+
+```
+CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ   MINMHZ       MHZ
+  0    0      0    0 0:0:0:0          yes 4800.0000 400.0000 1159.6340
+  1    0      0    0 0:0:0:0          yes 4800.0000 400.0000 1419.8870
+  2    0      0    1 4:4:1:0          yes 4800.0000 400.0000 1512.5770
+  3    0      0    1 4:4:1:0          yes 4800.0000 400.0000  400.0000
+  4    0      0    2 8:8:2:0          yes 4800.0000 400.0000 1588.9550
+  5    0      0    2 8:8:2:0          yes 4800.0000 400.0000  962.6430
+  6    0      0    3 12:12:3:0        yes 4800.0000 400.0000 1310.6790
+  7    0      0    3 12:12:3:0        yes 4800.0000 400.0000  400.0000
+  8    0      0    4 20:20:5:0        yes 3600.0000 400.0000 1656.5811
+  9    0      0    5 21:21:5:0        yes 3600.0000 400.0000  400.0000
+ 10    0      0    6 22:22:5:0        yes 3600.0000 400.0000  400.0000
+ 11    0      0    7 23:23:5:0        yes 3600.0000 400.0000  491.1300
+```
 

@@ -24,6 +24,13 @@
 #include <functional>
 #include <algorithm>
 
+#define PIN_CORES
+
+#ifdef PIN_CORES
+#include <pthread.h>
+#include <sched.h>
+#endif
+
 namespace threadpool_impl {
   class ThreadPool final {
     private:
@@ -71,10 +78,24 @@ namespace threadpool_impl {
 
     public:
       ThreadPool() : stop{false}, activeTasks{0} {
+      #ifdef PIN_CORES
+        constexpr unsigned int nthreads = 4;
+        const std::vector<int> pCores = {0, 2, 4, 6};
+      #else 
         const unsigned int nthreads = std::max(static_cast<unsigned int>(1), std::thread::hardware_concurrency() / 2);
+      #endif
         threads.reserve(nthreads);
+        
         for(unsigned int i = 0; i < nthreads; i++) {
           threads.emplace_back(&ThreadPool::workerLoop, this);
+        
+        #ifdef PIN_CORES
+          cpu_set_t cpuset;
+          CPU_ZERO(&cpuset);
+          CPU_SET(pCores[i], &cpuset);
+          pthread_setaffinity_np(threads.back().native_handle(),
+                                sizeof(cpu_set_t), &cpuset);
+        #endif
         }
       };
 
@@ -111,3 +132,5 @@ namespace threadpool_impl {
       }
   };
 }
+
+#undef PIN_CORES
