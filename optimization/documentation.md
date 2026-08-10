@@ -901,10 +901,46 @@ CPU (AVX matmul): 1.9637s
 
 Step 7 broke the AVX test, so the steps in between probably all benchmarked on the non-AVX version.
 
-# Step 11
+# Step 11 - Parallelize matmul
 
 ## Analysis
 
 ```
+               470      context-switches                 #     31.1 cs/sec  cs_per_second     
+                16      cpu-migrations                   #      1.1 migrations/sec  migrations_per_second
+         1,575,579      page-faults                      # 104377.9 faults/sec  page_faults_per_second
+         15,094.95 msec task-clock                       #      1.0 CPUs  CPUs_utilized       
+       130,626,000      cpu_core/branch-misses/          #      0.9 %  branch_miss_rate         (99.95%)
+    13,990,559,350      cpu_core/branches/               #    926.8 M/sec  branch_frequency     (99.95%)
+    56,489,241,835      cpu_core/cpu-cycles/             #      3.7 GHz  cycles_frequency       (99.95%)
+   132,728,185,717      cpu_core/instructions/           #      2.3 instructions  insn_per_cycle  (99.95%)
+       130,600,128      cpu_atom/branch-misses/          #      8.7 %  branch_miss_rate         (0.07%)
+     2,509,253,475      cpu_atom/branches/               #    166.2 M/sec  branch_frequency     (0.04%)
+    28,127,357,777      cpu_atom/cpu-cycles/             #      1.9 GHz  cycles_frequency       (0.02%)
+    33,475,389,947      cpu_atom/instructions/           #      1.1 instructions  insn_per_cycle  (0.03%)
+             TopdownL1 (cpu_core)                        #      9.2 %  tma_bad_speculation    
+                                                         #     12.8 %  tma_frontend_bound       (99.95%)
+                                                         #     44.0 %  tma_backend_bound      
+                                                         #     33.9 %  tma_retiring             (99.95%)
+             TopdownL1 (cpu_atom)                        #     21.2 %  tma_backend_bound        (0.09%)
+                                                         #     29.3 %  tma_frontend_bound       (0.08%)
+                                                         #     40.2 %  tma_bad_speculation    
+                                                         #      9.3 %  tma_retiring             (0.08%)
+```
 
 ```
+  15.74%  python3         libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<true, false>(Tensor&, Tensor const&, Tensor const&, unsi
+  13.60%  python3         libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<false, true>(Tensor&, Tensor const&, Tensor const&, unsi
+  13.58%  python3         libBackendCore.so                                  [.] void Tensor::matMul2DCpuScalar<false, false>(Tensor&, Tensor const&, Tensor const&, uns
+   7.08%  python3         libBackendCore.so                                  [.] train::RmsPropOptimizer::step()
+   3.29%  python3         libc.so.6                                          [.] __memmove_avx_unaligned_erms
+   3.06%  python3         libBackendCore.so                                  [.] matmul::MatmulTile<float, 64u, 64u, 64u>::loadLeft(float const*, unsigned int, unsigned
+   3.00%  python3         libBackendCore.so                                  [.] matmul::MatmulTile<float, 64u, 64u, 64u>::loadRight(float const*, unsigned int, unsigne
+   2.61%  python3         libBackendCore.so                                  [.] train::OptimizerBase::clipGradients(float)
+   1.82%  python3         libBackendCore.so                                  [.] matmul::MatmulTile<float, 64u, 64u, 64u>::loadRightTransposed(float const*, unsigned in
+   1.55%  python3         libBackendCore.so                                  [.] Tensor::reset(float)
+   1.45%  python3         libBackendCore.so                                  [.] matmul::MatmulTile<float, 64u, 64u, 64u>::loadLeftTransposed(float const*, unsigned int
+   1.14%  python3         libBackendCore.so                                  [.] cgraph::LeakyReLuNode::backward(Tensor const&)
+```
+
+Matmul takes around 40% of runtime still. L1 and L2 cache hit rate are good, so we can make better use of those by parallelizing, apart from the computational work being offloaded.

@@ -21,6 +21,8 @@
 #include "shared/global_params.h"
 #include "shared/initializers.h"
 #include "shared/memory_pool.h"
+#include "shared/threadpool.h"
+
 #include "utility/utils.h"
 #include "utility/memory_layout.h"
 
@@ -417,9 +419,10 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
   // tune in accordance with cache-line size
   constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
   using tile_t = matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE>;
-  tile_t tiles;
-
+  
   res.reset(0.0f);
+
+  static auto& threadPool = threadpool::threadPool;
 
   auto matmulTiles = [TILESIZE] (tile_t& tiles) {
     for(tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
@@ -438,68 +441,86 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
   if constexpr (!transposeLeft && !transposeRight) {
     for(tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
-      for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
-        tiles.clearResult();
+      auto worker = [matmulTiles, &res, &left, &right, i, nRowsLeft, nRowsRight, nColsLeft, nColsRight, resOffset, leftOffset, rightOffset]() {
+        tile_t tiles;
 
-        for(tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
-          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
-          tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
+        for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+          tiles.clearResult();
 
-          matmulTiles(tiles);
+          for(tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+            tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+            tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
+
+            matmulTiles(tiles);
+          }
+
+          tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
         }
+      };
 
-        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nColsRight);
-      }
+      threadPool.enque(worker);
     }
   }
   else if constexpr (!transposeLeft && transposeRight) {
     for (tensorSize_t i = 0; i < nRowsLeft; i += TILESIZE) {
-      for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
-        tiles.clearResult();
-
-        for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
-          tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
-          tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
-
-          matmulTiles(tiles);
+      auto worker = [matmulTiles, &res, &left, &right, i, nRowsLeft, nRowsRight, nColsLeft, nColsRight, resOffset, leftOffset, rightOffset]() {
+        tile_t tiles;
+        
+        for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
+          tiles.clearResult();
+          for (tensorSize_t k0 = 0; k0 < nColsLeft; k0 += TILESIZE) {
+            tiles.loadLeft(left.values->data(), i, k0, nRowsLeft, nColsLeft);
+            tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
+            matmulTiles(tiles);
+          }
+          tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nRowsRight);
         }
+      };
 
-        tiles.addResult(res.values->data() + resOffset, i, j, nRowsLeft, nRowsRight);
-      }
+      threadPool.enque(worker);
     }
   }
   else if constexpr (transposeLeft && !transposeRight) {
     for (tensorSize_t i = 0; i < nColsLeft; i += TILESIZE) {
-      for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
-        tiles.clearResult();
 
-        for (tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
-          tiles.loadLeftTransposed(left.values->data(), k0, i, nRowsLeft, nColsLeft);
-          tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
-
-          matmulTiles(tiles);
+      auto worker = [matmulTiles, &res, &left, &right, i, nRowsLeft, nRowsRight, nColsLeft, nColsRight, resOffset, leftOffset, rightOffset]() {
+        tile_t tiles;
+        
+        for(tensorSize_t j = 0; j < nColsRight; j += TILESIZE) {
+          tiles.clearResult();
+          for (tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
+            tiles.loadLeftTransposed(left.values->data(), k0, i, nRowsLeft, nColsLeft);
+            tiles.loadRight(right.values->data(), k0, j, nRowsRight, nColsRight);
+            matmulTiles(tiles);
+          }
+          tiles.addResult(res.values->data() + resOffset, i, j, nColsLeft, nColsRight);
         }
+      };
 
-        tiles.addResult(res.values->data() + resOffset, i, j, nColsLeft, nColsRight);
-      }
+      threadPool.enque(worker);
     }
   }
   else {
     for (tensorSize_t i = 0; i < nColsLeft; i += TILESIZE) {
-      for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
-        tiles.clearResult();
-
-        for (tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
-          tiles.loadLeftTransposed(left.values->data(), k0, i, nRowsLeft, nColsLeft);
-          tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
-
-          matmulTiles(tiles);
+      auto worker = [matmulTiles, &res, &left, &right, i, nRowsLeft, nRowsRight, nColsLeft, nColsRight, resOffset, leftOffset, rightOffset]() {
+        tile_t tiles;
+        
+        for(tensorSize_t j = 0; j < nRowsRight; j += TILESIZE) {
+          tiles.clearResult();
+          for (tensorSize_t k0 = 0; k0 < nRowsLeft; k0 += TILESIZE) {
+            tiles.loadLeftTransposed(left.values->data(), k0, i, nRowsLeft, nColsLeft);
+            tiles.loadRightTransposed(right.values->data(), j, k0, nRowsRight, nColsRight);
+            matmulTiles(tiles);
+          }
+          tiles.addResult(res.values->data() + resOffset, i, j, nColsLeft, nRowsRight);
         }
+      };
 
-        tiles.addResult(res.values->data() + resOffset, i, j, nColsLeft, nRowsRight);
-      }
+      threadPool.enque(worker);
     }
   }
+
+  threadPool.waitAll();
 }
 
 /**
