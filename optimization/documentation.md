@@ -953,9 +953,109 @@ CPU (AVX): 2.4397s
 ## Benchmarking
 
 Input likely too small. Check how it scales over sizes. Git commits: 
-- Benchmarking single threaded = 
+- Benchmarking single threaded = ca207be1a174a491919d58db3b7862a0d8a29a0e
 - Benchmarking multi threaded: Set the PARALLEL_MATMUL_THRESHOLD smaller. We do really small and have the benchmarking results tell us what our machine can do.
 
 
-Single threaded results:
+### Single-threaded results:
+
+```
+------------------------------------------------------------------------------------------------------
+Benchmark                                            Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------------
+BM_MatMul_CPU/64/64/64                            15.3 us         15.3 us        46222 GFLOP/s=34.3593/s
+BM_MatMul_CPU/256/256/256                          826 us          825 us          823 GFLOP/s=40.6685/s
+BM_MatMul_CPU/512/512/512                         6327 us         6326 us           85 GFLOP/s=42.4317/s
+BM_MatMul_CPU/1024/1024/1024                     51605 us        51600 us           13 GFLOP/s=41.6181/s
+BM_MatMul_CPU/64/784/256                           627 us          627 us         1115 GFLOP/s=40.9986/s
+BM_MatMul_CPU/64/256/128                           103 us          103 us         6797 GFLOP/s=40.6943/s
+BM_MatMul_CPU/64/128/10                           22.9 us         22.9 us        30559 GFLOP/s=7.15418/s
+BM_MatMul_TransposeLeft_CPU/64/64/64              15.5 us         15.5 us        45252 GFLOP/s=33.8764/s
+BM_MatMul_TransposeLeft_CPU/256/256/256            805 us          805 us          868 GFLOP/s=41.6671/s
+BM_MatMul_TransposeLeft_CPU/512/512/512           6599 us         6598 us          105 GFLOP/s=40.684/s
+BM_MatMul_TransposeLeft_CPU/1024/1024/1024       58801 us        58794 us           12 GFLOP/s=36.5258/s
+BM_MatMul_TransposeLeft_CPU/64/784/256             619 us          619 us         1136 GFLOP/s=41.5211/s
+BM_MatMul_TransposeLeft_CPU/64/256/128             101 us          101 us         6897 GFLOP/s=41.3428/s
+BM_MatMul_TransposeLeft_CPU/64/128/10             22.8 us         22.8 us        30669 GFLOP/s=7.18353/s
+BM_MatMul_TransposeRight_CPU/64/64/64             15.5 us         15.5 us        45160 GFLOP/s=33.8858/s
+BM_MatMul_TransposeRight_CPU/256/256/256           788 us          788 us          887 GFLOP/s=42.6065/s
+BM_MatMul_TransposeRight_CPU/512/512/512          6450 us         6450 us          107 GFLOP/s=41.6163/s
+BM_MatMul_TransposeRight_CPU/1024/1024/1024      52159 us        52157 us           13 GFLOP/s=41.1734/s
+BM_MatMul_TransposeRight_CPU/64/784/256            611 us          611 us         1145 GFLOP/s=42.05/s
+BM_MatMul_TransposeRight_CPU/64/256/128           99.7 us         99.6 us         7030 GFLOP/s=42.0926/s
+BM_MatMul_TransposeRight_CPU/64/128/10            22.8 us         22.8 us        30723 GFLOP/s=7.19213/s
+BM_MatMul_TransposeBoth_CPU/64/64/64              15.4 us         15.4 us        45612 GFLOP/s=34.1363/s
+BM_MatMul_TransposeBoth_CPU/256/256/256            789 us          789 us          885 GFLOP/s=42.5396/s
+BM_MatMul_TransposeBoth_CPU/512/512/512           6843 us         6843 us          102 GFLOP/s=39.2276/s
+BM_MatMul_TransposeBoth_CPU/1024/1024/1024       61953 us        61946 us           12 GFLOP/s=34.6669/s
+BM_MatMul_TransposeBoth_CPU/64/784/256             607 us          607 us         1143 GFLOP/s=42.3296/s
+BM_MatMul_TransposeBoth_CPU/64/256/128            99.2 us         99.2 us         7076 GFLOP/s=42.2696/s
+BM_MatMul_TransposeBoth_CPU/64/128/10             22.9 us         22.9 us        30589 GFLOP/s=7.16467/s
+BM_MatMul_TransposeBoth_CPU/64/128/10             53.6 us         53.6 us        13041 GFLOP/s=3.05776/s
+```
+
+### Multi-threaded results
+
+```
+------------------------------------------------------------------------------------------------------
+Benchmark                                            Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------------
+BM_MatMul_CPU/64/64/64                            37.6 us         8.41 us       115295 GFLOP/s=62.3119/s
+BM_MatMul_CPU/256/256/256                          412 us         30.6 us        10000 GFLOP/s=1.09721k/s
+BM_MatMul_CPU/512/512/512                         1865 us         91.6 us         9034 GFLOP/s=2.9306k/s
+BM_MatMul_CPU/1024/1024/1024                     14280 us          376 us         1000 GFLOP/s=5.71453k/s
+BM_MatMul_CPU/64/784/256                           840 us         29.9 us        10000 GFLOP/s=859.153/s
+BM_MatMul_CPU/64/256/128                           120 us         6.83 us        96085 GFLOP/s=614.491/s
+BM_MatMul_CPU/64/128/10                           38.5 us         5.44 us       114803 GFLOP/s=30.0996/s
+BM_MatMul_TransposeLeft_CPU/64/64/64              26.5 us         5.43 us       122380 GFLOP/s=96.5505/s
+BM_MatMul_TransposeLeft_CPU/256/256/256            418 us         26.6 us        10000 GFLOP/s=1.26089k/s
+BM_MatMul_TransposeLeft_CPU/512/512/512           1964 us         88.6 us         7165 GFLOP/s=3.02856k/s
+BM_MatMul_TransposeLeft_CPU/1024/1024/1024       16629 us          438 us         1000 GFLOP/s=4.90614k/s
+BM_MatMul_TransposeLeft_CPU/64/784/256             838 us         31.1 us        10000 GFLOP/s=826.476/s
+BM_MatMul_TransposeLeft_CPU/64/256/128             126 us         7.01 us        74557 GFLOP/s=597.984/s
+BM_MatMul_TransposeLeft_CPU/64/128/10             40.0 us         5.65 us        93758 GFLOP/s=29.0097/s
+BM_MatMul_TransposeRight_CPU/64/64/64             25.0 us         5.20 us       102715 GFLOP/s=100.867/s
+BM_MatMul_TransposeRight_CPU/256/256/256           429 us         29.7 us        10000 GFLOP/s=1.13013k/s
+BM_MatMul_TransposeRight_CPU/512/512/512          2009 us         88.4 us         7275 GFLOP/s=3.03582k/s
+BM_MatMul_TransposeRight_CPU/1024/1024/1024      14938 us          355 us         1000 GFLOP/s=6.04354k/s
+BM_MatMul_TransposeRight_CPU/64/784/256            779 us         26.6 us        10000 GFLOP/s=965.514/s
+BM_MatMul_TransposeRight_CPU/64/256/128            124 us         6.89 us        90767 GFLOP/s=608.727/s
+BM_MatMul_TransposeRight_CPU/64/128/10            38.7 us         5.55 us        83965 GFLOP/s=29.516/s
+BM_MatMul_TransposeBoth_CPU/64/64/64              28.3 us         5.78 us       122721 GFLOP/s=90.7307/s
+BM_MatMul_TransposeBoth_CPU/256/256/256            450 us         30.0 us        10000 GFLOP/s=1.11716k/s
+BM_MatMul_TransposeBoth_CPU/512/512/512           2155 us         91.6 us         6979 GFLOP/s=2.93062k/s
+BM_MatMul_TransposeBoth_CPU/1024/1024/1024       16238 us          412 us         1000 GFLOP/s=5.20687k/s
+BM_MatMul_TransposeBoth_CPU/64/784/256             846 us         36.0 us        10000 GFLOP/s=714.032/s
+BM_MatMul_TransposeBoth_CPU/64/256/128             124 us         6.89 us       109234 GFLOP/s=608.322/s
+BM_MatMul_TransposeBoth_CPU/64/128/10             45.1 us         6.32 us       122120 GFLOP/s=25.9169/s
+```
+
+Result: Multithreaded version wins even on small matrices.
+
+## Analysis
+
+```
+           456,478      context-switches                 #   8448.8 cs/sec  cs_per_second     
+            14,307      cpu-migrations                   #    264.8 migrations/sec  migrations_per_second
+         2,759,220      page-faults                      #  51069.3 faults/sec  page_faults_per_second
+         54,028.98 msec task-clock                       #      1.3 CPUs  CPUs_utilized       
+       240,175,831      cpu_core/branch-misses/          #      0.9 %  branch_miss_rate         (80.51%)
+    26,088,083,098      cpu_core/branches/               #    482.9 M/sec  branch_frequency     (80.51%)
+   123,791,816,818      cpu_core/cpu-cycles/             #      2.3 GHz  cycles_frequency       (80.51%)
+   257,499,493,434      cpu_core/instructions/           #      2.1 instructions  insn_per_cycle  (80.51%)
+       105,103,579      cpu_atom/branch-misses/          #      0.7 %  branch_miss_rate         (9.84%)
+    16,135,415,551      cpu_atom/branches/               #    298.6 M/sec  branch_frequency     (9.76%)
+   106,572,280,463      cpu_atom/cpu-cycles/             #      2.0 GHz  cycles_frequency       (9.81%)
+   185,969,027,235      cpu_atom/instructions/           #      1.7 instructions  insn_per_cycle  (9.84%)
+             TopdownL1 (cpu_core)                        #      5.7 %  tma_bad_speculation    
+                                                         #      9.5 %  tma_frontend_bound       (80.51%)
+                                                         #     45.9 %  tma_backend_bound      
+                                                         #     38.9 %  tma_retiring             (80.51%)
+             TopdownL1 (cpu_atom)                        #     35.5 %  tma_backend_bound        (11.70%)
+                                                         #      8.6 %  tma_frontend_bound       (11.70%)
+                                                         #      3.6 %  tma_bad_speculation    
+                                                         #     52.3 %  tma_retiring             (11.71%)
+```
+
+Use lots of E-cores. Therefore: Core pinning. 
 

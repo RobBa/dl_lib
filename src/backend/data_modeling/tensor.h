@@ -136,7 +136,7 @@ private:
 
   static threadpool_impl::ThreadPool threadPool;
   static Tensor matMulImpl(const Tensor& left, const Tensor& right, bool transposeLeft, bool transposeRight);
-  static constexpr tensorSize_t PARALLEL_MATMUL_THRESHOLD = std::numeric_limits<tensorSize_t>::max();
+  static constexpr tensorSize_t PARALLEL_MATMUL_THRESHOLD = 256;
 
   template<bool transposeLeft, bool transposeRight>
   static void matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& right,
