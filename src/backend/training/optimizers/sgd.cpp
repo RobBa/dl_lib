@@ -26,7 +26,7 @@ void SgdOptimizer::step() {
     switch(t->getDevice()) {
       case Device::CPU:
         for(auto idx = 0; idx < t->getSize(); idx++){
-          auto updatedWeight = (*t)[idx] - lr * (*grads)[idx];
+          const auto updatedWeight = t->data()[idx] - lr * grads->data()[idx];
           t->data()[idx] = updatedWeight;
         }
         break;

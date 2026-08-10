@@ -31,7 +31,7 @@
 
 BOOST_PYTHON_MODULE(_core)
 {
-  utility::AvxInfo::verifyAvxSupport();
+  utility::AvxInfo::getAvxAvailable();
   FtypeWarning<ftype>::check();
 
   using namespace boost::python;

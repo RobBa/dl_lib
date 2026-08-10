@@ -23,17 +23,16 @@ static_assert(false,
 
 namespace utility {
   struct DLLIB_API AvxInfo final {
-    private:
-      inline static bool avxAvailable = false;
-
     public:
       AvxInfo() = delete;
       ~AvxInfo() noexcept = delete;
 
       static bool getAvxAvailable() noexcept {
+        static const bool avxAvailable = verifyAvxSupport();
         return avxAvailable;
       }
 
-      static void verifyAvxSupport();
+    private:
+      static bool verifyAvxSupport();
   };
 }
