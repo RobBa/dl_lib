@@ -844,3 +844,54 @@ We will refactor that, removing those operators to use the data directly in CPU 
 CPU: 2.8825s
 GPU: 0.2070s (small boost)
 
+# Step 10
+
+## Analysis
+
+```
+             3,157      context-switches                 #    173.0 cs/sec  cs_per_second     
+                73      cpu-migrations                   #      4.0 migrations/sec  migrations_per_second
+         1,576,637      page-faults                      #  86384.2 faults/sec  page_faults_per_second
+         18,251.45 msec task-clock                       #      1.0 CPUs  CPUs_utilized       
+       128,916,849      cpu_core/branch-misses/          #      0.4 %  branch_miss_rate         (99.85%)
+    32,241,277,245      cpu_core/branches/               #   1766.5 M/sec  branch_frequency     (99.85%)
+    68,006,476,844      cpu_core/cpu-cycles/             #      3.7 GHz  cycles_frequency       (99.85%)
+   207,423,094,719      cpu_core/instructions/           #      3.1 instructions  insn_per_cycle  (99.85%)
+       140,331,635      cpu_atom/branch-misses/          #      1.7 %  branch_miss_rate         (0.11%)
+     8,229,824,661      cpu_atom/branches/               #    450.9 M/sec  branch_frequency     (0.11%)
+    33,153,607,692      cpu_atom/cpu-cycles/             #      1.8 GHz  cycles_frequency       (0.09%)
+    34,866,596,099      cpu_atom/instructions/           #      1.1 instructions  insn_per_cycle  (0.11%)
+             TopdownL1 (cpu_core)                        #      8.1 %  tma_bad_speculation
+                                                         #     11.2 %  tma_frontend_bound       (99.85%)
+                                                         #     36.6 %  tma_backend_bound
+                                                         #     44.1 %  tma_retiring             (99.85%)
+             TopdownL1 (cpu_atom)                        #     21.7 %  tma_backend_bound        (0.14%)
+                                                         #     32.0 %  tma_frontend_bound       (0.13%)
+                                                         #     19.6 %  tma_bad_speculation    
+                                                         #     26.8 %  tma_retiring             (0.11%)
+```
+
+We see backend bound for core CPUs (performance cores) is bottleneck now.
+
+
+### Note
+
+Because CPU is much faster now, we can move to larger inputs when profiling via ```perf record```. Before we had 2 epochs, 
+50 batches each, and now increased to 2 epochs, 500 batches each. This is what the new first profile looks like (we obviously compiled
+non-AVX):
+
+```
+Samples: 37K of event 'cpu_core/cycles/P', Event count (approx.): 34604279217
+Overhead  Command         Shared Object                                      Symbol
+  13.25%  python3         libBackendCore.so                                          [.] void Tensor::matMul2DCpuScalar<true, false>(Tensor&, Tensor const&, Tensor con◆
+  11.77%  python3         libBackendCore.so                                          [.] void Tensor::matMul2DCpuScalar<false, true>(Tensor&, Tensor const&, Tensor con▒
+  11.38%  python3         libBackendCore.so                                          [.] void Tensor::matMul2DCpuScalar<false, false>(Tensor&, Tensor const&, Tensor co▒
+   9.40%  python3         libBackendCore.so                                          [.] Tensor::tensorValues_t::operator[](unsigned int) const                        ▒
+   8.99%  python3         libBackendCore.so                                          [.] train::RmsPropOptimizer::step()        
+```
+
+Someone is still calling ```tensorValues_t::operator[]``` suspiciously often. Looks like we overlooked some calls in RmsProp (and SGD).
+
+## Times after fix
+
+CPU: 2.2999s
