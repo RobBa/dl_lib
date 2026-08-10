@@ -788,7 +788,7 @@ The beginning should be ifndef for release mode. However, fixing that we realize
 
 CPU: 3.4333s
 
-# Step 9 
+# Step 9 - Bypass redundant device checks and indirections on memory accesses
 
 ## Analysis
 
@@ -838,4 +838,9 @@ Perf record gives us this:
 
 The memmove is interesting, but at the moment the analysis is cluttered with calls to operator[], get() and set() of tensorvalues_t still. 
 We will refactor that, removing those operators to use the data directly in CPU mode, copying what CUDA did as well. We also kick out a few checks like dimension checks in release mode. Worse error messages, but in practive logging the input is enough to debug the problem. -> message/performance trade-off
+
+## Times after fix
+
+CPU: 2.8825s
+GPU: 0.2070s (small boost)
 
