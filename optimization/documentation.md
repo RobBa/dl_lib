@@ -615,7 +615,7 @@ Times after fix: 3.7613s
 
 Here we can see that compiler chose loop unrolling, not vectorization of inner loop.
 
-# Step 7 
+# Step 7 - Bypass PLT for backend internal calls
 
 ## Analysis
 
@@ -844,7 +844,7 @@ We will refactor that, removing those operators to use the data directly in CPU 
 CPU: 2.8825s
 GPU: 0.2070s (small boost)
 
-# Step 10
+# Step 10 - Fix missed bad memory accesses
 
 ## Analysis
 
@@ -894,4 +894,17 @@ Someone is still calling ```tensorValues_t::operator[]``` suspiciously often. Lo
 
 ## Times after fix
 
-CPU: 2.2999s
+CPU (scalar matmul): 2.2999s
+CPU (AVX matmul): 1.9637s
+
+## Sidenote
+
+Step 7 broke the AVX test, so the steps in between probably all benchmarked on the non-AVX version.
+
+# Step 11
+
+## Analysis
+
+```
+
+```
