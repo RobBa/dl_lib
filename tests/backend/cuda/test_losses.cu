@@ -95,6 +95,7 @@ TEST(CudaLossTest, CrossEntropyForwardLarge) {
 }
 
 TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto y = TensorFunctions::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, Device::CUDA, false);
   auto ypred = TensorFunctions::makeSharedTensor(
@@ -102,6 +103,9 @@ TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
 
   CrossEntropyLoss loss;
   ASSERT_THROW(loss(y, ypred), std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(CudaLossTest, CrossEntropyBackward) {
@@ -251,6 +255,7 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxForwardLarge) {
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto y = TensorFunctions::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, Device::CUDA, false);
   auto logits = TensorFunctions::makeSharedTensor(
@@ -258,6 +263,9 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxThrowsOnDimMismatch) {
 
   train::CrossEntropySoftmaxLoss loss;
   ASSERT_THROW(loss(y, logits), std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward) {
@@ -346,6 +354,7 @@ TEST(CudaLossTest, BceForwardLarge) {
 }
 
 TEST(CudaLossTest, BceThrowsOnDimMismatch) {
+#ifndef NDEBUG
   auto y = TensorFunctions::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
   auto ypred = TensorFunctions::makeSharedTensor(
@@ -353,6 +362,9 @@ TEST(CudaLossTest, BceThrowsOnDimMismatch) {
 
   BceLoss loss;
   ASSERT_THROW(loss(y, ypred), std::invalid_argument);
+#else
+  GTEST_SKIP() << "Dim-mismatch validation is compiled out under NDEBUG";
+#endif
 }
 
 TEST(CudaLossTest, BceNoInfOrNanOnNearZeroPred) {

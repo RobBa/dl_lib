@@ -101,7 +101,7 @@ namespace cgraph {
   // Getter methods — keep the computational graph intact for indexing operations
 
   inline std::shared_ptr<Tensor> get(const std::shared_ptr<Tensor>& t, tensorSize_t idx) {
-    ftype val = t->data()[idx];
+    ftype val = t->get(idx);
     auto res = std::make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{val},
                                         t->getDevice());
     if(t->getRequiresGrad()){
