@@ -346,7 +346,7 @@ public:
   ftype get(tensorDim_t idx0, tensorDim_t idx1, tensorDim_t idx2, tensorDim_t idx3) const { return get({idx0, idx1, idx2, idx3}); }
 
   // non-const version of operator[] does not exist because of CUDA
-  ftype operator[](tensorSize_t idx) const { return values->data()[idx]; }
+  ftype operator[](tensorSize_t idx) const { return (*values)[idx]; }
 
   /**
    * @brief Special getter, indexes the contained underlying array linearly.
@@ -367,7 +367,7 @@ public:
    * @brief Special setter, indexes the contained underlying array linearly.
    * Can lead to unexpected results in multidimensional tensors.
    */
-  void set(ftype item, tensorDim_t idx) { values->data()[idx] = item; }
+  void set(ftype item, tensorDim_t idx) { values->set(item, idx); }
 
   void setDevice(const Device d) noexcept;
   Device getDevice() const noexcept { return values->getDevice(); }
