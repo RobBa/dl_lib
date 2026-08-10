@@ -354,6 +354,8 @@ Tensor Tensor::matMulImpl(const Tensor& left, const Tensor& right, const bool tr
   switch(left.values->getDevice()){
     case Device::CPU:
     {
+      res.reset(0.0f);
+
       // sizes of the 2D matrices respectively
       const tensorSize_t leftSize = left.dims.get(-1) * left.dims.get(-2);
       const tensorSize_t rightSize = right.dims.get(-1) * right.dims.get(-2);

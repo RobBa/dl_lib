@@ -299,6 +299,32 @@ TEST(CudaTensorOpsTest, MatMulLarge) {
   }
 }
 
+TEST(CudaTensorOpsTest, MatMulBatchedLarge) {
+  auto t1 = TensorFunctions::Gaussian({8, 64, 32}, 2.0);
+  auto t2 = TensorFunctions::Gaussian({8, 32, 48}, 2.0);
+  auto resCpu = t1.matmul(t2);
+
+  t1.setDevice(Device::CUDA);
+  t2.setDevice(Device::CUDA);
+
+  auto resGpu = t1.matmul(t2);
+  resGpu.setDevice(Device::CPU);
+
+  const auto expectedDims = resCpu.getDims().toVector();
+  ASSERT_EQ(resGpu.getDims().toVector(), expectedDims);
+
+  for(auto b = 0; b < resCpu.getDims().get(0); b++) {
+    for(auto i = 0; i < resCpu.getDims().get(1); i++) {
+      for(auto j = 0; j < resCpu.getDims().get(2); j++) {
+        ASSERT_NEAR(resCpu.get(b, i, j), resGpu.get(b, i, j), 1e-4)
+          << "Mismatch at (" << b << ", " << i << ", " << j << ")"
+          << " cpu=" << resCpu.get(b, i, j)
+          << " gpu=" << resGpu.get(b, i, j);
+      }
+    }
+  }
+}
+
 TEST(CudaTensorOpsTest, MatMulTransposeLeft) {
   auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
   auto B = TensorFunctions::Gaussian({4, 5}, 1.0);

@@ -944,3 +944,18 @@ Step 7 broke the AVX test, so the steps in between probably all benchmarked on t
 ```
 
 Matmul takes around 40% of runtime still. L1 and L2 cache hit rate are good, so we can make better use of those by parallelizing, apart from the computational work being offloaded.
+
+## Times after fix
+
+CPU (scalar): 2.7338s
+CPU (AVX): 2.4397s
+
+## Benchmarking
+
+Input likely too small. Check how it scales over sizes. Git commits: 
+- Benchmarking single threaded = 
+- Benchmarking multi threaded: Set the PARALLEL_MATMUL_THRESHOLD smaller. We do really small and have the benchmarking results tell us what our machine can do.
+
+
+Single threaded results:
+

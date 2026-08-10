@@ -246,6 +246,30 @@ TEST(TensorOpsTest, MatMul2) {
   }
 }
 
+TEST(TensorOpsTest, MatMulBatched) {
+  auto t1 = Tensor({2, 2, 2}, {1, 2, 3, 4,
+                                2, 0, 0, 2});
+  auto t2 = Tensor({2, 2, 2}, {5, 6, 7, 8,
+                                1, 1, 1, 1});
+
+  auto res = t1.matmul(t2);
+
+  auto expectedDims = std::vector<tensorDim_t>{2, 2, 2};
+  ASSERT_EQ(res.getDims().toVector(), expectedDims);
+
+  // batch 0: [[1,2],[3,4]] @ [[5,6],[7,8]] = [[19,22],[43,50]]
+  ASSERT_NEAR(res.get(0, 0, 0), 19.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 0, 1), 22.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1, 0), 43.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1, 1), 50.0, 1e-5);
+
+  // batch 1: [[2,0],[0,2]] @ [[1,1],[1,1]] = [[2,2],[2,2]]
+  ASSERT_NEAR(res.get(1, 0, 0), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 0, 1), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1, 0), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1, 1), 2.0, 1e-5);
+}
+
 TEST(TensorOpsTest, MatMulTransposeLeft) {
   auto fill = [](Tensor& t, ftype a, ftype b, ftype c, ftype d) {
     t.set(a, {0,0}); t.set(b, {0,1});
