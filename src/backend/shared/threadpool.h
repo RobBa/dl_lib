@@ -81,7 +81,7 @@ namespace threadpool_impl {
     public:
       ThreadPool() : stop{false}, activeTasks{0} {
       #ifdef PIN_CORES
-        constexpr unsigned int nthreads = 4;
+        constexpr unsigned int nthreads = 3; // we leave one P-core for the rest of the program
         const std::vector<int> pCores = {0, 2, 4, 6};
       #else 
         const unsigned int nthreads = std::max(static_cast<unsigned int>(1), std::thread::hardware_concurrency() / 2);
