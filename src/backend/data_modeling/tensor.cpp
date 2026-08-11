@@ -35,7 +35,9 @@
 
 using namespace std;
 
+#ifdef USE_MULTITHREADING
 threadpool_impl::ThreadPool Tensor::threadPool;
+#endif
 
 /********************************************************************
 *************************** tensorValues_t *************************
