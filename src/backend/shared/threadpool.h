@@ -11,6 +11,8 @@
 
 #pragma once
 
+#ifdef USE_MULTITHREADING
+
 #include "utility/utils.h"
 
 #include <vector>
@@ -134,3 +136,5 @@ namespace threadpool_impl {
 }
 
 #undef PIN_CORES
+
+#endif // USE_MULTITHREADING

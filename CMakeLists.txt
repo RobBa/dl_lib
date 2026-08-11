@@ -157,6 +157,11 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fcompare-debug-second) # suppress notes in gcc output
 endif()
 
+option(MULTITHREADING "Enable multithreaded CPU operations via a threadpool. For smaller sizes costs outweight gains." OFF)
+if(MULTITHREADING)
+  add_definitions(-DUSE_MULTITHREADING)
+endif()
+
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
 add_subdirectory(src)
