@@ -1190,3 +1190,26 @@ Single threaded with AVX: 2.3371s
 Multi-threaded with AVX, using 4 P-cores: 2.6762s
 Multi-threaded with AVX, using 3 P-cores: 2.3431s
 Multi-threaded with AVX, using 2 P-cores: 2.9590s
+
+# Step 12 - Fix mempool issue
+
+## Description
+
+We currently instantiate memory pool via 
+
+```
+namespace mempool {
+  inline static mempool_impl::MemoryPool<ftype> tensorPool;
+  inline static mempool_impl::MemoryPool<tensorDim_t> tensorDimPool;
+  inline static mempool_impl::MemoryPool<tensorSize_t> tensorSizePool;
+}
+```
+
+The ```static``` gives each translation unit its own copy. We want inline, 
+and match the visibility to cross .so boundary.
+
+## Times after fix
+
+CPU: 2.1036s
+CPU multi-threaded: 2.2693s
+CUDA: 0.1751s

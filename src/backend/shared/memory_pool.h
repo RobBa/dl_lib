@@ -31,7 +31,7 @@
 
 namespace mempool_impl {
   template<typename T>
-  class MemoryPool final {
+  class DLLIB_API MemoryPool final {
     private:
       // hold pointers to unused allocated memory.
       std::unordered_map<tensorSize_t, std::vector<T*>> freeLists;
@@ -204,6 +204,7 @@ namespace mempool_impl {
             ASSERT_HOST_PTR(ptr);
             free(ptr);
           }
+          ptrs.clear();
         }
         break;
       }
@@ -216,6 +217,7 @@ namespace mempool_impl {
               ASSERT_DEVICE_PTR(ptr);
               cudaFree(ptr);
             }
+            ptrs.clear();
           }
         #else 
           std::__throw_runtime_error("Not compiled with CUDA");
@@ -227,7 +229,7 @@ namespace mempool_impl {
 }
 
 namespace mempool {
-  inline static mempool_impl::MemoryPool<ftype> tensorPool;
-  inline static mempool_impl::MemoryPool<tensorDim_t> tensorDimPool;
-  inline static mempool_impl::MemoryPool<tensorSize_t> tensorSizePool;
+  DLLIB_API inline mempool_impl::MemoryPool<ftype> tensorPool;
+  DLLIB_API inline mempool_impl::MemoryPool<tensorDim_t> tensorDimPool;
+  DLLIB_API inline mempool_impl::MemoryPool<tensorSize_t> tensorSizePool;
 }
