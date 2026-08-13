@@ -53,7 +53,7 @@ jobs:
       - name: Build in Debug Mode
         run: |
           mkdir build && cd build 
-          cmake -DCMake_Build_Type=Debug -DBUILD_TESTS=ON ..
+          cmake -DCMake_Build_Type=Debug -DBUILD_TESTS=ON -DAVX_VERSION=SCALAR ..
           make
 
       - name: Run Unit tests
@@ -114,7 +114,7 @@ jobs:
       - name: Build in Release Mode
         run: |
           mkdir build && cd build 
-          cmake -DCMake_Build_Type=Release -DBUILD_TESTS=ON ..
+          cmake -DCMake_Build_Type=Release -DBUILD_TESTS=ON -DAVX_VERSION=SCALAR ..
           make
 
       - name: Run Unit tests
