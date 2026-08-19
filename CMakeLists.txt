@@ -129,8 +129,19 @@ if(NOT AVX_VERSION STREQUAL "AUTO")
 endif()
 
 if(COMPILER_SUPPORTS_AVX512)
-  set(AVX_RESOLVED "AVX512")
-  message(STATUS "AVX: AVX-512")
+  if(AVX_VERSION STREQUAL "AVX512")
+    message(FATAL_ERROR
+      "AVX_VERSION=AVX512 was requested, but AVX-512 codepaths are not currently "
+      "supported in this project (no AVX-512 hardware available to validate against. "
+      "Please reconfigure with -DAVX_VERSION=AVX2, AVX, or SCALAR."
+    )
+  else()
+    message(FATAL_ERROR
+      "AVX_VERSION=AUTO detected AVX-512-capable hardware, but AVX-512 codepaths are "
+      "not currently supported in this project (no AVX-512 hardware available to "
+      "validate against). Please explicitly reconfigure with -DAVX_VERSION=AVX2, AVX, or SCALAR."
+    )
+  endif()
 elseif(COMPILER_SUPPORTS_AVX2)
   set(AVX_RESOLVED "AVX2")
   message(STATUS "AVX: AVX2 + FMA")
