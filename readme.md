@@ -2,6 +2,11 @@
 
 A from-scratch deep learning framework in modern C++ with Python bindings.
 
+## Important notice
+
+Currently only compiles under gcc (and maybe clang), but not MSVC, since I have been using some specific instructions for those two. 
+It is on my todo list and will be fixed in a later release.
+
 ## Motivation
 
 Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
