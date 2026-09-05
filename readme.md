@@ -43,8 +43,8 @@ Roadmap:
 - [x] Optimizers and training framework
 - [x] MNIST example
 - [x] CUDA mode for operations
-- [x] CUDA optimization for optimal run-times
-- [x] CPU optimization for optimal run-times
+- [x] CUDA optimization for user friendly run-times
+- [x] CPU optimization for user friendly run-times
 - [ ] Additional layer types (Conv2D, Dropout, etc.)
 
 ## Building
