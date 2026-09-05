@@ -80,6 +80,7 @@ namespace {
     const ftype expVal = isActive ? stableExp<ftype>(input[globalIdx], maxValue) : 0.0f;
 
     ftype sum = expVal;
+    #pragma unroll
     for(int offset = maxoffset; offset > 0; offset >>= 1) {
       sum += __shfl_down_sync(0xFFFFFFFF, sum, offset, stride); 
     }
@@ -129,6 +130,7 @@ namespace {
 
     if(tid < 32) {
       ftype sum = smem[tid];
+      #pragma unroll
       for (int offset = 16; offset > 0; offset >>= 1) {
         sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
@@ -192,6 +194,7 @@ namespace {
 
     if(tid < 32) {
       ftype sum = smem[tid];
+      #pragma unroll
       for (int offset = 16; offset > 0; offset >>= 1) {
         sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
@@ -234,6 +237,7 @@ namespace {
 
     if(tid < 32) {
       ftype sum = smem[tid];
+      #pragma unroll
       for (int offset = 16; offset > 0; offset >>= 1) {
         sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
