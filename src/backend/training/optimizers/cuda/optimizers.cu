@@ -64,6 +64,7 @@ namespace {
       assert(blockDim.x >= 32);
 
       ftype sum = smem[tid];
+      #pragma unroll
       for(int offset = 16; offset > 0; offset >>= 1) {
         sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
@@ -108,6 +109,7 @@ namespace {
       assert(blockDim.x >= 32);
 
       ftype sum = smem[tid];
+      #pragma unroll
       for(int offset = 16; offset > 0; offset >>= 1) {
         sum += __shfl_down_sync(0xFFFFFFFF, sum, offset);
       }
