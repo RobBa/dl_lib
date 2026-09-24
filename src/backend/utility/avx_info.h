@@ -11,12 +11,10 @@
 
 #pragma once
 
-#include <iostream>
-
 #include "utility/utils.h"
 
 #if defined(USE_AVX512)
-static_assert(false, 
+static_assert(false,
   "This version currently does not support AVX-512 due to hardware not accessible. Recompile with a lower version"
 );
 #endif // defined(USE_AVX512)
