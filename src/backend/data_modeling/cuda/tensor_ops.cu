@@ -185,6 +185,37 @@ namespace {
     }
   }
 
+/*   template<tensorSize_t tileDim, bool transposeLeft, bool transposeRight>
+  __global__ void matmulKernelRefactor(ftype* const res, const ftype* const left, const ftype* const right, 
+                            tensorSize_t leftRows, tensorSize_t leftCols, 
+                            tensorSize_t rightRows, tensorSize_t rightCols,
+                            tensorSize_t leftSize, tensorSize_t rightSize, tensorSize_t resSize) 
+  {
+    // global coordinates (which 2D matrix is this?)
+    const tensorSize_t leftOffset  = blockDim.z * leftSize;
+    const tensorSize_t rightOffset = blockDim.z * rightSize; 
+    const tensorSize_t resOffset   = blockDim.z * resSize;
+
+    // each block computes a tile of res
+    __shared__ ftype lTile[tileDim * tileDim];
+    __shared__ ftype rTile[tileDim * tileDim];
+
+    // local coordinates (where in the 2D matrix are we?): x is colums, y is rows for coalesced memory access
+    const tensorSize_t i = blockIdx.y * tileDim + threadIdx.y;
+    const tensorSize_t j = blockIdx.x * tileDim + threadIdx.x;
+
+    for(tensorSize_t k = 0; k < leftCols; k += tileDim) {
+      lTile[threadIdx.y * tileDim + threadIdx.x] = leftOffset  + (blockIdx.y * tileDim + threadIdx.y) * leftCols  + k * tileDim + threadIdx.x; 
+      rTile[threadIdx.y * tileDim + threadIdx.x] = rightOffset + k * tileDim * rightCols + (blockIdx.x * tileDim + threadIdx.x);
+      __syncthreads();
+
+      ftype sum = 0.0f;
+      for(unsigned int kk = 0; kk < tileDim; kk++) {
+        sum += lTile[]
+      }
+    }
+  } */
+
 #endif
 
   /**
