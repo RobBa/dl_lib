@@ -31,7 +31,7 @@
 
 namespace mempool_impl {
   template<typename T>
-  class DLLIB_API MemoryPool final {
+  class MemoryPool final {
     private:
       // hold pointers to unused allocated memory.
       std::unordered_map<tensorSize_t, std::vector<T*>> freeLists;

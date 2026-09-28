@@ -16,6 +16,7 @@
 #include "utility/utils.h"
 
 #include <vector>
+#include <array>
 #include <queue>
 
 #include <thread>
@@ -27,6 +28,7 @@
 #include <algorithm>
 
 #define PIN_CORES
+#undef PIN_CORES // comment out if you want to use PIN_CORES
 
 #ifdef PIN_CORES
 #include <pthread.h>
@@ -82,7 +84,7 @@ namespace threadpool_impl {
       ThreadPool() : stop{false}, activeTasks{0} {
       #ifdef PIN_CORES
         constexpr unsigned int nthreads = 3; // we leave one P-core for the rest of the program
-        const std::vector<int> pCores = {0, 2, 4, 6};
+        constexpr std::array<int> pCores = {0, 2, 4, 6};
       #else 
         const unsigned int nthreads = std::max(static_cast<unsigned int>(1), std::thread::hardware_concurrency() / 2);
       #endif

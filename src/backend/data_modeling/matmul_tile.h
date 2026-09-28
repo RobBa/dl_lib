@@ -31,10 +31,17 @@ namespace matmul {
   template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
   requires std::is_floating_point_v<T>
   struct MatmulTile {
+
+    #ifdef USE_MULTITHREADING
+      alignas(MemoryLayout::CACHE_LINE_BYTES) std::array<T, TileM * TileK> left{};
+      alignas(MemoryLayout::CACHE_LINE_BYTES) std::array<T, TileK * TileN> right{};
+      alignas(MemoryLayout::CACHE_LINE_BYTES) std::array<T, TileM * TileN> result{};
+    #else
       alignas(MemoryLayout::CPU_TENSOR_ALIGNMENT) std::array<T, TileM * TileK> left{};
       alignas(MemoryLayout::CPU_TENSOR_ALIGNMENT) std::array<T, TileK * TileN> right{};
       alignas(MemoryLayout::CPU_TENSOR_ALIGNMENT) std::array<T, TileM * TileN> result{};
-
+    #endif // USE_MULTITHREADING
+    
       void loadLeft(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       void loadRight(const T* const src, tensorSize_t row0, tensorSize_t col0, tensorSize_t nRows, tensorSize_t nCols);
       
