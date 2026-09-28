@@ -13,11 +13,7 @@
 
 struct MemoryLayout final {
   // aligning memory allows us unsafe/faster memfetches into AVX registers
-#ifdef USE_AVX512
-    constexpr static unsigned int CPU_TENSOR_ALIGNMENT = 64;
-#else
-    constexpr static unsigned int CPU_TENSOR_ALIGNMENT = 32;
-#endif
+  constexpr static unsigned int CPU_TENSOR_ALIGNMENT = 64;
   
   // assumption needed e.g. for avoiding false-sharing
   constexpr static unsigned int CACHE_LINE_BYTES = 64; 
