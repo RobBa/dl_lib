@@ -525,10 +525,6 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
   threadPool.waitAll();
 #else
-  // Single-threaded: one tile buffer reused across the whole call, no per-tile
-  // task/lambda allocation. See commit 98191b5 for the pre-threadpool original
-  // this is restored from; leftOffset/rightOffset are applied here (unlike that
-  // commit) to keep batched matmul correct.
   tile_t tiles;
 
   if constexpr (!transposeLeft && !transposeRight) {
