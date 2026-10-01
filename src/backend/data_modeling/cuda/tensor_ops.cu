@@ -193,8 +193,8 @@ namespace {
                             tensorSize_t leftSize, tensorSize_t rightSize, tensorSize_t resSize) 
   {
     // global coordinates (which 2D matrix is this?)
-    const tensorSize_t leftOffset  = blockDim.z * leftSize;
-    const tensorSize_t rightOffset = blockDim.z * rightSize; 
+    const tensorSize_t leftOffset  = blockIdx.z * leftSize;
+    const tensorSize_t rightOffset = blockIdx.z * rightSize;
 
     // local coordinates (where in the 2D matrix are we?)
     const tensorSize_t i = blockIdx.x * tileDim + threadIdx.x;
@@ -206,11 +206,11 @@ namespace {
 
     ftype cij = 0.0f;
     for(tensorSize_t k = 0; k < leftCols; k += tileDim) {
-      const tensorSize_t leftIdx  = (blockIdx.y * tileDim + threadIdx.y) * leftCols  + k * tileDim + threadIdx.x;
-      const tensorSize_t rightIdx = k * tileDim * rightCols + (blockIdx.x * tileDim + threadIdx.x);
+      const tensorSize_t leftIdx  = j * leftCols + k + threadIdx.x;
+      const tensorSize_t rightIdx = (k + threadIdx.y) * rightCols + i;
 
-      leftTile[threadIdx.y * tileDim + threadIdx.x]  = i < leftRows ? left[leftOffset + leftIdx] : 0.0f;
-      rightTile[threadIdx.y * tileDim + threadIdx.x] = j < rightCols ? right[rightOffset + rightIdx] : 0.0f;
+      leftTile[threadIdx.y * tileDim + threadIdx.x]  = (j < leftRows && (k + threadIdx.x) < leftCols) ? left[leftOffset + leftIdx] : 0.0f;
+      rightTile[threadIdx.y * tileDim + threadIdx.x] = (i < rightCols && (k + threadIdx.y) < rightRows) ? right[rightOffset + rightIdx] : 0.0f;
       __syncthreads();
 
       for(unsigned int kk = 0; kk < tileDim; kk++) {
@@ -219,8 +219,8 @@ namespace {
       __syncthreads();
     }
 
-    if (i < resRows && j < resCols) {
-      res[blockDim.z * resSize + j * resCols + i] = cij;
+    if(i < resCols && j < resRows) {
+      res[blockIdx.z * resSize + j * resCols + i] = cij;
     }
   }
 

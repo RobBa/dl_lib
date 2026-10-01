@@ -299,6 +299,34 @@ TEST(CudaTensorOpsTest, MatMulLarge) {
   }
 }
 
+TEST(CudaTensorOpsTest, MatMulBatched) {
+  auto t1 = Tensor({2, 2, 2}, {1, 2, 3, 4,
+                                2, 0, 0, 2});
+  auto t2 = Tensor({2, 2, 2}, {5, 6, 7, 8,
+                                1, 1, 1, 1});
+
+  t1.setDevice(Device::CUDA);
+  t2.setDevice(Device::CUDA);
+
+  auto res = t1.matmul(t2);
+  res.setDevice(Device::CPU);
+
+  auto expectedDims = std::vector<tensorDim_t>{2, 2, 2};
+  ASSERT_EQ(res.getDims().toVector(), expectedDims);
+
+  // batch 0: [[1,2],[3,4]] @ [[5,6],[7,8]] = [[19,22],[43,50]]
+  ASSERT_NEAR(res.get(0, 0, 0), 19.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 0, 1), 22.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1, 0), 43.0, 1e-5);
+  ASSERT_NEAR(res.get(0, 1, 1), 50.0, 1e-5);
+
+  // batch 1: [[2,0],[0,2]] @ [[1,1],[1,1]] = [[2,2],[2,2]]
+  ASSERT_NEAR(res.get(1, 0, 0), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 0, 1), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1, 0), 2.0, 1e-5);
+  ASSERT_NEAR(res.get(1, 1, 1), 2.0, 1e-5);
+}
+
 TEST(CudaTensorOpsTest, MatMulBatchedLarge) {
   auto t1 = TensorFunctions::Gaussian({8, 64, 32}, 2.0);
   auto t2 = TensorFunctions::Gaussian({8, 32, 48}, 2.0);
@@ -374,6 +402,61 @@ TEST(CudaTensorOpsTest, MatMulTransposeBoth) {
     for(int j = 0; j < resCpu.getDims().get(1); j++)
       ASSERT_NEAR(resGpu.get(i, j), resCpu.get(i, j), 1e-4)
         << "Mismatch at (" << i << ", " << j << ")";
+}
+
+TEST(CudaTensorOpsTest, MatMulTransposeLeftRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 2}, {1, 0, 0, 1});
+
+  left.setDevice(Device::CUDA);
+  right.setDevice(Device::CUDA);
+
+  auto res = left.matmul(right, /*transposeLeft=*/true, /*transposeRight=*/false);
+  res.setDevice(Device::CPU);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{3, 2}));
+  ASSERT_NEAR(res.get(0, 0), 1.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 2.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 0), 3.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 1), 6.0f, 1e-5f);
+}
+
+TEST(CudaTensorOpsTest, MatMulTransposeRightRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 3}, {1, 0, 0, 0, 1, 0});
+
+  left.setDevice(Device::CUDA);
+  right.setDevice(Device::CUDA);
+
+  auto res = left.matmul(right, /*transposeLeft=*/false, /*transposeRight=*/true);
+  res.setDevice(Device::CPU);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{2, 2}));
+  ASSERT_NEAR(res.get(0, 0), 1.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 2.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+}
+
+TEST(CudaTensorOpsTest, MatMulTransposeBothRectangular) {
+  Tensor left({2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor right({2, 2}, {1, 1, 0, 1});
+
+  left.setDevice(Device::CUDA);
+  right.setDevice(Device::CUDA);
+
+  auto res = left.matmul(right, /*transposeLeft=*/true, /*transposeRight=*/true);
+  res.setDevice(Device::CPU);
+
+  ASSERT_EQ(res.getDims().toVector(), (std::vector<tensorDim_t>{3, 2}));
+  ASSERT_NEAR(res.get(0, 0), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(0, 1), 4.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 0), 7.0f, 1e-5f);
+  ASSERT_NEAR(res.get(1, 1), 5.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 0), 9.0f, 1e-5f);
+  ASSERT_NEAR(res.get(2, 1), 6.0f, 1e-5f);
 }
 
 TEST(CudaAutogradTest, MatMul) {
