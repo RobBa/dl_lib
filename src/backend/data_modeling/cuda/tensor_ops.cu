@@ -143,50 +143,8 @@ namespace {
    * @param rightCols n columns of right matrix. See also leftRows.
    * @param resSize Size of the resulting 2D matrix.
    */
-  template<int tileSize, bool transposeLeft, bool transposeRight>
-  __global__ void matMul2DKernel(ftype* __restrict__ const res,
-                                 const ftype* __restrict__ const left, const ftype* __restrict__ const right,
-                                 const tensorDim_t leftRows, const tensorDim_t leftCols, 
-                                 const tensorDim_t rightRows, const tensorDim_t rightCols,
-                                 const tensorDim_t resRows, const tensorDim_t resCols,
-                                 const tensorSize_t leftSize, const tensorSize_t rightSize, const tensorSize_t resSize)
-  {
-    __shared__ ftype smemA[tileSize];
-    __shared__ ftype smemB[tileSize];
-
-    const tensorSize_t K = transposeLeft ? leftRows : leftCols;
-    const tensorSize_t N = transposeRight ? rightRows : rightCols;
-
-    const tensorSize_t i = blockIdx.y * blockDim.y + threadIdx.y;
-    const tensorSize_t j = blockIdx.x * blockDim.x + threadIdx.x;
-
-    const tensorSize_t leftOffset = blockIdx.z * leftSize;
-    const tensorSize_t rightOffset = blockIdx.z * rightSize;
-    const tensorSize_t resOffset = blockIdx.z * resSize;
-
-    ftype cij = 0.0f;
-    for (tensorSize_t k = 0; k < K; k += blockDim.x) {
-      // load tile into smem
-      const tensorSize_t leftIdx = transposeLeft ? (k + threadIdx.x) * leftCols + i : i * leftCols + (k + threadIdx.x);
-      const tensorSize_t rightIdx = transposeRight ? j * rightCols + (k + threadIdx.y) : (k + threadIdx.y) * rightCols + j;
-
-      smemA[threadIdx.y * blockDim.x + threadIdx.x] = (i < resRows && (k + threadIdx.x) < K) ? left[leftOffset + leftIdx] : 0.0f;
-      smemB[threadIdx.y * blockDim.x + threadIdx.x] = ((k + threadIdx.y) < K && j < resCols) ? right[rightOffset + rightIdx] : 0.0f;
-      __syncthreads();
-
-      for (int l = 0; l < blockDim.x; l++) {
-        cij += smemA[threadIdx.y * blockDim.x + l] * smemB[l * blockDim.x + threadIdx.x];
-      }
-      __syncthreads();
-    }
-
-    if (i < resRows && j < resCols) {
-      res[resOffset + i * N + j] = cij;
-    }
-  }
-
   template<tensorSize_t tileDim, bool transposeLeft, bool transposeRight>
-  __global__ void matmul2DKernelRefactor(ftype* const res, const ftype* const left, const ftype* const right, 
+  __global__ void matmul2DKernel(ftype* const res, const ftype* const left, const ftype* const right, 
                             tensorSize_t leftRows, tensorSize_t leftCols, 
                             tensorSize_t rightRows, tensorSize_t rightCols,
                             tensorSize_t resRows, tensorSize_t resCols,
@@ -196,7 +154,7 @@ namespace {
     const tensorSize_t leftOffset  = blockIdx.z * leftSize;
     const tensorSize_t rightOffset = blockIdx.z * rightSize;
 
-    // local coordinates (where in the 2D matrix are we?)
+    // local coordinates (where in the 2D matrix are we?). Uses image coordinates convention 
     const tensorSize_t i = blockIdx.x * tileDim + threadIdx.x;
     const tensorSize_t j = blockIdx.y * tileDim + threadIdx.y;
 
@@ -204,13 +162,16 @@ namespace {
     __shared__ ftype leftTile[tileDim * tileDim];
     __shared__ ftype rightTile[tileDim * tileDim];
 
-    ftype cij = 0.0f;
-    for(tensorSize_t k = 0; k < leftCols; k += tileDim) {
-      const tensorSize_t leftIdx  = j * leftCols + k + threadIdx.x;
-      const tensorSize_t rightIdx = (k + threadIdx.y) * rightCols + i;
+    // input shapes [after transposing]: (M, K) x (K x N)
+    const tensorSize_t K = transposeLeft ? leftRows : leftCols;
 
-      leftTile[threadIdx.y * tileDim + threadIdx.x]  = (j < leftRows && (k + threadIdx.x) < leftCols) ? left[leftOffset + leftIdx] : 0.0f;
-      rightTile[threadIdx.y * tileDim + threadIdx.x] = (i < rightCols && (k + threadIdx.y) < rightRows) ? right[rightOffset + rightIdx] : 0.0f;
+    ftype cij = 0.0f;
+    for(tensorSize_t k = 0; k < K; k += tileDim) {
+      const tensorSize_t leftIdx  = transposeLeft  ? (k + threadIdx.x) * leftCols + j  : (j * leftCols) + k + threadIdx.x;
+      const tensorSize_t rightIdx = transposeRight ? (i * rightCols + k + threadIdx.y) : (k + threadIdx.y) * rightCols  + i;
+
+      leftTile[threadIdx.y * tileDim + threadIdx.x]  = (j < resRows && (k + threadIdx.x) < K) ? left[leftOffset + leftIdx] : 0.0f;
+      rightTile[threadIdx.y * tileDim + threadIdx.x] = (i < resCols && (k + threadIdx.y) < K) ? right[rightOffset + rightIdx] : 0.0f;
       __syncthreads();
 
       for(unsigned int kk = 0; kk < tileDim; kk++) {
@@ -407,7 +368,7 @@ namespace cuda_impl {
     //const auto smemSize = min(resSize, threadsPerBlock) * sizeof(ftype);
     //matMul2DKernel<<<blocks, threadsPerBlock, smemSize>>>(res.data() + resOffset, left.data() + leftOffset, right.data() + rightOffset,
     if(!(transposeLeft || transposeRight)) {
-      matmul2DKernelRefactor<MATMUL_TILESIZE, false, false><<<numBlocks, threadsPerBlock>>>(
+      matmul2DKernel<MATMUL_TILESIZE, false, false><<<numBlocks, threadsPerBlock>>>(
                                                       res.data(), left.data(), right.data(),
                                                       left.getDims().get(-2), left.getDims().get(-1),
                                                       right.getDims().get(-2), right.getDims().get(-1),
@@ -415,7 +376,7 @@ namespace cuda_impl {
                                                       leftSize, rightSize, resSize);
     }
     else if(transposeLeft && transposeRight) [[unlikely]] {
-      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, true><<<numBlocks, threadsPerBlock>>>(
+      matmul2DKernel<MATMUL_TILESIZE, true, true><<<numBlocks, threadsPerBlock>>>(
                                                     res.data(), left.data(), right.data(),
                                                     left.getDims().get(-2), left.getDims().get(-1),
                                                     right.getDims().get(-2), right.getDims().get(-1),
@@ -423,7 +384,7 @@ namespace cuda_impl {
                                                     leftSize, rightSize, resSize);
     }
     else if(transposeLeft) {
-      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, true, false><<<numBlocks, threadsPerBlock>>>(
+      matmul2DKernel<MATMUL_TILESIZE, true, false><<<numBlocks, threadsPerBlock>>>(
                                                      res.data(), left.data(), right.data(),
                                                      left.getDims().get(-2), left.getDims().get(-1),
                                                      right.getDims().get(-2), right.getDims().get(-1),
@@ -431,7 +392,7 @@ namespace cuda_impl {
                                                      leftSize, rightSize, resSize);
     }
     else if(transposeRight) {
-      matMul2DKernel<MATMUL_TILESIZE * MATMUL_TILESIZE, false, true><<<numBlocks, threadsPerBlock>>>(
+      matmul2DKernel<MATMUL_TILESIZE, false, true><<<numBlocks, threadsPerBlock>>>(
                                                      res.data(), left.data(), right.data(),
                                                      left.getDims().get(-2), left.getDims().get(-1),
                                                      right.getDims().get(-2), right.getDims().get(-1),
