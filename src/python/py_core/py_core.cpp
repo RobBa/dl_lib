@@ -207,7 +207,20 @@ BOOST_PYTHON_MODULE(_core)
     .def("__setitem__", &Py_DataModeling::tensorSetItem)
 
     // arithmetics
-    .def("__matmul__", WRAP_FREE_FUNC_10(Py_DataModeling::matmul))
+    // @ operator can only supply (self, other)
+    .def("__matmul__", +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> {
+        return (*Py_DataModeling::matmul)(self.getSharedPtr(), other.getSharedPtr(), false, false);
+      })
+
+    // named methods for alternative inputs
+    .def("matmul", +[](const Tensor& self, const Tensor& other) -> std::shared_ptr<Tensor> {
+        return (*Py_DataModeling::matmul)(self.getSharedPtr(), other.getSharedPtr(), false, false);
+      })
+    .def("matmul", +[](const Tensor& self, const Tensor& other, const bool transposeLeft) -> std::shared_ptr<Tensor> {
+        return (*Py_DataModeling::matmul)(self.getSharedPtr(), other.getSharedPtr(), transposeLeft, false);
+      })
+    .def("matmul", WRAP_FREE_FUNC_10(Py_DataModeling::matmul))
+    
     .def("__add__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwiseadd)) // elementwise add
     .def("__add__", WRAP_FREE_FUNC_4(Py_DataModeling::scalaradd, ftype))
     .def("__radd__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalaradd, ftype))
