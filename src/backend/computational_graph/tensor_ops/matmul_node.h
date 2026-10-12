@@ -18,17 +18,15 @@
 
 namespace cgraph {
   class DLLIB_API MatMulNode final : public GraphNode {
-    public:
-      explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) 
-        : GraphNode({std::move(t1), std::move(t2)}) {}
+    private:
+      const bool transposeLeft;
+      const bool transposeRight;
 
-      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override {
-        assert(!upstreamGrad.getRequiresGrad());
-    
-        return {
-          std::make_shared<Tensor>(upstreamGrad.matmul(*parents[1], false, true)), 
-          std::make_shared<Tensor>(parents[0]->matmul(upstreamGrad, true, false))
-        };
-      }
+    public:
+      explicit MatMulNode(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2, 
+                          const bool transposeLeft, const bool transposeRight) 
+        : GraphNode({std::move(t1), std::move(t2)}), transposeLeft{transposeLeft}, transposeRight{transposeRight} {}
+
+      std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
 }

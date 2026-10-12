@@ -478,7 +478,7 @@ TEST(CudaAutogradTest, MatMul) {
 
   {
     // compute and take loss
-    auto resCpu = cgraph::matmul(t1, t2);
+    auto resCpu = cgraph::matmul(t1, t2, false, false);
     auto lossCpu = TensorFunctions::makeSharedTensor(
       {1}, {0.0}, Device::CPU, true);
     for(size_t i = 0; i < resCpu->getSize(); ++i) {
@@ -488,7 +488,7 @@ TEST(CudaAutogradTest, MatMul) {
   }
 
   {
-    auto resGpu = cgraph::matmul(t1Gpu, t2Gpu);
+    auto resGpu = cgraph::matmul(t1Gpu, t2Gpu, false, false);
     auto lossGpu = TensorFunctions::makeSharedTensor(
       {1}, {0.0}, Device::CUDA, true);
     for(size_t i = 0; i < resGpu->getSize(); ++i) {

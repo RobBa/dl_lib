@@ -13,3 +13,12 @@
 
 using namespace std;
 using namespace cgraph;
+
+std::vector<std::shared_ptr<Tensor>> MatMulNode::backward(const Tensor& upstreamGrad) {
+  assert(!upstreamGrad.getRequiresGrad());
+  
+  return {
+    std::make_shared<Tensor>(upstreamGrad.matmul(*parents[1], transposeLeft, !transposeRight)), 
+    std::make_shared<Tensor>(parents[0]->matmul(upstreamGrad, !transposeLeft, transposeRight))
+  };
+}

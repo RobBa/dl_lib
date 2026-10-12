@@ -100,7 +100,7 @@ Tensor FfLayer::operator()(const Tensor& input) const {
  */
 std::shared_ptr<Tensor> FfLayer::operator()(const std::shared_ptr<Tensor>& input) const {
   // TODO: if you fuse kernel you'll also have to do it here. Perhaps give tensor a matmulplusbias method?
-  auto res = cgraph::matmul(input, weights);
+  auto res = cgraph::matmul(input, weights, false, false);
   if(bias){
     res = cgraph::add(res, bias);
   }

@@ -424,7 +424,7 @@ void Tensor::matMul2DCpuScalar(Tensor& res, const Tensor& left, const Tensor& ri
 
   // tune in accordance with cache-line size
   constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
-  using tile_t = matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE>;
+  using tile_t = matmul_tile::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE>;
 
   auto matmulTiles = [TILESIZE] (tile_t& tiles) {
     for(tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
@@ -614,7 +614,7 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
 
   // tune in accordance with cache-line size
   constexpr tensorSize_t TILESIZE = (MemoryLayout::CACHE_LINE_BYTES / sizeof(ftype)) * 4;
-  using tile_t = matmul::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE>;
+  using tile_t = matmul_tile::MatmulTile<ftype, TILESIZE, TILESIZE, TILESIZE>;
 
   auto matmulTiles = [TILESIZE] (tile_t& tiles) {
     for(tensorSize_t n = 0; n < TILESIZE; n++) { // rows left
@@ -728,10 +728,6 @@ void Tensor::matMul2DCpuAvx(Tensor& res, const Tensor& left, const Tensor& right
 
   threadPool.waitAll();
 #else
-  // Single-threaded: one tile buffer reused across the whole call. See commit
-  // 98191b5 for the pre-threadpool original this is restored from;
-  // leftOffset/rightOffset are applied here (unlike that commit) to keep
-  // batched matmul correct.
   tile_t tiles;
 
   if constexpr (!transposeLeft && !transposeRight) {

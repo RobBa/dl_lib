@@ -44,10 +44,11 @@ namespace cgraph {
     return res;
   }
 
-  inline std::shared_ptr<Tensor> matmul(const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right) {
-    auto res = std::make_shared<Tensor>(left->matmul(*right));
+  inline std::shared_ptr<Tensor> matmul(const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right, 
+                                        const bool transposeLeft, const bool transposeRight) {
+    auto res = std::make_shared<Tensor>(left->matmul(*right, transposeLeft, transposeRight));
     if(left->getRequiresGrad() || right->getRequiresGrad()){
-      res->setCgNode(std::make_shared<cgraph::MatMulNode>(left, right));
+      res->setCgNode(std::make_shared<cgraph::MatMulNode>(left, right, transposeLeft, transposeRight));
       assert(res->getRequiresGrad());
     }
     return res;
@@ -132,5 +133,4 @@ namespace cgraph {
     }
     return res;
   }
-
 }

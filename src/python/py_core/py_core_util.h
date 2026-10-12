@@ -130,7 +130,8 @@ namespace Py_DataModeling
 
   // matmul
   inline std::shared_ptr<Tensor> (*matmul) 
-  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right)           = &(cgraph::matmul);
+  (const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right, 
+   const bool transposeLeft, const bool transposeRight)                               = &(cgraph::matmul);
 
   // sub, div
   inline std::shared_ptr<Tensor> (*scalarsub) 

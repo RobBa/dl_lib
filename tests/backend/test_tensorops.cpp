@@ -373,7 +373,7 @@ TEST(AutogradTest, MatMul) {
   auto t1 = TensorFunctions::makeSharedTensor({2, 3}, {1, 2, 3, 4, 5, 6}, true);
   auto t2 = TensorFunctions::makeSharedTensor({3, 2}, {1, 2, 3, 4, 5, 6}, true);
 
-  auto t3 = cgraph::matmul(t1, t2);
+  auto t3 = cgraph::matmul(t1, t2, false, false);
 
   auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, true);
   for(size_t i = 0; i < t3->getSize(); ++i) {

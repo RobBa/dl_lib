@@ -19,7 +19,7 @@
 #include <array>
 #include <type_traits>
 
-namespace matmul {
+namespace matmul_tile {
   /**
    * @brief Used for matrix multiplication. Three tiles that can be accessed and transposed easily.
    * 
@@ -67,7 +67,7 @@ namespace matmul {
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
-void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
+void matmul_tile::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
                                                           const tensorSize_t row0, const tensorSize_t col0, 
                                                           const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileM, nRows);
@@ -108,7 +108,7 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeft(const T* const src,
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
-void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRight(const T* const src,
+void matmul_tile::MatmulTile<T, TileM, TileK, TileN>::loadRight(const T* const src,
                                                            const tensorSize_t row0, const tensorSize_t col0, 
                                                            const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileK, nRows);
@@ -152,7 +152,7 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRight(const T* const src,
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
-void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* const src,
+void matmul_tile::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* const src,
                                                                     const tensorSize_t row0, const tensorSize_t col0, 
                                                                     const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileK, nRows);
@@ -195,7 +195,7 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadLeftTransposed(const T* con
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
-void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* const src,
+void matmul_tile::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* const src,
                                                            const tensorSize_t row0, const tensorSize_t col0, 
                                                            const tensorSize_t nRows, const tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileN, nRows);
@@ -235,7 +235,7 @@ void matmul::MatmulTile<T, TileM, TileK, TileN>::loadRightTransposed(const T* co
  */
 template<typename T, tensorSize_t TileM, tensorSize_t TileK, tensorSize_t TileN>
 requires std::is_floating_point_v<T>
-void matmul::MatmulTile<T, TileM, TileK, TileN>::addResult(T* const dst, 
+void matmul_tile::MatmulTile<T, TileM, TileK, TileN>::addResult(T* const dst, 
                                                                   tensorSize_t row0, tensorSize_t col0, 
                                                                   tensorSize_t nRows, tensorSize_t nCols) {
   const tensorSize_t maxIdxRows = std::min(row0 + TileM, nRows);

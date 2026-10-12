@@ -113,6 +113,11 @@ BOOST_PYTHON_MODULE(_core)
     return std::make_shared<Tensor>((*fPtr)(v1, v2, v3, v4, v5)); \
   }
 
+  #define WRAP_FREE_FUNC_10(fPtr) \
+  +[](const Tensor& self, const Tensor& other, const bool b1, const bool b2) -> std::shared_ptr<Tensor> { \
+    return (*fPtr)(self.getSharedPtr(), other.getSharedPtr(), b1, b2); \
+  }
+
   #define WRAP_FUNC_AND_CONVERT_DTYPE_1(method) \
   +[](const Tensor& self, int v1) -> ftype { \
     return self.method(static_cast<tensorSize_t>(v1)); \
@@ -202,7 +207,7 @@ BOOST_PYTHON_MODULE(_core)
     .def("__setitem__", &Py_DataModeling::tensorSetItem)
 
     // arithmetics
-    .def("__matmul__", WRAP_FREE_FUNC_5(Py_DataModeling::matmul))
+    .def("__matmul__", WRAP_FREE_FUNC_10(Py_DataModeling::matmul))
     .def("__add__", WRAP_FREE_FUNC_5(Py_DataModeling::elementwiseadd)) // elementwise add
     .def("__add__", WRAP_FREE_FUNC_4(Py_DataModeling::scalaradd, ftype))
     .def("__radd__", WRAP_FREE_FUNC_6(Py_DataModeling::rscalaradd, ftype))
