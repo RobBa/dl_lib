@@ -147,6 +147,19 @@ void Tensor::tensorValues_t::copyValues(tensorValues_t& target, tensorSize_t low
   }
 }
 
+/**
+ * @brief Creates a view of this values type. Does not own the target and does neither allocate nor deallocate memory,
+ * 
+ * @param idx Where the view starts from. 
+ * @param t What you think it does.
+ * @return Tensor::tensorValues_t The resulting tensorValues object.
+ */
+Tensor::tensorValues_t Tensor::tensorValues_t::createView(const tensorSize_t idx, shallowCopyToken t) {
+  auto res = tensorValues_t(device, std::move(t));
+  res.values = values + idx;
+  return res;
+}
+
 void Tensor::tensorValues_t::setDevice(const Device d) noexcept {
   #ifndef __CUDA
     cerr << "setDevice called when CUDA not enabled. Doing nothing." << endl;
@@ -334,6 +347,18 @@ Tensor Tensor::createDeepCopy() const {
   assert(!res.grads); // TODO: check if this makes sense
   assert(!res.cgNode); // TODO: do we want to give it pointer of same node?
   return res;
+}
+
+/**
+ * @brief Creates a view on a tensor. Behaves like a full blown tensor, but has an non-owning 
+ * pointer to the underlying data.
+ * 
+ * @param dim The desired dimension of the tensor. 
+ * @param idx The index where the view starts from.
+ * @return Tensor 
+ */
+Tensor Tensor::createView(Dimension dims, const tensorSize_t idx) const {
+  return Tensor(*this, std::move(dims), idx, shallowCopyToken{});
 }
 
 /**

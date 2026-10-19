@@ -9,6 +9,8 @@
  * 
  */
 
+#pragma once
+
 #include "module/layers/ff_layer.h"
 
 #include "module/transformer/attention/self_attention_fn_base.h"

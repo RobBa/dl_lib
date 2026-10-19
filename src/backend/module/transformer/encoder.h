@@ -9,6 +9,8 @@
  * 
  */
 
+#pragma once
+
 #include "module/module_base.h"
 
 #include "module/transformer/attention/self_attention_fn_base.h"

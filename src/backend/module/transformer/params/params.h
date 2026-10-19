@@ -9,6 +9,8 @@
  * 
  */
 
+#pragma once
+
 namespace module {
   namespace transformer {
     /**

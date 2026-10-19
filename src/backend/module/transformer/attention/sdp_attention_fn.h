@@ -9,6 +9,8 @@
  * 
  */
 
+#pragma once
+
 #include "self_attention_fn_base.h"
 
 namespace module {

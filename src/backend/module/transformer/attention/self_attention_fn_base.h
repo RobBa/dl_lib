@@ -9,6 +9,8 @@
  * 
  */
 
+#pragma once
+
 #include "data_modeling/tensor.h"
 #include "module/transformer/params/params.h"
 

@@ -68,31 +68,37 @@ private:
   private:
     tensorSize_t size = 0;
     ftype* values = nullptr;
+    const bool isView;
 
     Device device;
     inline static Device defaultDevice = Device::CPU;
 
   public:
-    explicit tensorValues_t() { device = defaultDevice; }
-    explicit tensorValues_t(Device d) : device(d) {}
+    explicit tensorValues_t() : isView{false} { device = defaultDevice; }
+    explicit tensorValues_t(Device d) : isView{false}, device(d) {}
+
+    explicit tensorValues_t(shallowCopyToken) : isView{true} { device = defaultDevice; }
+    explicit tensorValues_t(Device d, shallowCopyToken) : isView{true}, device(d) {}
 
     ~tensorValues_t() noexcept {
-      if(values != nullptr)
+      if(!(values == nullptr || isView)) {
         mempool::tensorPool.giveback(values, device, size);
+      }
     }
 
     tensorValues_t(const tensorValues_t& other) = delete;
     tensorValues_t& operator=(const tensorValues_t& other) = delete;
 
     tensorValues_t(tensorValues_t&& other) noexcept
-      : device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)}
+      : isView{other.isView}, device{std::move(other.device)}, size{std::move(other.size)}, values{std::move(other.values)}
     {
       // ensuring destructor does not return pointer to memory pool
       other.values = nullptr;
       other.size = 0;
     }
 
-    tensorValues_t& operator=(tensorValues_t&& other) noexcept {
+    // remove because it does not permit const member values. Test by compiling later
+/*     tensorValues_t& operator=(tensorValues_t&& other) noexcept {
       if(this == &other) return *this;
       device = std::move(other.device);
       size = std::move(other.size);
@@ -101,7 +107,9 @@ private:
       other.values = nullptr;
       other.size = 0;
       return *this;
-    }
+    } */
+
+    tensorValues_t createView(tensorSize_t idx, shallowCopyToken t);
 
     void copyFromRaw(const ftype* src, tensorSize_t n);
     void copyFromHost(const ftype* src, tensorSize_t n);
@@ -192,6 +200,16 @@ private:
       grads{other.grads}, requiresGrad{other.requiresGrad}
   {}
 
+  /**
+   * @brief We use this one to create views. Handle with care.
+   * 
+   * @param other 
+   */
+  Tensor(const Tensor& other, Dimension dims, const tensorSize_t idx, shallowCopyToken)
+    : dims{std::move(dims)}, cgNode{nullptr}, grads{other.grads}, requiresGrad{other.requiresGrad},
+      values{std::make_shared<tensorValues_t>(other.values->createView(idx, shallowCopyToken{}))}
+  {}
+
 public:
   template <typename T>
   requires(std::is_same_v<std::remove_cvref_t<T>, Dimension>)
@@ -240,9 +258,12 @@ public:
   Tensor& operator=(const Tensor& other) = delete;
 
   Tensor createEmptyCopy() const { return Tensor(dims, values->getDevice(), requiresGrad); }
-  Tensor createShallowCopy() const { return Tensor(*this, shallowCopyToken{}); }
   Tensor createContiguousCopy() const;
   Tensor createDeepCopy() const;
+
+  // creating views: either shallow copies or slices that do not induce copies
+  Tensor createView() const { return Tensor(*this, shallowCopyToken{}); }
+  Tensor createView(Dimension dims, tensorSize_t idx) const;
 
   /**
    * @brief Moving. Move array of values to new instance as well.
@@ -322,19 +343,20 @@ public:
   bool hasGrads() const noexcept { return grads!=nullptr; }
 
   Tensor transpose(int dim1=-1, int dim2=-2) {
-    Tensor result = createShallowCopy();
+    Tensor result = createView();
     result.dims.swap(dim1, dim2);
     return result;
   }
   void permute(const std::vector<tensorDim_t>& newOrder) noexcept {
     assert(newOrder.size()==dims.nDims());
-    for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++)
+    for(tensorDim_t i=0; i<static_cast<tensorDim_t>(newOrder.size()); i++) {
       dims.swap(i, newOrder[i]);
+    }
   }
 
   bool isContiguous() const noexcept { return dims.inOriginalState(); }
   Tensor getContiguous() const {
-    if(dims.inOriginalState()) return createShallowCopy();
+    if(dims.inOriginalState()) return createView();
     return createContiguousCopy();
   }
 

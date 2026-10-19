@@ -106,7 +106,7 @@ namespace {
         std::memcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype));
         break;
       case Device::CUDA:
-      #ifdef __CUDA__
+      #ifdef __CUDA
         cudaErrchk(cudaMemcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype), cudaMemcpyDeviceToDevice));
       #else 
         throw runtime_error("Received CUDA tensor in non-CUDA compiled version.");
@@ -125,24 +125,24 @@ namespace {
  * concatenated along dimension dimx only iff pairs [dim11, dim21], ..., [dim1n, dim2n]
  * are the same except dimx (i.e. [dim1x, dim2x] are allowed to be different).
  * 
- * The result has dimensionality [dim11, dim12, ... (dim1x + dim2x), ..., dim1n].
+ * The result has dimensionality [dim11, dim12, ... (dim1x + dim2x + ...), ..., dim1n].
  */
 Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
   assert(input.size() > 0);
 
-  vector<tensorDim_t> resDims = input[0].getDims().toVector();
+  vector<tensorDim_t> resDims = input.at(0).getDims().toVector();
 
   if(dim < 0) {
     dim += resDims.size();
   }
 
   for(int i = 1; i < input.size(); i++) {
-    const auto& rightDims = input[i].getDims();
+    const auto& rightDims = input.at(i).getDims();
     assertDims(resDims, rightDims, dim);
     resDims[dim] += rightDims.get(dim);
   }
 
-  auto res = Tensor(std::move(resDims), input[0].getDevice());
+  auto res = Tensor(std::move(resDims), input.at(0).getDevice());
   tensorSize_t currSize = 0;
   for(const auto& t : input) {
     copyValues(res, t, currSize);
@@ -155,22 +155,22 @@ Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
 /**
  * @brief Concatenates the tensors along specified dimension. Autograd possible.
  */
-std::shared_ptr<Tensor> tensorfunct::concat(const std::vector< const std::shared_ptr<Tensor> >& input, int dim) {
+std::shared_ptr<Tensor> tensorfunct::concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim) {
   assert(input.size() > 0);
 
-  vector<tensorDim_t> resDims = input[0]->getDims().toVector();
+  vector<tensorDim_t> resDims = input.at(0)->getDims().toVector();
 
   if(dim < 0) {
     dim += resDims.size();
   }
 
   for(int i = 1; i < input.size(); i++) {
-    const auto& rightDims = input[i]->getDims();
+    const auto& rightDims = input.at(i)->getDims();
     assertDims(resDims, rightDims, dim);
     resDims[dim] += rightDims.get(dim);
   }
 
-  auto res = make_shared<Tensor>(std::move(resDims), input[0]->getDevice());
+  auto res = make_shared<Tensor>(std::move(resDims), input.at(0)->getDevice());
   tensorSize_t currSize = 0;
   for(const auto& t : input) {
     copyValues(*res, *t, currSize);

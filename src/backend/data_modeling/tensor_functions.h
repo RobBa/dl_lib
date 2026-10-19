@@ -54,7 +54,7 @@ namespace tensorfunct { // class name acts as namespace for us
   DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
 
   DLLIB_API Tensor concat(const std::vector<Tensor>& input, int dim);
-  DLLIB_API std::shared_ptr<Tensor> concat(const std::vector< const std::shared_ptr<Tensor> >& input, int dim);
+  DLLIB_API std::shared_ptr<Tensor> concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim);
 
   // Arithmetics
   DLLIB_API Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size

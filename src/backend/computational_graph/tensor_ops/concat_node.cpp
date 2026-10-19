@@ -23,9 +23,13 @@ std::vector<std::shared_ptr<Tensor>> ConcatNode::backward(const Tensor& upstream
   assert(!upstreamGrad.getRequiresGrad());
 
   std::vector<std::shared_ptr<Tensor>> res;
+  res.reserve(parents.size());
 
-  tensorSize_t lowerDim = 0;
+  tensorSize_t currSize = 0;
   for(const auto& p : parents) {
-    res.emplace_back(upstreamGrad.getSlice());
+    res.emplace_back(make_shared<Tensor>(upstreamGrad.createView(p->getDims(), currSize)));
+    currSize += p->getSize();
   }
+
+  return res;
 }
