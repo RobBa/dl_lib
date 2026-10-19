@@ -11,6 +11,8 @@
 
 #include "tensor_functions.h"
 
+#include <cstring>
+
 #ifdef __CUDA
 #include "data_modeling/cuda/tensor_ops.cuh"
 #include "computational_graph/tensor_ops/cuda/tensor_ops_nodes.cuh"
@@ -91,6 +93,29 @@ namespace {
       }
     }
   };
+
+  // copies the contents of dst tensor into target
+  auto copyValues = [](Tensor& target, const Tensor& source, const tensorSize_t idx) {
+    assert(target.getDevice() == source.getDevice());
+
+    auto tgtValues = target.data() + idx;
+    const auto srcValues = source.data();
+
+    switch(source.getDevice()) {
+      case Device::CPU:
+        std::memcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype));
+        break;
+      case Device::CUDA:
+      #ifdef __CUDA__
+        cudaErrchk(cudaMemcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype), cudaMemcpyDeviceToDevice));
+      #else 
+        throw runtime_error("Received CUDA tensor in non-CUDA compiled version.");
+      #endif
+        break;
+      default:
+        __throw_invalid_argument("Encountered unexpected device");
+    }
+  };
 }
 
 /**
@@ -118,7 +143,13 @@ Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
   }
 
   auto res = Tensor(std::move(resDims), input[0].getDevice());
-  // TODO: need to fill with values
+  tensorSize_t currSize = 0;
+  for(const auto& t : input) {
+    copyValues(res, t, currSize);
+    currSize += t.getSize();
+  }
+
+  return res;
 }
 
 /**
@@ -140,9 +171,13 @@ std::shared_ptr<Tensor> tensorfunct::concat(const std::vector< const std::shared
   }
 
   auto res = make_shared<Tensor>(std::move(resDims), input[0]->getDevice());
+  tensorSize_t currSize = 0;
   for(const auto& t : input) {
-    
+    copyValues(*res, *t, currSize);
+    currSize += t->getSize();
   }
+
+  return res;
 }
 
 void tensorfunct::ToZeros(Tensor& t) noexcept {
