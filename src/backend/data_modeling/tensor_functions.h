@@ -25,7 +25,7 @@
  * This is defined as a class so we can make some functions private while allowing for
  * templates.
  */
-namespace TensorFunctions { // class name acts as namespace for us
+namespace tensorfunct { // class name acts as namespace for us
   // Tensor creation
   DLLIB_API Tensor Zeros(std::vector<tensorDim_t> dims, Device d, bool requiresGrad=false);
   DLLIB_API Tensor Zeros(std::vector<tensorDim_t> dims, bool requiresGrad=false);
@@ -52,6 +52,9 @@ namespace TensorFunctions { // class name acts as namespace for us
   DLLIB_API void ToZeros(Tensor& t) noexcept;
   DLLIB_API void ToOnes(Tensor& t) noexcept;
   DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
+
+  DLLIB_API Tensor concat(const std::vector<Tensor>& input, int dim);
+  DLLIB_API std::shared_ptr<Tensor> concat(const std::vector< const std::shared_ptr<Tensor> >& input, int dim);
 
   // Arithmetics
   DLLIB_API Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size

@@ -35,9 +35,9 @@ static ftype computeTotalNorm(const std::vector<std::shared_ptr<Tensor>>& params
 }
 
 TEST(OptimizerTest, ZeroGrad_ClearsAllGradients) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, false);
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, false);
 
   auto net = makeBinaryNet();
@@ -76,8 +76,8 @@ TEST(OptimizerTest, ZeroGrad_ClearsAllGradients) {
 
 TEST(OptimizerTest, GradClip_ScalesGradientsCorrectly) {
   // grads = [3, 4], L2 norm = 5; maxNorm = 2.5 → scale = 0.5
-  auto param = TensorFunctions::makeSharedTensor({2}, {0.0, 0.0}, true);
-  auto grads = TensorFunctions::makeSharedTensor({2}, {3.0f, 4.0f}, false);
+  auto param = tensorfunct::makeSharedTensor({2}, {0.0, 0.0}, true);
+  auto grads = tensorfunct::makeSharedTensor({2}, {3.0f, 4.0f}, false);
   param->setGrads(grads);
 
   auto optim = std::make_shared<train::SgdOptimizer>(
@@ -89,8 +89,8 @@ TEST(OptimizerTest, GradClip_ScalesGradientsCorrectly) {
 }
 
 TEST(OptimizerTest, GradClip_BelowThreshold_NoChange) {
-  auto param = TensorFunctions::makeSharedTensor({2}, {0.0, 0.0}, true);
-  auto grads = TensorFunctions::makeSharedTensor({2}, {3.0f, 4.0f}, false);
+  auto param = tensorfunct::makeSharedTensor({2}, {0.0, 0.0}, true);
+  auto grads = tensorfunct::makeSharedTensor({2}, {3.0f, 4.0f}, false);
   param->setGrads(grads);
 
   auto optim = std::make_shared<train::SgdOptimizer>(
@@ -102,9 +102,9 @@ TEST(OptimizerTest, GradClip_BelowThreshold_NoChange) {
 }
 
 TEST(OptimizerTest, GradClip_NormIsEnforced) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, false);
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, false);
 
   auto net = makeBinaryNet();

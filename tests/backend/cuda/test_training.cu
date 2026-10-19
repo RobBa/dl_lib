@@ -39,9 +39,9 @@ static ftype computeTotalNorm(const std::vector<std::shared_ptr<Tensor>>& params
 }
 
 TEST(CudaOptimizerTest, ZeroGrad_ClearsAllGradients) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, Device::CUDA, false);
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, Device::CUDA, false);
 
   auto net = makeBinaryNet(Device::CUDA);
@@ -79,8 +79,8 @@ TEST(CudaOptimizerTest, ZeroGrad_ClearsAllGradients) {
 
 TEST(CudaOptimizerTest, GradClip_ScalesGradientsCorrectly) {
   // grads = [3, 4], L2 norm = 5; maxNorm = 2.5 → scale = 0.5
-  auto param = TensorFunctions::makeSharedTensor({2}, {0.0, 0.0}, Device::CUDA, true);
-  auto grads = TensorFunctions::makeSharedTensor({2}, {3.0f, 4.0f}, Device::CUDA, false);
+  auto param = tensorfunct::makeSharedTensor({2}, {0.0, 0.0}, Device::CUDA, true);
+  auto grads = tensorfunct::makeSharedTensor({2}, {3.0f, 4.0f}, Device::CUDA, false);
   param->setGrads(grads);
 
   auto optim = make_shared<train::SgdOptimizer>(
@@ -92,8 +92,8 @@ TEST(CudaOptimizerTest, GradClip_ScalesGradientsCorrectly) {
 }
 
 TEST(CudaOptimizerTest, GradClip_BelowThreshold_NoChange) {
-  auto param = TensorFunctions::makeSharedTensor({2}, {0.0, 0.0}, Device::CUDA, true);
-  auto grads = TensorFunctions::makeSharedTensor({2}, {3.0f, 4.0f}, Device::CUDA, false);
+  auto param = tensorfunct::makeSharedTensor({2}, {0.0, 0.0}, Device::CUDA, true);
+  auto grads = tensorfunct::makeSharedTensor({2}, {3.0f, 4.0f}, Device::CUDA, false);
   param->setGrads(grads);
 
   auto optim = make_shared<train::SgdOptimizer>(
@@ -105,9 +105,9 @@ TEST(CudaOptimizerTest, GradClip_BelowThreshold_NoChange) {
 }
 
 TEST(CudaOptimizerTest, GradClip_NormIsEnforced) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0}, Device::CUDA, false);
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, Device::CUDA, false);
 
   auto net = makeBinaryNet(Device::CUDA);

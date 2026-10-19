@@ -33,8 +33,8 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 TEST(CudaAutogradTest, ThrowsIfNoGradientSet) {
-  auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, false);
-  auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, false);
+  auto t1 = tensorfunct::makeSharedTensor({1}, {3.0}, Device::CUDA, false);
+  auto t2 = tensorfunct::makeSharedTensor({1}, {2.0}, Device::CUDA, false);
 
   auto loss = cgraph::add(t1, t2);
 
@@ -42,7 +42,7 @@ TEST(CudaAutogradTest, ThrowsIfNoGradientSet) {
 }
 
 TEST(CudaAutogradTest, ChainRule) {
-  auto x = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+  auto x = tensorfunct::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
 
   auto y = cgraph::mul(x, x);      // y = x^2
   auto z = cgraph::add(x, y);      // z = x^2 + x
@@ -56,10 +56,10 @@ TEST(CudaAutogradTest, ChainRule) {
 }
 
 TEST(CudaAutogradTest, MultiVariateChainRule) {
-  auto x = TensorFunctions::makeSharedTensor({2}, {1.0, 2.0}, Device::CUDA, true);
+  auto x = tensorfunct::makeSharedTensor({2}, {1.0, 2.0}, Device::CUDA, true);
 
   auto y = cgraph::mul(x, 3.0); // y = [3, 6]
-  auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, Device::CUDA, true);
+  auto loss = tensorfunct::makeSharedTensor({1}, {0.0}, Device::CUDA, true);
   for(int i = 0; i < y->getSize(); i++){
     loss = cgraph::add(loss, cgraph::get(y, i));
   }    // loss = 9
@@ -75,13 +75,13 @@ TEST(CudaAutogradTest, MultiVariateChainRule) {
 }
 
 TEST(CudaOverfitTest, BceSgdOverfitsSmallDataset) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0,
              0.0, 1.0,
              1.0, 0.0,
              1.0, 1.0}, Device::CUDA, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0,
              1.0,
              1.0,
@@ -106,13 +106,13 @@ TEST(CudaOverfitTest, BceSgdOverfitsSmallDataset) {
 }
 
 TEST(CudaOverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0,
              0.0, 1.0,
              1.0, 0.0,
              1.0, 1.0}, Device::CUDA, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0,
              1.0,
              1.0,
@@ -137,7 +137,7 @@ TEST(CudaOverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
 }
 
 TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {6, 2}, {1.0, 0.0,
              1.0, 0.1,
              0.0, 1.0,
@@ -145,7 +145,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
              0.5, 0.5,
              0.4, 0.6}, Device::CUDA, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {6, 3}, {1.0, 0.0, 0.0,
              1.0, 0.0, 0.0,
              0.0, 1.0, 0.0,
@@ -173,7 +173,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
 }
 
 TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {6, 2}, {1.0, 0.0,
              1.0, 0.1,
              0.0, 1.0,
@@ -181,7 +181,7 @@ TEST(CudaOverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
              0.5, 0.5,
              0.4, 0.6}, Device::CUDA, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {6, 3}, {1.0, 0.0, 0.0,
              1.0, 0.0, 0.0,
              0.0, 1.0, 0.0,

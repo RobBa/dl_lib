@@ -51,7 +51,7 @@ FfLayer::FfLayer(tensorDim_t inSize, tensorDim_t outSize, Device d,
     
   if(useBias){
     bias = make_shared<Tensor>(vector<tensorDim_t>{outSize}, d, requiresGrad);
-    TensorFunctions::ToZeros(*bias);
+    tensorfunct::ToZeros(*bias);
   }
 }
 

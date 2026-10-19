@@ -29,7 +29,7 @@ void OptimizerBase::zeroGrad() noexcept
     auto grads = p->getGrads();
 
     if(grads)
-      TensorFunctions::ToZeros(*grads);
+      tensorfunct::ToZeros(*grads);
   }
 }
 

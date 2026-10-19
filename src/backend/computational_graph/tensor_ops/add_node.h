@@ -35,7 +35,7 @@ namespace cgraph {
         auto weightGrad = std::make_shared<Tensor>(upstreamGrad.createDeepCopy());
         
         if(broadcasted){
-          auto biasGrad = std::make_shared<Tensor>(TensorFunctions::SumOverDims(*weightGrad));
+          auto biasGrad = std::make_shared<Tensor>(tensorfunct::SumOverDims(*weightGrad));
           return {weightGrad, biasGrad};
         }
         

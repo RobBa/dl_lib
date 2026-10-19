@@ -194,7 +194,7 @@ private:
 
 public:
   template <typename T>
-    requires(std::is_same_v<std::remove_cvref_t<T>, Dimension>)
+  requires(std::is_same_v<std::remove_cvref_t<T>, Dimension>)
   explicit Tensor(T&& dims, Device d, bool requiresGrad = false)
       : Tensor{dims.toVector(), d, requiresGrad}
       // !!!needs dims.toVector() to not trigger the copy ctors!!!

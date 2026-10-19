@@ -1,5 +1,5 @@
 /**
- * @file sdp_attention.cpp
+ * @file sdp_attention_fn.cpp
  * @author your name (you@domain.com)
  * @brief 
  * @version 0.1
@@ -9,7 +9,7 @@
  * 
  */
 
-#include "sdp_attention.h"
+#include "sdp_attention_fn.h"
 #include "module/activation_functions/softmax.h"
 #include "computational_graph/tensor_ops/graph_creation.h"
 
@@ -18,7 +18,7 @@
 using namespace module::transformer;
 using namespace std;
 
-Tensor SdpAttention::forward(const Tensor& K, const Tensor& Q, const Tensor& V, MaskEnum mask) {
+Tensor SdpAttentionFn::operator()(const Tensor& K, const Tensor& Q, const Tensor& V, MaskType mask) {
   constexpr ftype nominator = 1.0f;
   const auto factor = nominator / sqrt(static_cast<ftype>(Q.getDims().get(-1)));
   auto scores = Q.matmul(K, false, true) * factor;
@@ -28,7 +28,7 @@ Tensor SdpAttention::forward(const Tensor& K, const Tensor& Q, const Tensor& V, 
   return weights.matmul(V, false, false);
 }
 
-shared_ptr<Tensor> SdpAttention::forward(const shared_ptr<Tensor>& K, const shared_ptr<Tensor>& Q, const shared_ptr<Tensor>& V, MaskEnum mask) {
+shared_ptr<Tensor> SdpAttentionFn::operator()(const shared_ptr<Tensor>& K, const shared_ptr<Tensor>& Q, const shared_ptr<Tensor>& V, MaskType mask) {
   constexpr ftype nominator = 1.0f;
   const auto factor = nominator / sqrt(static_cast<ftype>(Q->getDims().get(-1)));
   auto scores = cgraph::mul(cgraph::matmul(Q, K, false, true), factor);

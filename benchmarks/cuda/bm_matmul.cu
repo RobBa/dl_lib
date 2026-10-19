@@ -25,8 +25,8 @@ static void BM_MatMul_CUDA(benchmark::State &state)
   const int K = state.range(1);
   const int N = state.range(2);
 
-  auto left = TensorFunctions::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0, Device::CUDA);
-  auto right = TensorFunctions::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0, Device::CUDA);
+  auto left = tensorfunct::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0, Device::CUDA);
+  auto right = tensorfunct::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0, Device::CUDA);
 
   // warm-up: one un-timed call so driver/JIT overhead is excluded
   {

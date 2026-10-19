@@ -17,8 +17,8 @@ static void BM_MatMul_CPU(benchmark::State &state)
   const int K = state.range(1);
   const int N = state.range(2);
 
-  auto left = TensorFunctions::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0);
-  auto right = TensorFunctions::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0);
+  auto left = tensorfunct::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0);
+  auto right = tensorfunct::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0);
 
   for (auto _ : state)
   {
@@ -38,8 +38,8 @@ static void BM_MatMul_TransposeLeft_CPU(benchmark::State &state)
   const int K = state.range(1);
   const int N = state.range(2);
 
-  auto left  = TensorFunctions::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(M)}, 1.0);
-  auto right = TensorFunctions::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0);
+  auto left  = tensorfunct::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(M)}, 1.0);
+  auto right = tensorfunct::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(N)}, 1.0);
 
   for (auto _ : state)
   {
@@ -59,8 +59,8 @@ static void BM_MatMul_TransposeRight_CPU(benchmark::State &state)
   const int K = state.range(1);
   const int N = state.range(2);
 
-  auto left  = TensorFunctions::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0);
-  auto right = TensorFunctions::Gaussian({static_cast<tensorDim_t>(N), static_cast<tensorDim_t>(K)}, 1.0);
+  auto left  = tensorfunct::Gaussian({static_cast<tensorDim_t>(M), static_cast<tensorDim_t>(K)}, 1.0);
+  auto right = tensorfunct::Gaussian({static_cast<tensorDim_t>(N), static_cast<tensorDim_t>(K)}, 1.0);
 
   for (auto _ : state)
   {
@@ -80,8 +80,8 @@ static void BM_MatMul_TransposeBoth_CPU(benchmark::State &state)
   const int K = state.range(1);
   const int N = state.range(2);
 
-  auto left  = TensorFunctions::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(M)}, 1.0);
-  auto right = TensorFunctions::Gaussian({static_cast<tensorDim_t>(N), static_cast<tensorDim_t>(K)}, 1.0);
+  auto left  = tensorfunct::Gaussian({static_cast<tensorDim_t>(K), static_cast<tensorDim_t>(M)}, 1.0);
+  auto right = tensorfunct::Gaussian({static_cast<tensorDim_t>(N), static_cast<tensorDim_t>(K)}, 1.0);
 
   for (auto _ : state)
   {

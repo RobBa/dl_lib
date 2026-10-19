@@ -29,8 +29,8 @@
 using namespace std;
 
 TEST(AutogradTest, ThrowsIfNoGradientSet) {
-  auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, false);
-  auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, false);
+  auto t1 = tensorfunct::makeSharedTensor({1}, {3.0}, false);
+  auto t2 = tensorfunct::makeSharedTensor({1}, {2.0}, false);
 
   auto loss = cgraph::add(t1, t2);
   
@@ -38,7 +38,7 @@ TEST(AutogradTest, ThrowsIfNoGradientSet) {
 }
 
 TEST(AutogradTest, ChainRule) {
-  auto x = TensorFunctions::makeSharedTensor({1}, {2.0}, true);
+  auto x = tensorfunct::makeSharedTensor({1}, {2.0}, true);
   
   auto y = cgraph::mul(x, x); // y = x^2
   auto z = cgraph::add(x, y); // z = x^2 + x
@@ -52,10 +52,10 @@ TEST(AutogradTest, ChainRule) {
 }
 
 TEST(AutogradTest, MultiVariateChainRule) {
-  auto x = TensorFunctions::makeSharedTensor({2}, {1.0, 2.0}, true);
+  auto x = tensorfunct::makeSharedTensor({2}, {1.0, 2.0}, true);
   
   auto y = cgraph::mul(x, 3.0); // y = [3, 6]
-  auto loss = TensorFunctions::makeSharedTensor({1}, {0.0}, true);
+  auto loss = tensorfunct::makeSharedTensor({1}, {0.0}, true);
   for(int i = 0; i < y->getSize(); i++){
     loss = cgraph::add(loss, cgraph::get(y, i));
   }    // loss = 9
@@ -72,13 +72,13 @@ TEST(AutogradTest, MultiVariateChainRule) {
 
 TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
   // XOR-like: 4 samples, 2 features, binary labels
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0,
              0.0, 1.0,
              1.0, 0.0,
              1.0, 1.0}, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0,
              1.0,
              1.0,
@@ -105,13 +105,13 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset) {
 
 TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {    
   // XOR-like: 4 samples, 2 features, binary labels
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {4, 2}, {0.0, 0.0,
              0.0, 1.0,
              1.0, 0.0,
              1.0, 1.0}, false);
 
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0,
              1.0,
              1.0,
@@ -139,7 +139,7 @@ TEST(OverfitTest, BceSgdOverfitsSmallDataset_OptimizedLoss) {
 
 TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
   // 6 samples, 2 features, 3 classes
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {6, 2}, {1.0, 0.0,
              1.0, 0.1,
              0.0, 1.0,
@@ -148,7 +148,7 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
              0.4, 0.6}, false);
 
   // one-hot encoded labels
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {6, 3}, {1.0, 0.0, 0.0,
              1.0, 0.0, 0.0,
              0.0, 1.0, 0.0,
@@ -176,7 +176,7 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset) {
 
 TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
   // 6 samples, 2 features, 3 classes
-  auto x = TensorFunctions::makeSharedTensor(
+  auto x = tensorfunct::makeSharedTensor(
     {6, 2}, {1.0, 0.0,
              1.0, 0.1,
              0.0, 1.0,
@@ -185,7 +185,7 @@ TEST(OverfitTest, CrossEntropyRMSPropOverfitsSmallDataset_OptimizedLoss) {
              0.4, 0.6}, false);
 
   // one-hot encoded labels
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {6, 3}, {1.0, 0.0, 0.0,
              1.0, 0.0, 0.0,
              0.0, 1.0, 0.0,

@@ -32,11 +32,11 @@ using namespace train;
 using namespace module;
 
 TEST(CudaLossTest, CrossEntropyForward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 3}, {0.7, 0.2, 0.1,
          0.1, 0.8, 0.1}, Device::CUDA, true);
 
@@ -48,11 +48,11 @@ TEST(CudaLossTest, CrossEntropyForward) {
 }
 
 TEST(CudaLossTest, CrossEntropyPerfectPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 3}, {0.999, 0.0005, 0.0005,
          0.0005, 0.999, 0.0005}, Device::CUDA, true);
 
@@ -63,10 +63,10 @@ TEST(CudaLossTest, CrossEntropyPerfectPrediction) {
 }
 
 TEST(CudaLossTest, CrossEntropyUniformPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {1, 3}, {1.0, 0.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {1, 3}, {1.0f/3, 1.0f/3, 1.0f/3}, Device::CUDA, true);
 
   CrossEntropyLoss loss;
@@ -79,11 +79,11 @@ TEST(CudaLossTest, CrossEntropyForwardLarge) {
   constexpr tensorDim_t nSamples = 500;
   constexpr tensorDim_t nClasses = 200;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.5f);
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}, Device::CPU, true) * 0.5f);
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
 
@@ -96,9 +96,9 @@ TEST(CudaLossTest, CrossEntropyForwardLarge) {
 
 TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
 #ifndef NDEBUG
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 2}, {0.5, 0.5, 0.5, 0.5}, Device::CUDA, true);
 
   CrossEntropyLoss loss;
@@ -109,10 +109,10 @@ TEST(CudaLossTest, CrossEntropyThrowsOnDimMismatch) {
 }
 
 TEST(CudaLossTest, CrossEntropyBackward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 3}, {0.7, 0.2, 0.1,
          0.1, 0.8, 0.1}, Device::CUDA, true);
 
@@ -133,11 +133,11 @@ TEST(CudaLossTest, CrossEntropyBackwardLarge) {
   constexpr tensorDim_t nSamples = 500;
   constexpr tensorDim_t nClasses = 200;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}) * 0.5f);
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}) * 0.5f);
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}, Device::CPU, true) * 0.7f);
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
 
@@ -163,11 +163,11 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward64x10) {
   constexpr tensorDim_t nSamples = 64;
   constexpr tensorDim_t nClasses = 10;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}) * (1.0f / nClasses));
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}) * (1.0f / nClasses));
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto logitsCpu = make_shared<Tensor>(TensorFunctions::Gaussian({nSamples, nClasses}, 1.0f, true));
+  auto logitsCpu = make_shared<Tensor>(tensorfunct::Gaussian({nSamples, nClasses}, 1.0f, true));
   auto logitsGpu = make_shared<Tensor>(logitsCpu->createDeepCopy());
   logitsGpu->setDevice(Device::CUDA);
 
@@ -190,11 +190,11 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward64x10) {
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxForward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
              0.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto logits = TensorFunctions::makeSharedTensor(
+  auto logits = tensorfunct::makeSharedTensor(
     {2, 3}, {0.7, 0.2, 0.1,
              0.1, 0.8, 0.1}, Device::CUDA, true);
 
@@ -208,11 +208,11 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxForward) {
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxPerfectPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
              0.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto logits = TensorFunctions::makeSharedTensor(
+  auto logits = tensorfunct::makeSharedTensor(
     {2, 3}, {100.0, 0.0, 0.0,
                0.0, 100.0, 0.0}, Device::CUDA, true);
 
@@ -223,10 +223,10 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxPerfectPrediction) {
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxUniformLogits) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {1, 3}, {1.0, 0.0, 0.0}, Device::CUDA, false);
 
-  auto logits = TensorFunctions::makeSharedTensor(
+  auto logits = tensorfunct::makeSharedTensor(
     {1, 3}, {0.0, 0.0, 0.0}, Device::CUDA, true);
 
   train::CrossEntropySoftmaxLoss loss;
@@ -239,11 +239,11 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxForwardLarge) {
   constexpr tensorDim_t nSamples = 500;
   constexpr tensorDim_t nClasses = 200;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, nClasses}) * (1.0f / nClasses));
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, nClasses}) * (1.0f / nClasses));
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto logitsCpu = make_shared<Tensor>(TensorFunctions::Gaussian({nSamples, nClasses}, 1.0f, true));
+  auto logitsCpu = make_shared<Tensor>(tensorfunct::Gaussian({nSamples, nClasses}, 1.0f, true));
   auto logitsGpu = make_shared<Tensor>(logitsCpu->createDeepCopy());
   logitsGpu->setDevice(Device::CUDA);
 
@@ -256,9 +256,9 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxForwardLarge) {
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxThrowsOnDimMismatch) {
 #ifndef NDEBUG
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, Device::CUDA, false);
-  auto logits = TensorFunctions::makeSharedTensor(
+  auto logits = tensorfunct::makeSharedTensor(
     {2, 2}, {0.5, 0.5, 0.5, 0.5}, Device::CUDA, true);
 
   train::CrossEntropySoftmaxLoss loss;
@@ -269,10 +269,10 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxThrowsOnDimMismatch) {
 }
 
 TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 3}, {1.0, 0.0, 0.0,
              0.0, 1.0, 0.0}, Device::CUDA, false);
-  auto logits = TensorFunctions::makeSharedTensor(
+  auto logits = tensorfunct::makeSharedTensor(
     {2, 3}, {0.7, 0.2, 0.1,
              0.1, 0.8, 0.1}, Device::CUDA, true);
 
@@ -293,10 +293,10 @@ TEST(CudaLossTest, CrossEntropyWithSoftmaxBackward) {
 }
 
 TEST(CudaLossTest, BceForward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {4, 1}, {0.0, 1.0, 1.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {4, 1}, {0.1, 0.9, 0.8, 0.2}, Device::CUDA, true);
 
   BceLoss loss;
@@ -308,10 +308,10 @@ TEST(CudaLossTest, BceForward) {
 }
 
 TEST(CudaLossTest, BcePerfectPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 1}, {0.999, 0.001}, Device::CUDA, true);
 
   BceLoss loss;
@@ -321,10 +321,10 @@ TEST(CudaLossTest, BcePerfectPrediction) {
 }
 
 TEST(CudaLossTest, BceRandomPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
 
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 1}, {0.5, 0.5}, Device::CUDA, true);
 
   BceLoss loss;
@@ -336,11 +336,11 @@ TEST(CudaLossTest, BceRandomPrediction) {
 TEST(CudaLossTest, BceForwardLarge) {
   constexpr tensorDim_t nSamples = 10000;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.5f);
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, 1}) * 0.5f);
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.7f);
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, 1}) * 0.7f);
   ypredCpu->setRequiresGrad(true);
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
@@ -355,9 +355,9 @@ TEST(CudaLossTest, BceForwardLarge) {
 
 TEST(CudaLossTest, BceThrowsOnDimMismatch) {
 #ifndef NDEBUG
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {3, 1}, {0.5, 0.5, 0.5}, Device::CUDA, true);
 
   BceLoss loss;
@@ -368,9 +368,9 @@ TEST(CudaLossTest, BceThrowsOnDimMismatch) {
 }
 
 TEST(CudaLossTest, BceNoInfOrNanOnNearZeroPred) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {1, 1}, {1.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {1, 1}, {0.0}, Device::CUDA, true);
 
   BceLoss loss;
@@ -380,9 +380,9 @@ TEST(CudaLossTest, BceNoInfOrNanOnNearZeroPred) {
 }
 
 TEST(CudaLossTest, BceBackward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2, 1}, {1.0, 0.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2, 1}, {0.8, 0.3}, Device::CUDA, true);
 
   BceLoss loss;
@@ -397,11 +397,11 @@ TEST(CudaLossTest, BceBackward) {
 TEST(CudaLossTest, BceBackwardLarge) {
   constexpr tensorDim_t nSamples = 10000;
 
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}) * 0.5f);
+  auto yCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, 1}) * 0.5f);
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Ones({nSamples, 1}, Device::CPU, true) * 0.7f);
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Ones({nSamples, 1}, Device::CPU, true) * 0.7f);
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
 
@@ -424,9 +424,9 @@ TEST(CudaLossTest, BceBackwardLarge) {
 }
 
 TEST(CudaLossTest, RmseForward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {3}, {1.0, 2.0, 3.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {3}, {1.5, 2.5, 2.5}, Device::CUDA, true);
 
   RmseLoss loss;
@@ -436,11 +436,11 @@ TEST(CudaLossTest, RmseForward) {
 }
 
 TEST(CudaLossTest, RmseForwardLarge) {
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  auto yCpu = make_shared<Tensor>(tensorfunct::Gaussian({500, 500}, 1.0f));
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Gaussian({500, 500}, 1.0f));
   ypredCpu->setRequiresGrad(true);
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
@@ -454,9 +454,9 @@ TEST(CudaLossTest, RmseForwardLarge) {
 }
 
 TEST(CudaLossTest, RmsePerfectPrediction) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {3}, {1.0, 2.0, 3.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {3}, {1.0, 2.0, 3.0}, Device::CUDA, true);
 
   RmseLoss loss;
@@ -466,9 +466,9 @@ TEST(CudaLossTest, RmsePerfectPrediction) {
 }
 
 TEST(CudaLossTest, RmseBackward) {
-  auto y = TensorFunctions::makeSharedTensor(
+  auto y = tensorfunct::makeSharedTensor(
     {2}, {1.0, 0.0}, Device::CUDA, false);
-  auto ypred = TensorFunctions::makeSharedTensor(
+  auto ypred = tensorfunct::makeSharedTensor(
     {2}, {0.5, 0.5}, Device::CUDA, true);
 
   RmseLoss loss;
@@ -481,11 +481,11 @@ TEST(CudaLossTest, RmseBackward) {
 }
 
 TEST(CudaLossTest, RmseBackwardLarge) {
-  auto yCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f));
+  auto yCpu = make_shared<Tensor>(tensorfunct::Gaussian({500, 500}, 1.0f));
   auto yGpu = make_shared<Tensor>(yCpu->createDeepCopy());
   yGpu->setDevice(Device::CUDA);
 
-  auto ypredCpu = make_shared<Tensor>(TensorFunctions::Gaussian({500, 500}, 1.0f, true));
+  auto ypredCpu = make_shared<Tensor>(tensorfunct::Gaussian({500, 500}, 1.0f, true));
   auto ypredGpu = make_shared<Tensor>(ypredCpu->createDeepCopy());
   ypredGpu->setDevice(Device::CUDA);
 

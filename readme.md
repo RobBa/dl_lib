@@ -5,6 +5,7 @@ A from-scratch deep learning framework in modern C++ with Python bindings.
 ## Motivation
 
 Built to understand deep learning frameworks from first principles - from computational graphs to gradient computation to optimization algorithms.
+Find the project described in my Blog [here](https://robba.github.io/blog/)
 
 ## Running examples
 

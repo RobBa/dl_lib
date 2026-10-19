@@ -29,7 +29,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 using namespace std;
 
 TEST(CudaActivationTest, ReluForward) {
-  auto t1 = TensorFunctions::Ones({300, 500}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({300, 500}, Device::CUDA);
   auto f = module::ReLu();
 
   auto res = f(t1);
@@ -42,7 +42,7 @@ TEST(CudaActivationTest, ReluForward) {
 }
 
 TEST(CudaActivationTest, ReluInputNegative) {
-  auto t1 = TensorFunctions::Ones({300, 500}, Device::CUDA) * -1;
+  auto t1 = tensorfunct::Ones({300, 500}, Device::CUDA) * -1;
   auto f = module::ReLu();
 
   auto res = f(t1);
@@ -55,7 +55,7 @@ TEST(CudaActivationTest, ReluInputNegative) {
 }
 
 TEST(CudaAutogradTest, ReLUBackward) {
-  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, Device::CUDA, true);
+  auto x = tensorfunct::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, Device::CUDA, true);
   auto relu = module::ReLu();
 
   auto y = relu(x);
@@ -69,7 +69,7 @@ TEST(CudaAutogradTest, ReLUBackward) {
 }
 
 TEST(CudaActivationTest, LeakyReluForward) {
-  auto t1 = TensorFunctions::Ones({300, 500}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({300, 500}, Device::CUDA);
 
   auto f = module::LeakyReLu(0.3);
   auto res = f(t1);
@@ -84,7 +84,7 @@ TEST(CudaActivationTest, LeakyReluForward) {
 
 TEST(CudaActivationTest, LeakyReluInputNegative) {
   constexpr ftype factor = -1;
-  auto t1 = TensorFunctions::Ones({300, 500}, Device::CUDA) * factor;
+  auto t1 = tensorfunct::Ones({300, 500}, Device::CUDA) * factor;
 
   constexpr ftype eps = 0.3;
   auto f = module::LeakyReLu(eps);
@@ -98,7 +98,7 @@ TEST(CudaActivationTest, LeakyReluInputNegative) {
 }
 
 TEST(CudaAutogradTest, LeakyReLUBackward) {
-  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, Device::CUDA, true);
+  auto x = tensorfunct::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, Device::CUDA, true);
 
   constexpr ftype eps = 0.3;
   auto relu = module::LeakyReLu(eps);
@@ -114,7 +114,7 @@ TEST(CudaAutogradTest, LeakyReLUBackward) {
 }
 
 TEST(CudaActivationTest, SigmoidLargePositive) {
-  auto t = TensorFunctions::makeSharedTensor({1}, vector<ftype>{100.0}, Device::CUDA);
+  auto t = tensorfunct::makeSharedTensor({1}, vector<ftype>{100.0}, Device::CUDA);
 
   module::Sigmoid sig;
   auto res = sig(*t);
@@ -125,7 +125,7 @@ TEST(CudaActivationTest, SigmoidLargePositive) {
 }
 
 TEST(CudaActivationTest, SigmoidLargeNegative) {
-  auto t = TensorFunctions::makeSharedTensor({1}, vector<ftype>{-100.0}, Device::CUDA);
+  auto t = tensorfunct::makeSharedTensor({1}, vector<ftype>{-100.0}, Device::CUDA);
 
   module::Sigmoid sig;
   auto res = sig(*t);
@@ -136,7 +136,7 @@ TEST(CudaActivationTest, SigmoidLargeNegative) {
 }
 
 TEST(CudaAutogradTest, SigmoidBackward) {
-  auto t = TensorFunctions::makeSharedTensor({2}, {0.0, 1.0}, Device::CUDA, true);
+  auto t = tensorfunct::makeSharedTensor({2}, {0.0, 1.0}, Device::CUDA, true);
 
   module::Sigmoid sig;
   auto res = sig(t);
@@ -148,7 +148,7 @@ TEST(CudaAutogradTest, SigmoidBackward) {
 }
 
 TEST(CudaActivationTest, SoftmaxForward) {
-  auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA);
+  auto t = tensorfunct::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA);
 
   module::Softmax sm;
   auto res = sm(*t);
@@ -159,7 +159,7 @@ TEST(CudaActivationTest, SoftmaxForward) {
 }
 
 TEST(CudaActivationTest, SoftmaxSumsToOne) {
-  auto t = TensorFunctions::makeSharedTensor({2, 4},
+  auto t = tensorfunct::makeSharedTensor({2, 4},
                   {1.0, 2.0, 3.0, 4.0,
                    2.0, 1.0, 4.0, 3.0}, Device::CUDA);
 
@@ -173,7 +173,7 @@ TEST(CudaActivationTest, SoftmaxSumsToOne) {
 }
 
 TEST(CudaActivationTest, SoftmaxForwardNumericalStability) {
-  auto t = TensorFunctions::makeSharedTensor({1, 3}, {100.0, 101.0, 102.0}, Device::CUDA);
+  auto t = tensorfunct::makeSharedTensor({1, 3}, {100.0, 101.0, 102.0}, Device::CUDA);
 
   module::Softmax sm;
   auto res = sm(*t);
@@ -192,7 +192,7 @@ TEST(CudaActivationTest, SoftmaxForward64x10) {
   constexpr tensorDim_t nClasses = 10;
   assert(nClasses <= 64); // warp-level kernel path
 
-  auto t = TensorFunctions::Gaussian({nSamples, nClasses}, 1.0f, Device::CUDA);
+  auto t = tensorfunct::Gaussian({nSamples, nClasses}, 1.0f, Device::CUDA);
   auto tCopy = t.createDeepCopy();
   tCopy.setDevice(Device::CPU);
 
@@ -215,7 +215,7 @@ TEST(CudaActivationTest, SoftmaxMediumLarge) {
   constexpr tensorDim_t testDim = 190;
   assert(testDim <= 256 && testDim > 64); // see the kernel call 
 
-  auto t = TensorFunctions::Gaussian({5, 10, testDim}, 2.0f, Device::CUDA);
+  auto t = tensorfunct::Gaussian({5, 10, testDim}, 2.0f, Device::CUDA);
   auto tCopy = t.createDeepCopy();
   tCopy.setDevice(Device::CPU);
 
@@ -240,7 +240,7 @@ TEST(CudaActivationTest, SoftmaxLarge) {
   constexpr tensorDim_t testDim = 1500;
   assert(testDim > 256); // see the kernel call 
 
-  auto t = TensorFunctions::Gaussian({2, 2, testDim}, 2.0f, Device::CUDA);
+  auto t = tensorfunct::Gaussian({2, 2, testDim}, 2.0f, Device::CUDA);
   auto tCopy = t.createDeepCopy();
   tCopy.setDevice(Device::CPU);
 
@@ -262,12 +262,12 @@ TEST(CudaActivationTest, SoftmaxLarge) {
 }
 
 TEST(CudaAutogradTest, SoftmaxBackward) {
-  auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA, true);
+  auto t = tensorfunct::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, Device::CUDA, true);
 
   module::Softmax sm;
   auto resPtr = sm(t);
 
-  auto upstream = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 0.0, 0.0}, Device::CUDA);
+  auto upstream = tensorfunct::makeSharedTensor({1, 3}, {1.0, 0.0, 0.0}, Device::CUDA);
   resPtr->setGrads(upstream);
   resPtr->backward();
 
@@ -279,7 +279,7 @@ TEST(CudaAutogradTest, SoftmaxBackward) {
 
 TEST(CudaAutogradTest, SoftmaxBackwardBatched) {
   // 4 samples x 3 classes — exercises the one-block path with multiple strides
-  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({4, 3}, 1.0f, true));
+  auto tCpu = make_shared<Tensor>(tensorfunct::Gaussian({4, 3}, 1.0f, true));
   auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
   tGpu->setDevice(Device::CUDA);
 
@@ -303,7 +303,7 @@ TEST(CudaAutogradTest, SoftmaxBackwardBatched) {
 
 TEST(CudaLossTest, SoftmaxBackward64x10) {
   // stride=10 exercises the warp-level forward and one-block backward paths
-  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({64, 10}, 1.0f, true));
+  auto tCpu = make_shared<Tensor>(tensorfunct::Gaussian({64, 10}, 1.0f, true));
   auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
   tGpu->setDevice(Device::CUDA);
 
@@ -328,7 +328,7 @@ TEST(CudaLossTest, SoftmaxBackward64x10) {
 
 TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
   constexpr tensorDim_t testDim = 1300;
-  auto tCpu = make_shared<Tensor>(TensorFunctions::Gaussian({2, 2, testDim}, 2.0f, true));
+  auto tCpu = make_shared<Tensor>(tensorfunct::Gaussian({2, 2, testDim}, 2.0f, true));
   auto tGpu = make_shared<Tensor>(tCpu->createDeepCopy());
   tGpu->setDevice(Device::CUDA);
 
@@ -350,7 +350,7 @@ TEST(CudaAutogradTest, SoftmaxBackwardLarge) {
 }
 
 TEST(CudaLayerTest, TestFfLayer) {
-  auto t1 = TensorFunctions::Ones({3, 2}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({3, 2}, Device::CUDA);
   auto layer = module::FfLayer(2, 1, Device::CUDA);
 
   auto res = layer(t1);
@@ -360,7 +360,7 @@ TEST(CudaLayerTest, TestFfLayer) {
 
 TEST(CudaLayerTest, TestFfLayerLarge) {
   constexpr tensorDim_t largeDim = 200;
-  auto tCpu = TensorFunctions::Ones({30, largeDim});
+  auto tCpu = tensorfunct::Ones({30, largeDim});
 
   auto tGpu = tCpu.createDeepCopy();
   tGpu.setDevice(Device::CUDA);
@@ -379,7 +379,7 @@ TEST(CudaLayerTest, TestFfLayerLarge) {
 }
 
 TEST(CudaAutogradTest, FfLayerBackward) {
-  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+  auto x = tensorfunct::makeSharedTensor({2, 3}, {
     1.0, 1.0, 1.0,
     1.0, 1.0, 1.0
   }, Device::CUDA, true);
@@ -408,7 +408,7 @@ TEST(CudaAutogradTest, FfLayerBackward) {
 }
 
 TEST(CudaAutogradTest, FfLayerBackwardWithBias) {
-  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+  auto x = tensorfunct::makeSharedTensor({2, 3}, {
     1.0, 1.0, 1.0,
     1.0, 1.0, 1.0
   }, Device::CUDA, true);
@@ -443,7 +443,7 @@ TEST(CudaAutogradTest, FfLayerBackwardLarge) {
   constexpr tensorDim_t inDim = 200;
   constexpr tensorDim_t outDim = 10;
 
-  auto xCpu = make_shared<Tensor>(TensorFunctions::Gaussian({30, inDim}, 1.0f, true));
+  auto xCpu = make_shared<Tensor>(tensorfunct::Gaussian({30, inDim}, 1.0f, true));
   auto xGpu = make_shared<Tensor>(xCpu->createDeepCopy());
   xGpu->setDevice(Device::CUDA);
 
@@ -486,7 +486,7 @@ TEST(CudaAutogradTest, FfLayerBackwardWithBiasLarge) {
   constexpr tensorDim_t inDim = 200;
   constexpr tensorDim_t outDim = 10;
 
-  auto xCpu = make_shared<Tensor>(TensorFunctions::Gaussian({30, inDim}, 1.0f, true));
+  auto xCpu = make_shared<Tensor>(tensorfunct::Gaussian({30, inDim}, 1.0f, true));
   auto xGpu = make_shared<Tensor>(xCpu->createDeepCopy());
   xGpu->setDevice(Device::CUDA);
 

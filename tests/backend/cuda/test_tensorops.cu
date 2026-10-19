@@ -23,7 +23,7 @@ static_assert(false, "File should not be compiled without CUDA enabled");
 #include "computational_graph/tensor_ops/graph_creation.h"
 
 TEST(CudaTensorOpsTest, ScalarAdd) {
-  auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({500, 500}, Device::CUDA);
 
   auto res = t1 + 1.5;
   res.setDevice(Device::CPU);
@@ -37,7 +37,7 @@ TEST(CudaTensorOpsTest, ScalarAdd) {
 }
 
 TEST(CudaTensorOpsTest, ScalarMul) {
-  auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({500, 500}, Device::CUDA);
 
   constexpr ftype f = 2.5;
   auto res = t1 * f;
@@ -51,8 +51,8 @@ TEST(CudaTensorOpsTest, ScalarMul) {
 }
 
 TEST(CudaAutogradTest, ScalarMul) {
-  auto t1 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
-  auto t2 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
+  auto t1 = tensorfunct::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+  auto t2 = tensorfunct::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
 
   auto t3 = cgraph::mul(t1, t2);
   auto loss = cgraph::mul(t3, t3);
@@ -64,8 +64,8 @@ TEST(CudaAutogradTest, ScalarMul) {
 }
 
 TEST(CudaTensorOpsTest, TensorAdd) {
-  auto t1 = TensorFunctions::Ones({500, 500}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({500, 500}, Device::CUDA) * 4;
+  auto t1 = tensorfunct::Ones({500, 500}, Device::CUDA);
+  auto t2 = tensorfunct::Ones({500, 500}, Device::CUDA) * 4;
 
   auto res = t1 + t2;
   res.setDevice(Device::CPU);
@@ -80,8 +80,8 @@ TEST(CudaTensorOpsTest, TensorAdd) {
 
 TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
 #ifndef NDEBUG
-  auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 4;
+  auto t1 = tensorfunct::Ones({2, 2}, Device::CUDA);
+  auto t2 = tensorfunct::Ones({2, 3}, Device::CUDA) * 4;
 
   ASSERT_THROW(t1 + t2, std::invalid_argument);
 #else
@@ -90,8 +90,8 @@ TEST(CudaTensorOpsTest, TensorAddThrowsOnDimMismatch) {
 }
 
 TEST(CudaAutogradTest, TensorAdd) {
-  auto t1 = TensorFunctions::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
-  auto t2 = TensorFunctions::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
+  auto t1 = tensorfunct::makeSharedTensor({1}, {3.0}, Device::CUDA, true);
+  auto t2 = tensorfunct::makeSharedTensor({1}, {2.0}, Device::CUDA, true);
 
   auto t3 = cgraph::add(t1, t2);
   auto loss = cgraph::mul(t3, t3);
@@ -103,7 +103,7 @@ TEST(CudaAutogradTest, TensorAdd) {
 }
 
 TEST(CudaTensorOpsTest, BroadcastAdd) {
-  auto t1 = TensorFunctions::Ones({3, 2, 2}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({3, 2, 2}, Device::CUDA);
   auto t2 = Tensor({2}, {2, 3}, Device::CUDA);
 
   auto res = t1 + t2;
@@ -137,7 +137,7 @@ TEST(CudaTensorOpsTest, BroadcastAdd_2D) {
 
 TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
 #ifndef NDEBUG
-  auto t1 = TensorFunctions::Ones({3, 2, 2}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({3, 2, 2}, Device::CUDA);
   auto t2 = Tensor({2}, {2, 3}, Device::CUDA);
 
   ASSERT_THROW(t2 + t1, std::invalid_argument);
@@ -147,10 +147,10 @@ TEST(CudaTensorOpsTest, BroadcastAddNotCommutative) {
 }
 
 TEST(CudaAutogradTest, BroadcastAdd) {
-  auto t1 = TensorFunctions::makeSharedTensor({2, 3},
+  auto t1 = tensorfunct::makeSharedTensor({2, 3},
     {1.0, 2.0, 3.0,
      4.0, 5.0, 6.0}, Device::CUDA, true);
-  auto bias = TensorFunctions::makeSharedTensor({3},
+  auto bias = tensorfunct::makeSharedTensor({3},
     {0.0, 0.0, 0.0}, Device::CUDA, true);
 
   auto res = cgraph::add(t1, bias);
@@ -173,11 +173,11 @@ TEST(CudaAutogradTest, BroadcastAddLarge) {
   constexpr int dimsize = 1500;
 
   auto t1 = std::make_shared<Tensor>(
-    TensorFunctions::Gaussian({2, dimsize},
+    tensorfunct::Gaussian({2, dimsize},
       5.0, Device::CPU, true));
 
   auto bias = std::make_shared<Tensor>(
-    TensorFunctions::Gaussian({dimsize},
+    tensorfunct::Gaussian({dimsize},
       2.0, Device::CPU, true));
 
   auto t1Gpu = std::make_shared<Tensor>(t1->createDeepCopy());
@@ -206,8 +206,8 @@ TEST(CudaAutogradTest, BroadcastAddLarge) {
 }
 
 TEST(CudaTensorOpsTest, MatrixAdd) {
-  auto t1 = TensorFunctions::Ones({200, 200}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({200, 200}, Device::CUDA);
+  auto t1 = tensorfunct::Ones({200, 200}, Device::CUDA);
+  auto t2 = tensorfunct::Ones({200, 200}, Device::CUDA);
     
   auto res = t1 + t2;
   res.setDevice(Device::CPU);
@@ -222,8 +222,8 @@ TEST(CudaTensorOpsTest, MatrixAdd) {
 
 TEST(CudaTensorOpsTest, ElementwiseMul) {
   constexpr ftype factor = 0.5;
-  auto t1 = TensorFunctions::Ones({200, 200}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({200, 200}, Device::CUDA) * 0.5;
+  auto t1 = tensorfunct::Ones({200, 200}, Device::CUDA);
+  auto t2 = tensorfunct::Ones({200, 200}, Device::CUDA) * 0.5;
     
   auto res = t1 * t2;
   res.setDevice(Device::CPU);
@@ -236,8 +236,8 @@ TEST(CudaTensorOpsTest, ElementwiseMul) {
 }
 
 TEST(CudaTensorOpsTest, ElementwiseMulThrowsOnDimensionMismatch) {
-  auto t1 = TensorFunctions::Ones({2, 2}, Device::CUDA);
-  auto t2 = TensorFunctions::Ones({2, 3}, Device::CUDA) * 0.5;
+  auto t1 = tensorfunct::Ones({2, 2}, Device::CUDA);
+  auto t2 = tensorfunct::Ones({2, 3}, Device::CUDA) * 0.5;
     
   ASSERT_THROW(t1 * t2, std::invalid_argument);
 }
@@ -276,8 +276,8 @@ TEST(CudaTensorOpsTest, MatMul) {
 }
 
 TEST(CudaTensorOpsTest, MatMulLarge) {
-  auto t1 = TensorFunctions::Gaussian({1000, 10}, 2.0);
-  auto t2 = TensorFunctions::Gaussian({10, 1000}, 2.0);
+  auto t1 = tensorfunct::Gaussian({1000, 10}, 2.0);
+  auto t2 = tensorfunct::Gaussian({10, 1000}, 2.0);
   auto resCpu = t1.matmul(t2);
 
   t1.setDevice(Device::CUDA);
@@ -328,8 +328,8 @@ TEST(CudaTensorOpsTest, MatMulBatched) {
 }
 
 TEST(CudaTensorOpsTest, MatMulBatchedLarge) {
-  auto t1 = TensorFunctions::Gaussian({8, 64, 32}, 2.0);
-  auto t2 = TensorFunctions::Gaussian({8, 32, 48}, 2.0);
+  auto t1 = tensorfunct::Gaussian({8, 64, 32}, 2.0);
+  auto t2 = tensorfunct::Gaussian({8, 32, 48}, 2.0);
   auto resCpu = t1.matmul(t2);
 
   t1.setDevice(Device::CUDA);
@@ -354,8 +354,8 @@ TEST(CudaTensorOpsTest, MatMulBatchedLarge) {
 }
 
 TEST(CudaTensorOpsTest, MatMulTransposeLeft) {
-  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
-  auto B = TensorFunctions::Gaussian({4, 5}, 1.0);
+  auto A = tensorfunct::Gaussian({4, 3}, 1.0);
+  auto B = tensorfunct::Gaussian({4, 5}, 1.0);
   auto resCpu = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/false);
 
   auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
@@ -371,8 +371,8 @@ TEST(CudaTensorOpsTest, MatMulTransposeLeft) {
 }
 
 TEST(CudaTensorOpsTest, MatMulTransposeRight) {
-  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
-  auto B = TensorFunctions::Gaussian({5, 3}, 1.0);
+  auto A = tensorfunct::Gaussian({4, 3}, 1.0);
+  auto B = tensorfunct::Gaussian({5, 3}, 1.0);
   auto resCpu = A.matmul(B, /*transposeLeft=*/false, /*transposeRight=*/true);
 
   auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
@@ -388,8 +388,8 @@ TEST(CudaTensorOpsTest, MatMulTransposeRight) {
 }
 
 TEST(CudaTensorOpsTest, MatMulTransposeBoth) {
-  auto A = TensorFunctions::Gaussian({4, 3}, 1.0);
-  auto B = TensorFunctions::Gaussian({5, 4}, 1.0);
+  auto A = tensorfunct::Gaussian({4, 3}, 1.0);
+  auto B = tensorfunct::Gaussian({5, 4}, 1.0);
   auto resCpu = A.matmul(B, /*transposeLeft=*/true, /*transposeRight=*/true);
 
   auto AGpu = A.createDeepCopy(); AGpu.setDevice(Device::CUDA);
@@ -464,11 +464,11 @@ TEST(CudaAutogradTest, MatMul) {
 
   // init tensors
   auto t1 = std::make_shared<Tensor>(
-    TensorFunctions::Gaussian(
+    tensorfunct::Gaussian(
       {10, dimsize}, 2.0, Device::CPU, true));
 
   auto t2 = std::make_shared<Tensor>(
-    TensorFunctions::Gaussian(
+    tensorfunct::Gaussian(
       {dimsize, 10}, 2.0, Device::CPU, true));
 
   auto t1Gpu = std::make_shared<Tensor>(t1->createDeepCopy());
@@ -479,7 +479,7 @@ TEST(CudaAutogradTest, MatMul) {
   {
     // compute and take loss
     auto resCpu = cgraph::matmul(t1, t2, false, false);
-    auto lossCpu = TensorFunctions::makeSharedTensor(
+    auto lossCpu = tensorfunct::makeSharedTensor(
       {1}, {0.0}, Device::CPU, true);
     for(size_t i = 0; i < resCpu->getSize(); ++i) {
       lossCpu = cgraph::add(lossCpu, cgraph::get(resCpu, i));
@@ -489,7 +489,7 @@ TEST(CudaAutogradTest, MatMul) {
 
   {
     auto resGpu = cgraph::matmul(t1Gpu, t2Gpu, false, false);
-    auto lossGpu = TensorFunctions::makeSharedTensor(
+    auto lossGpu = tensorfunct::makeSharedTensor(
       {1}, {0.0}, Device::CUDA, true);
     for(size_t i = 0; i < resGpu->getSize(); ++i) {
       lossGpu = cgraph::add(lossGpu, cgraph::get(resGpu, i));
@@ -524,7 +524,7 @@ TEST(CudaAutogradTest, MatMul) {
 }
 
 TEST(CudaTensorOpsTest, MatrixTranspose1) {
-  auto t = TensorFunctions::Gaussian({200, 200}, 1.0, Device::CUDA);
+  auto t = tensorfunct::Gaussian({200, 200}, 1.0, Device::CUDA);
 
   auto transposed = t.createDeepCopy();
   transposed = transposed.transpose(-1, -2);
@@ -546,7 +546,7 @@ TEST(CudaTensorOpsTest, MatrixTranspose1) {
 
 // Swap first two dimensions.
 TEST(CudaTensorOpsTest, MatrixTranspose2) {
-  auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
+  auto t = tensorfunct::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, 1);
   transposed.setDevice(Device::CPU);
 
@@ -570,7 +570,7 @@ TEST(CudaTensorOpsTest, MatrixTranspose2) {
 
 // Swap first and last dimension.
 TEST(CudaTensorOpsTest, MatrixTranspose3) {
-  auto t = TensorFunctions::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
+  auto t = tensorfunct::Gaussian({10, 20, 200}, 1.0, Device::CUDA);
   auto transposed = t.createDeepCopy().transpose(0, -1);
   transposed.setDevice(Device::CPU);
 

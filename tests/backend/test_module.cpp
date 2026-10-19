@@ -26,7 +26,7 @@
 using namespace std;
 
 TEST(ActivationTest, ReluForward) {
-  auto t1 = TensorFunctions::Ones({3, 2});
+  auto t1 = tensorfunct::Ones({3, 2});
   auto f = module::ReLu();
 
   auto res = f(t1);
@@ -37,7 +37,7 @@ TEST(ActivationTest, ReluForward) {
 }
 
 TEST(ActivationTest, ReluInputNegative) {
-  auto t1 = TensorFunctions::Ones({3, 2}) * -1;
+  auto t1 = tensorfunct::Ones({3, 2}) * -1;
   auto f = module::ReLu();
 
   auto res = f(t1);
@@ -49,7 +49,7 @@ TEST(ActivationTest, ReluInputNegative) {
 }
 
 TEST(AutogradTest, ReLUBackward) {
-  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+  auto x = tensorfunct::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
   auto relu = module::ReLu();
 
   auto y = relu(x);    // [0, 0, 2]
@@ -64,7 +64,7 @@ TEST(AutogradTest, ReLUBackward) {
 }
 
 TEST(ActivationTest, LeakyReluForward) {
-  auto t1 = TensorFunctions::Ones({3, 2});
+  auto t1 = tensorfunct::Ones({3, 2});
 
   auto f = module::LeakyReLu(0.3);
   auto res = f(t1);
@@ -76,7 +76,7 @@ TEST(ActivationTest, LeakyReluForward) {
 
 TEST(ActivationTest, LeakyReluInputNegative) {
   constexpr ftype factor = -1;
-  auto t1 = TensorFunctions::Ones({3, 2}) * factor;
+  auto t1 = tensorfunct::Ones({3, 2}) * factor;
   
   constexpr ftype eps = 0.3;
   auto f = module::LeakyReLu(eps);
@@ -88,7 +88,7 @@ TEST(ActivationTest, LeakyReluInputNegative) {
 }
 
 TEST(AutogradTest, LeakyReLUBackward) {
-  auto x = TensorFunctions::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
+  auto x = tensorfunct::makeSharedTensor({3}, {-1.0, 0.0, 2.0}, true);
 
   constexpr ftype eps = 0.3;
   auto relu = module::LeakyReLu(eps);
@@ -144,7 +144,7 @@ TEST(AutogradTest, SigmoidBackward) {
   // grad of sigmoid = sigmoid(x) * (1 - sigmoid(x))
   // for x=0: grad = 0.5 * 0.5 = 0.25
   // for x=1: grad = 0.7311 * 0.2689 = 0.1966
-  auto t = TensorFunctions::makeSharedTensor(
+  auto t = tensorfunct::makeSharedTensor(
     {2}, {0.0, 1.0}, true);
 
   module::Sigmoid sig;
@@ -212,13 +212,13 @@ TEST(AutogradTest, SoftmaxBackward) {
   // grad[0] = 0.09   * (1 - 0.09)   =  0.0819
   // grad[1] = 0.2447 * (0 - 0.09)   = -0.0220
   // grad[2] = 0.6652 * (0 - 0.09)   = -0.0599
-  auto t = TensorFunctions::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, true);
+  auto t = tensorfunct::makeSharedTensor({1, 3}, {1.0, 2.0, 3.0}, true);
     
   module::Softmax sm;
   auto resPtr = sm(t);
     
   // set upstream gradient to [1, 0, 0]
-  auto upstream = TensorFunctions::makeSharedTensor(
+  auto upstream = tensorfunct::makeSharedTensor(
     {1, 3}, {1.0, 0.0, 0.0});
   resPtr->setGrads(upstream);
   resPtr->backward();
@@ -230,7 +230,7 @@ TEST(AutogradTest, SoftmaxBackward) {
 }
 
 TEST(LayerTest, TestFfLayer) {
-  auto t1 = TensorFunctions::Ones({3, 2});
+  auto t1 = tensorfunct::Ones({3, 2});
   auto layer = module::FfLayer(2, 1);
 
   auto res = layer(t1);
@@ -244,7 +244,7 @@ TEST(AutogradTest, FfLayerBackward) {
   // loss = sum(y), upstream = ones(2,2)
   // grad_x = upstream @ W^T = ones(2,2) @ ones(2,3) => all 2s
   // grad_W = x^T @ upstream = ones(3,2) @ ones(2,2) => all 2s
-  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+  auto x = tensorfunct::makeSharedTensor({2, 3}, {
     1.0, 1.0, 1.0,
     1.0, 1.0, 1.0
   }, true);
@@ -275,7 +275,7 @@ TEST(AutogradTest, FfLayerBackward) {
 TEST(AutogradTest, FfLayerBackwardWithBias) {
   // Same as above but with bias (initialised to zero by constructor).
   // grad_b = sum(upstream, axis=0) = [2, 2]
-  auto x = TensorFunctions::makeSharedTensor({2, 3}, {
+  auto x = tensorfunct::makeSharedTensor({2, 3}, {
     1.0, 1.0, 1.0,
     1.0, 1.0, 1.0
   }, true);

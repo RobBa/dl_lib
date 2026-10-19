@@ -33,6 +33,7 @@ class DLLIB_API Dimension final {
     std::shared_ptr< std::vector<tensorDim_t> > contiguousDims;
     std::shared_ptr<dim_t> contiguousStrides;
 
+    // the current logical dims
     std::vector<tensorDim_t> dims;
     dim_t strides;
 

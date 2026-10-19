@@ -59,43 +59,43 @@ namespace Py_DataModeling
   // need wrappers for default arguments, see
   // https://beta.boost.org/doc/libs/develop/libs/python/doc/html/tutorial/tutorial/functions.html
   inline auto OnesWrapper0(std::vector<tensorDim_t> dims) { 
-    return TensorFunctions::Ones(std::move(dims));
+    return tensorfunct::Ones(std::move(dims));
   }
 
   inline auto OnesWrapper1(std::vector<tensorDim_t> dims, Device d) { 
-    return TensorFunctions::Ones(std::move(dims), d);
+    return tensorfunct::Ones(std::move(dims), d);
   }
 
   inline auto ZerosWrapper0(std::vector<tensorDim_t> dims) { 
-    return TensorFunctions::Zeros(std::move(dims));
+    return tensorfunct::Zeros(std::move(dims));
   }
 
   inline auto ZerosWrapper1(std::vector<tensorDim_t> dims, Device d) { 
-    return TensorFunctions::Zeros(std::move(dims), d);
+    return tensorfunct::Zeros(std::move(dims), d);
   }
 
   inline auto GaussianWrapper0(std::vector<tensorDim_t> dims, ftype stddev) { 
-    return TensorFunctions::Gaussian(std::move(dims), stddev);
+    return tensorfunct::Gaussian(std::move(dims), stddev);
   }
 
   inline auto GaussianWrapper1(std::vector<tensorDim_t> dims, ftype stddev, Device d) { 
-    return TensorFunctions::Gaussian(std::move(dims), stddev, d);
+    return tensorfunct::Gaussian(std::move(dims), stddev, d);
   }
 
   inline Tensor    (*Ones0)(std::vector<tensorDim_t>)                                             = &OnesWrapper0;
   inline Tensor    (*Ones1)(std::vector<tensorDim_t>, Device)                                     = &OnesWrapper1;
-  inline Tensor    (*Ones2)(std::vector<tensorDim_t>, const bool)                                 = &(TensorFunctions::Ones);
-  inline Tensor    (*Ones3)(std::vector<tensorDim_t>, Device, const bool)                         = &(TensorFunctions::Ones);
+  inline Tensor    (*Ones2)(std::vector<tensorDim_t>, const bool)                                 = &(tensorfunct::Ones);
+  inline Tensor    (*Ones3)(std::vector<tensorDim_t>, Device, const bool)                         = &(tensorfunct::Ones);
 
   inline Tensor    (*Zeros0)(std::vector<tensorDim_t>)                                            = &ZerosWrapper0;
   inline Tensor    (*Zeros1)(std::vector<tensorDim_t>, Device)                                    = &ZerosWrapper1;
-  inline Tensor    (*Zeros2)(std::vector<tensorDim_t>, const bool)                                = &(TensorFunctions::Zeros);
-  inline Tensor    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)                        = &(TensorFunctions::Zeros);
+  inline Tensor    (*Zeros2)(std::vector<tensorDim_t>, const bool)                                = &(tensorfunct::Zeros);
+  inline Tensor    (*Zeros3)(std::vector<tensorDim_t>, Device, const bool)                        = &(tensorfunct::Zeros);
 
   inline Tensor    (*Gaussian0)(std::vector<tensorDim_t>, ftype)                                  = &GaussianWrapper0;
   inline Tensor    (*Gaussian1)(std::vector<tensorDim_t>, ftype, Device)                          = &GaussianWrapper1;
-  inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, ftype, const bool)                      = &(TensorFunctions::Gaussian);
-  inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, ftype, Device, const bool)              = &(TensorFunctions::Gaussian);
+  inline Tensor    (*Gaussian2)(std::vector<tensorDim_t>, ftype, const bool)                      = &(tensorfunct::Gaussian);
+  inline Tensor    (*Gaussian3)(std::vector<tensorDim_t>, ftype, Device, const bool)              = &(tensorfunct::Gaussian);
 
   inline void    (Tensor::*reset1)(const ftype)                                                   = &Tensor::reset;
   inline void    (Tensor::*reset2)(const std::shared_ptr<utility::InitializerBase>)               = &Tensor::reset;
