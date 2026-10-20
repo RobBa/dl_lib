@@ -92,6 +92,35 @@ class TestAutograd:
     # At x=2: 2(4 + 2) * (4 + 1) = 2 * 6 * 5 = 60
     assert x.grads.getitem(0) == pytest.approx(60.0)
 
+  def test_concat_backward_routes_grads_to_correct_parent(self):
+    a = Tensor([2], [1.0, 2.0], True)
+    b = Tensor([2], [3.0, 4.0], True)
+    c = Tensor.concat([a, b], 0)
+    w = Tensor([4], [10.0, 20.0, 30.0, 40.0], False)
+
+    loss = (c * w).sum()
+    loss.backward()
+
+    # dloss/dc = w, split back to the segment each parent contributed
+    assert a.grads.getitem(0) == pytest.approx(10.0)
+    assert a.grads.getitem(1) == pytest.approx(20.0)
+    assert b.grads.getitem(0) == pytest.approx(30.0)
+    assert b.grads.getitem(1) == pytest.approx(40.0)
+
+  def test_concat_requires_grad_propagation(self):
+    a = Tensor([2], [1.0, 2.0], True)
+    b = Tensor([2], [3.0, 4.0], False)
+    c = Tensor.concat([a, b], 0)
+
+    assert c.requiresGrad
+
+    loss = c.sum()
+    loss.backward()
+
+    assert a.grads.getitem(0) == pytest.approx(1.0)
+    assert a.grads.getitem(1) == pytest.approx(1.0)
+    assert b.grads is None
+
   def test_multivariate_chainrule(self):
     x = Tensor([2], [1.0, 2.0], True)
     y = x * 3

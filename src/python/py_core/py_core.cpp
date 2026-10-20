@@ -164,6 +164,12 @@ BOOST_PYTHON_MODULE(_core)
   // to convert std::shared_ptr<const Tensor> to std::shared_ptr<Tensor>> in Python
   boost::python::register_ptr_to_python< std::shared_ptr<const Tensor> >();
 
+  // needed for concat)
+  boost::python::converter::registry::push_back(
+    &custom_converters::TensorListFromPython::convertible,
+    &custom_converters::TensorListFromPython::construct,
+    boost::python::type_id<std::vector<std::shared_ptr<Tensor>>>());
+
   // we manage via shared_ptr, since we deleted copy-ctor
   class_<Tensor, std::shared_ptr<Tensor>, boost::noncopyable>("Tensor", no_init)
     .def(init<const std::vector<tensorDim_t>&, optional<bool> >())
@@ -189,6 +195,11 @@ BOOST_PYTHON_MODULE(_core)
     .def("gauss", WRAP_FREE_FUNC_3(Py_DataModeling::Gaussian1, std::vector<tensorDim_t>, ftype, Device))
     .def("gauss", WRAP_FREE_FUNC_8(Py_DataModeling::Gaussian3, std::vector<tensorDim_t>, ftype, Device, const bool))
     .staticmethod("gauss")
+
+    .def("concat", +[](const std::vector<std::shared_ptr<Tensor>>& input, int dim) -> std::shared_ptr<Tensor> {
+        return tensorfunct::concat(input, dim);
+      })
+    .staticmethod("concat")
 
     // properties
     .add_property("device", &Tensor::getDevice, &Tensor::setDevice)
