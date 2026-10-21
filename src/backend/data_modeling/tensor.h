@@ -161,8 +161,6 @@ private:
                           tensorSize_t rightOffset);
 #endif
 
-  void makeContiguous() const;
-
   /**
    * @brief Computes the 1D index from a set of indices.
    *
@@ -289,6 +287,8 @@ public:
     return *this;
   }
 
+  void makeContiguous() const;
+  
   void reset(ftype x) noexcept;
   void reset(std::shared_ptr<utility::InitializerBase> init) noexcept;
 
@@ -300,7 +300,7 @@ public:
    * physical transpose in memory before the computation. Transposition done on the last two
    * dimensions, the dimensions the matmul is executed on.
    * 
-   * TODO: Tensor operator@(const Tensor& other) const; in higher C++ versions than 20
+   * TODO: Tensor operator@(const Tensor& other) const; in C++ versions >= 20
    */
   Tensor matmul(const Tensor& other, bool transposeLeft = false, bool transposeRight = false) const {
   #ifndef NDEBUG

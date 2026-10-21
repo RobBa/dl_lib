@@ -197,7 +197,7 @@ BOOST_PYTHON_MODULE(_core)
     .staticmethod("gauss")
 
     .def("concat", +[](const std::vector<std::shared_ptr<Tensor>>& input, int dim) -> std::shared_ptr<Tensor> {
-        return tensorfunct::concat(input, dim);
+        return cgraph::concat(input, dim);
       })
     .staticmethod("concat")
 

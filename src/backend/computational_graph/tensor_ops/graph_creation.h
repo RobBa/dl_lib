@@ -24,7 +24,9 @@
 
 namespace cgraph {
 
-  // Arithmetic operations
+  // **********************************************************************************************************************
+  // ***************************************** Arithmetic operations ******************************************************
+  // **********************************************************************************************************************
 
   inline std::shared_ptr<Tensor> mul(const std::shared_ptr<Tensor> left, const std::shared_ptr<Tensor> right) {
     auto res = std::make_shared<Tensor>((*left) * (*right));
@@ -99,7 +101,9 @@ namespace cgraph {
     return res;
   }
 
-  // Getter methods — keep the computational graph intact for indexing operations
+  // *************************************************************************************************************
+  // **************** Getter methods — keep the computational graph intact for indexing operations ***************
+  // *************************************************************************************************************
 
   inline std::shared_ptr<Tensor> get(const std::shared_ptr<Tensor>& t, tensorSize_t idx) {
     ftype val = t->get(idx);
@@ -123,7 +127,9 @@ namespace cgraph {
     return res;
   }
 
-  // Composite operations
+  // ****************************************************************************************************************
+  // ************************************** Composite operations ****************************************************
+  // ****************************************************************************************************************
 
   inline std::shared_ptr<Tensor> sumTensor(const std::shared_ptr<Tensor> t) {
     auto res = std::make_shared<Tensor>(std::vector<tensorDim_t>{1}, std::vector<ftype>{0.0},
@@ -133,4 +139,8 @@ namespace cgraph {
     }
     return res;
   }
+
+  DLLIB_API std::shared_ptr<Tensor> concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim);
 }
+
+  

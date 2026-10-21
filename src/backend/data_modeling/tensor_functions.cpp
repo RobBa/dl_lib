@@ -79,7 +79,7 @@ shared_ptr<Tensor> tensorfunct::makeSharedTensor(const vector<tensorDim_t>& dims
 
 namespace {
   // For the two concats. asserts that the dimensionality requirements described in the description of the functions
-  auto assertDims = [](const std::vector<tensorDim_t>& left, const Dimension& right, const int dim) {
+  void assertDims(const std::vector<tensorDim_t>& left, const Dimension& right, const int dim) {
     if(left.size() != right.nDims()) {
       throw std::invalid_argument("Dimensions do not match in concat");
     }
@@ -94,20 +94,64 @@ namespace {
     }
   };
 
-  // copies the contents of dst tensor into target
-  auto copyValues = [](Tensor& target, const Tensor& source, const tensorSize_t idx) {
-    assert(target.getDevice() == source.getDevice());
+  /**
+   * @brief Copies the contents of source tensor into target, as specified by the dimension.
+   * 
+   * @param target The target where we copy into, i.e. the concatenated tensor.
+   * @param source The current source to be concatenated against target.
+   * @param dim The dimension which we want to concatenate.
+   * @param subArrSize The size of the sub-array in source that we want to copy.
+   * @param targetDimOffset Where in the concatenated dim do we copy the values of source?
+   * 
+   * Understanding targetDimOffset: Say we concatenate two tensors of dimensionalities (2, 3, 4) and (2, 5, 4) 
+   * along dimension 1, which is has dimensionalities 3 and 4. At first we create a target tensor with res dims
+   * (2, 8, 4) in the outer calling functions, see concat(). Then we first copy tensor with dims (2, 3, 4), where 
+   * targetDimOffset is 0, since we copy every value directly at the start of every offset of dimension 1. Copying
+   * the second tensor however we to copy the values into the respective bins. Each bin of dim 1 has 4 values, and 
+   * the first tensor has 3 of them, hence the first value of the second tensor goes into index 12 within the second 
+   * dimensions of the target tensor. A third concatenated tensor would have a larger offset and so on...
+   */
+  void copyValues(Tensor& target, const Tensor* const srcValues, const tensorSize_t sourceSize, const tensorSize_t dim, 
+                  const tensorSize_t subArrSize, const tensorSize_t targetDimOffset) {
+    assert(dim > 0); // for dim == 0 choose appendValues()
 
-    auto tgtValues = target.data() + idx;
-    const auto srcValues = source.data();
+    const auto nCopies = sourceSize / subArrSize;
+    const auto targetDimSize = target.getDims().get(dim - 1);
+    
+    auto tgtValues = target.data();
 
-    switch(source.getDevice()) {
+    switch(target.getDevice()) {
       case Device::CPU:
-        std::memcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype));
+        for(int i = 0; i < nCopies; i++) {
+          std::memcpy(tgtValues + i * targetDimSize + targetDimOffset, srcValues + i * subArrSize, subArrSize * sizeof(ftype));
+        }
         break;
       case Device::CUDA:
       #ifdef __CUDA
-        cudaErrchk(cudaMemcpy(tgtValues, srcValues, source.getSize() * sizeof(ftype), cudaMemcpyDeviceToDevice));
+        for(int i = 0; i < nCopies; i++) {
+          cudaErrchk(cudaMemcpy(tgtValues + i * targetDimSize + targetDimOffset, srcValues + i * subArrSize, 
+                                subArrSize * sizeof(ftype), cudaMemcpyDeviceToDevice));
+        }
+        break;
+      #else 
+        throw runtime_error("Received CUDA tensor in non-CUDA compiled version.");
+      #endif
+        break;
+      default:
+        __throw_invalid_argument("Encountered unexpected device");
+    }
+  };
+
+  void appendValues(Tensor& target, const Tensor* const srcValues, const tensorSize_t sourceSize, const tensorSize_t targetOffset) {
+    auto tgtValues = target.data() + targetOffset;
+
+    switch(target.getDevice()) {
+      case Device::CPU:
+        std::memcpy(tgtValues, srcValues, sourceSize * sizeof(ftype));
+        break;
+      case Device::CUDA:
+      #ifdef __CUDA
+        cudaErrchk(cudaMemcpy(tgtValues, srcValues, sourceSize * sizeof(ftype), cudaMemcpyDeviceToDevice));
       #else 
         throw runtime_error("Received CUDA tensor in non-CUDA compiled version.");
       #endif
@@ -119,65 +163,76 @@ namespace {
 }
 
 /**
- * @brief Concatenates the tensors along specified dimension.
+ * @brief Implementation of the relevant concat()-overloads. 
  * 
  * Two vectors of sizes [dim11, dim12, ..., dim1n] and [dim21, dim22, ..., dim2n] can be 
  * concatenated along dimension dimx only iff pairs [dim11, dim21], ..., [dim1n, dim2n]
  * are the same except dimx (i.e. [dim1x, dim2x] are allowed to be different).
  * 
  * The result has dimensionality [dim11, dim12, ... (dim1x + dim2x + ...), ..., dim1n].
+ * 
+ * Operation works in three steps: 
+ * 1. Determine offset in target array that we need to copy in. 
+ * 2. Determine the size of each sub-array we need to copy into result.
+ * 3. Copy values into target.
  */
-Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
+Tensor tensorfunct::concatImpl(std::span<const Tensor* const> input, int dim) {
   assert(input.size() > 0);
 
-  vector<tensorDim_t> resDims = input.at(0).getDims().toVector();
-
+  // compute the dimensions of the result
+  vector<tensorDim_t> resDims = input[0]->getDims().toVector();
   if(dim < 0) {
     dim += resDims.size();
   }
 
   for(int i = 1; i < input.size(); i++) {
-    const auto& rightDims = input.at(i).getDims();
+    const auto& rightDims = input[i]->getDims();
     assertDims(resDims, rightDims, dim);
     resDims[dim] += rightDims.get(dim);
   }
 
-  auto res = Tensor(std::move(resDims), input.at(0).getDevice());
-  tensorSize_t currSize = 0;
-  for(const auto& t : input) {
-    copyValues(res, t, currSize);
-    currSize += t.getSize();
+  auto res = Tensor(std::move(resDims), input[0]->getDevice());
+
+  if(dim > 0) [[likely]] {
+    tensorSize_t targetDimOffset = 0;
+    for(const Tensor* const src : input) {
+      assert(target.getDevice() == src->getDevice());
+
+      // the size of each dimension when concatenating
+      const auto subArrSize = src->getDims().getStride(dim - 1);
+
+      src->makeContiguous();
+      copyValues(res, src, src->getSize(), dim, subArrSize, targetDimOffset);
+
+      targetDimOffset += subArrSize;
+    }
+  }
+  else [[unlikely]] { // simplifies to appending the arrays one after the other
+    tensorSize_t tgtOffset = res.getDims().getStride(dim); // offset in target that we append to
+    
+    for(auto& src : input) {
+      assert(target.getDevice() == src->getDevice());
+
+      src->makeContiguous();
+      appendValues(res, src, src->getSize(), tgtOffset);
+      tgtOffset += src->getSize();
+    }
   }
 
   return res;
 }
 
 /**
- * @brief Concatenates the tensors along specified dimension. Autograd possible.
+ * @brief Concatenates the tensors along specified dimension.
  */
-std::shared_ptr<Tensor> tensorfunct::concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim) {
-  assert(input.size() > 0);
+Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
+    std::vector<const Tensor*> ptrs;
+    ptrs.reserve(input.size());
 
-  vector<tensorDim_t> resDims = input.at(0)->getDims().toVector();
-
-  if(dim < 0) {
-    dim += resDims.size();
-  }
-
-  for(int i = 1; i < input.size(); i++) {
-    const auto& rightDims = input.at(i)->getDims();
-    assertDims(resDims, rightDims, dim);
-    resDims[dim] += rightDims.get(dim);
-  }
-
-  auto res = make_shared<Tensor>(std::move(resDims), input.at(0)->getDevice());
-  tensorSize_t currSize = 0;
-  for(const auto& t : input) {
-    copyValues(*res, *t, currSize);
-    currSize += t->getSize();
-  }
-
-  return res;
+    for (const auto& t : input) {
+      ptrs.push_back(&t);
+    }
+    return concatImpl(ptrs, dim);
 }
 
 void tensorfunct::ToZeros(Tensor& t) noexcept {

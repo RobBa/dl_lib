@@ -16,6 +16,7 @@
 #include "shared/initializers.h"
 #include "utility/utils.h"
 
+#include <span>
 #include <utility>
 
 /**
@@ -53,8 +54,8 @@ namespace tensorfunct { // class name acts as namespace for us
   DLLIB_API void ToOnes(Tensor& t) noexcept;
   DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
 
+  DLLIB_API inline Tensor concatImpl(std::span<const Tensor* const> input, int dim); // not to be exposed to frontend
   DLLIB_API Tensor concat(const std::vector<Tensor>& input, int dim);
-  DLLIB_API std::shared_ptr<Tensor> concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim);
 
   // Arithmetics
   DLLIB_API Tensor SumOverDims(const Tensor& t, tensorDim_t dim=0); // default 0 for batch-size

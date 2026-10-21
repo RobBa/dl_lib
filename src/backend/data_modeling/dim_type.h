@@ -54,9 +54,14 @@ class DLLIB_API Dimension final {
       return res;
     }
 
-    dim_t makeStrides(const std::vector<tensorDim_t>& dims) const noexcept {
+    /**
+     * @brief Compute strides from dimensions. A tensor of dimensionality (2, 3, 4) has the 
+     * following strides: [3 * 4 = 12, 4 * 1 = 4, 1]
+     * The last dimension always has dimensionality 1.
+     */
+    static dim_t makeStrides(const std::vector<tensorDim_t>& dims) noexcept {
       dim_t res;
-      const int lastDimIdx = dims.size() - 1;
+      const int lastDimIdx = dims.size() - 1; // TODO: remove this line and fall back to the attribute
       tensorSize_t stride = 1;
       res[lastDimIdx] = stride;
       stride *= dims[lastDimIdx];
@@ -161,8 +166,9 @@ class DLLIB_API Dimension final {
     const auto getContiguousStrides() const noexcept { return contiguousStrides; }
 
     tensorSize_t getStride(int i) const noexcept {
-      if(i < 0)
+      if(i < 0) {
         return strides[lastDimIdx + i + 1];
+      }
       return strides[i];
     }
 
