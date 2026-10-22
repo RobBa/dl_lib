@@ -111,13 +111,13 @@ namespace {
    * the first tensor has 3 of them, hence the first value of the second tensor goes into index 12 within the second 
    * dimensions of the target tensor. A third concatenated tensor would have a larger offset and so on...
    */
-  void copyValues(Tensor& target, const Tensor* const srcValues, const tensorSize_t sourceSize, const tensorSize_t dim, 
+  void copyValues(Tensor& target, const ftype* const srcValues, const tensorSize_t sourceSize, const tensorSize_t dim,
                   const tensorSize_t subArrSize, const tensorSize_t targetDimOffset) {
     assert(dim > 0); // for dim == 0 choose appendValues()
 
     const auto nCopies = sourceSize / subArrSize;
-    const auto targetDimSize = target.getDims().get(dim - 1);
-    
+    const auto targetDimSize = target.getDims().getStride(dim - 1);
+
     auto tgtValues = target.data();
 
     switch(target.getDevice()) {
@@ -142,7 +142,7 @@ namespace {
     }
   };
 
-  void appendValues(Tensor& target, const Tensor* const srcValues, const tensorSize_t sourceSize, const tensorSize_t targetOffset) {
+  void appendValues(Tensor& target, const ftype* const srcValues, const tensorSize_t sourceSize, const tensorSize_t targetOffset) {
     auto tgtValues = target.data() + targetOffset;
 
     switch(target.getDevice()) {
@@ -196,25 +196,25 @@ Tensor tensorfunct::concatImpl(std::span<const Tensor* const> input, int dim) {
   if(dim > 0) [[likely]] {
     tensorSize_t targetDimOffset = 0;
     for(const Tensor* const src : input) {
-      assert(target.getDevice() == src->getDevice());
+      assert(res.getDevice() == src->getDevice());
 
       // the size of each dimension when concatenating
       const auto subArrSize = src->getDims().getStride(dim - 1);
 
       src->makeContiguous();
-      copyValues(res, src, src->getSize(), dim, subArrSize, targetDimOffset);
+      copyValues(res, src->data(), src->getSize(), dim, subArrSize, targetDimOffset);
 
       targetDimOffset += subArrSize;
     }
   }
   else [[unlikely]] { // simplifies to appending the arrays one after the other
-    tensorSize_t tgtOffset = res.getDims().getStride(dim); // offset in target that we append to
-    
+    tensorSize_t tgtOffset = 0; // offset in target that we append to
+
     for(auto& src : input) {
-      assert(target.getDevice() == src->getDevice());
+      assert(res.getDevice() == src->getDevice());
 
       src->makeContiguous();
-      appendValues(res, src, src->getSize(), tgtOffset);
+      appendValues(res, src->data(), src->getSize(), tgtOffset);
       tgtOffset += src->getSize();
     }
   }

@@ -54,7 +54,7 @@ namespace tensorfunct { // class name acts as namespace for us
   DLLIB_API void ToOnes(Tensor& t) noexcept;
   DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
 
-  DLLIB_API inline Tensor concatImpl(std::span<const Tensor* const> input, int dim); // not to be exposed to frontend
+  Tensor concatImpl(std::span<const Tensor* const> input, int dim); // internal-only, do not expose to outside of BE
   DLLIB_API Tensor concat(const std::vector<Tensor>& input, int dim);
 
   // Arithmetics
