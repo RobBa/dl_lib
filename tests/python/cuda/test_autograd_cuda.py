@@ -120,6 +120,53 @@ class TestAutogradCuda:
     assert a.grads.getitem(1) == pytest.approx(1.0, abs=1e-4)
     assert b.grads is None
 
+  def test_concat_backward_dim1_routes_grads_to_correct_region(self):
+    # a occupies columns [0:2] of c, b occupies columns [2:5]. dloss/dc == w
+    # (elementwise-mul then sum), so backward must split w by COLUMN, not
+    # by flat offset, to route the right values back to each parent.
+    a = Tensor([2, 2], [1.0, 2.0, 3.0, 4.0], Device.CUDA, True)
+    b = Tensor([2, 3], [10.0, 20.0, 30.0, 40.0, 50.0, 60.0], Device.CUDA, True)
+    c = Tensor.concat([a, b], 1)
+    w = Tensor([2, 5], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], Device.CUDA, False)
+
+    loss = (c * w).sum()
+    loss.backward()
+
+    assert a.grads.getitem([0, 0]) == pytest.approx(1.0, abs=1e-4)
+    assert a.grads.getitem([0, 1]) == pytest.approx(2.0, abs=1e-4)
+    assert a.grads.getitem([1, 0]) == pytest.approx(6.0, abs=1e-4)
+    assert a.grads.getitem([1, 1]) == pytest.approx(7.0, abs=1e-4)
+
+    assert b.grads.getitem([0, 0]) == pytest.approx(3.0, abs=1e-4)
+    assert b.grads.getitem([0, 1]) == pytest.approx(4.0, abs=1e-4)
+    assert b.grads.getitem([0, 2]) == pytest.approx(5.0, abs=1e-4)
+    assert b.grads.getitem([1, 0]) == pytest.approx(8.0, abs=1e-4)
+    assert b.grads.getitem([1, 1]) == pytest.approx(9.0, abs=1e-4)
+    assert b.grads.getitem([1, 2]) == pytest.approx(10.0, abs=1e-4)
+
+  def test_concat_backward_negative_dim_3d(self):
+    # Same column split as above, but along a negative (last-axis) dim and
+    # with an extra leading dimension, to check dim-normalization in backward.
+    a = Tensor([1, 2, 2], [1.0, 2.0, 3.0, 4.0], Device.CUDA, True)
+    b = Tensor([1, 2, 3], [10.0, 20.0, 30.0, 40.0, 50.0, 60.0], Device.CUDA, True)
+    c = Tensor.concat([a, b], -1)
+    w = Tensor([1, 2, 5], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], Device.CUDA, False)
+
+    loss = (c * w).sum()
+    loss.backward()
+
+    assert a.grads.getitem([0, 0, 0]) == pytest.approx(1.0, abs=1e-4)
+    assert a.grads.getitem([0, 0, 1]) == pytest.approx(2.0, abs=1e-4)
+    assert a.grads.getitem([0, 1, 0]) == pytest.approx(6.0, abs=1e-4)
+    assert a.grads.getitem([0, 1, 1]) == pytest.approx(7.0, abs=1e-4)
+
+    assert b.grads.getitem([0, 0, 0]) == pytest.approx(3.0, abs=1e-4)
+    assert b.grads.getitem([0, 0, 1]) == pytest.approx(4.0, abs=1e-4)
+    assert b.grads.getitem([0, 0, 2]) == pytest.approx(5.0, abs=1e-4)
+    assert b.grads.getitem([0, 1, 0]) == pytest.approx(8.0, abs=1e-4)
+    assert b.grads.getitem([0, 1, 1]) == pytest.approx(9.0, abs=1e-4)
+    assert b.grads.getitem([0, 1, 2]) == pytest.approx(10.0, abs=1e-4)
+
   def test_multivariate_chainrule(self):
     x = Tensor([2], [1.0, 2.0], Device.CUDA, True)
     y = x * 3
