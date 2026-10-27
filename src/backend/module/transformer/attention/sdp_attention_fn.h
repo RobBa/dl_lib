@@ -15,7 +15,7 @@
 
 namespace module {
   namespace transformer {
-    /** 
+    /**
      * Scaled-dot production self attention.
      */
     class SdpAttentionFn : public SelfAttentionFnBase {

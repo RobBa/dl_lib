@@ -82,12 +82,14 @@ if(CUDA AND CMAKE_CUDA_COMPILER)
   endif()
 endif()
 
-# Static variant — only built when benchmarks request it, to avoid double
-# compilation in normal builds.
-if(BUILD_BENCHMARKS)
+# Static variant — only built when benchmarks or tests request it, to avoid double
+# compilation in normal builds. tests link against lib to test internals better
+if(BUILD_BENCHMARKS OR BUILD_TESTS)
   add_library(BackendCoreStatic STATIC ${CORE_SOURCES})
   configure_backend_target(BackendCoreStatic)
+endif()
 
+if(BUILD_BENCHMARKS)
   # Benchmarks link the prebuilt (non-_GLIBCXX_DEBUG) system libbenchmark, so this
   # variant must not use debug-STL types either, or their ABIs won't match at the link step.
   target_compile_options(BackendCoreStatic PRIVATE -U_GLIBCXX_DEBUG)

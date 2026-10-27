@@ -16,11 +16,12 @@ add_executable(unit_tests_backend
   backend/test_computational_graph.cpp
   backend/test_training.cpp
   backend/test_shared.cpp
+  backend/test_transformers.cpp
   )
 
 target_link_libraries(unit_tests_backend PRIVATE
-  gtest  
-  BackendCore
+  gtest
+  BackendCoreStatic
 )
 
 include(GoogleTest)
@@ -34,7 +35,7 @@ if(CUDA AND CMAKE_CUDA_COMPILER)
   target_link_libraries(unit_tests_cuda PRIVATE
     gtest
     Threads::Threads # platform agnostic
-    BackendCore
+    BackendCoreStatic
     CUDA::cudart
   )
 

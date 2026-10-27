@@ -10,8 +10,10 @@
  */
 
 #include "multihead_self_attention.h"
-
 #include "module/transformer/attention/sdp_attention_fn.h"
+
+#include "data_modeling/tensor_functions.h"
+#include "computational_graph/tensor_ops/graph_creation.h"
 
 #include <stdexcept>
 
@@ -61,12 +63,26 @@ MultiheadSelfAttn::MultiheadSelfAttn(SelfAttentionType attnType, tensorDim_t nHe
  * @brief Forward of all heads, returns concatenated output.
  */
 Tensor MultiheadSelfAttn::operator()(const Tensor& input, MaskType mask) {
-  
+  vector<Tensor> outputs;
+  outputs.reserve(heads.size());
+
+  for(auto& h : heads) {
+    outputs.emplace_back(h(input, mask));
+  }
+
+  return tensorfunct::concat(outputs, -1);
 }
 
 /**
  * @brief Forward of all heads, returns concatenated output.
  */
 std::shared_ptr<Tensor> MultiheadSelfAttn::operator()(std::shared_ptr<Tensor> input, MaskType mask) {
+  vector<shared_ptr<Tensor>> outputs;
+  outputs.reserve(heads.size());
 
+  for(auto& h : heads) {
+    outputs.emplace_back(h(input, mask));
+  }
+
+  return cgraph::concat(outputs, -1);
 }
