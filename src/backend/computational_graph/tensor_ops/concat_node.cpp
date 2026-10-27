@@ -62,29 +62,31 @@ std::vector<std::shared_ptr<Tensor>> ConcatNode::backward(const Tensor& upstream
   res.reserve(parents.size());
 
   if(dim > 0) [[likely]] {
-    const auto srcDimSize = upstreamGrad.getDims().get(dim - 1);
+    const auto srcDimSize = upstreamGrad.getDims().getStride(dim - 1);
 
     tensorSize_t upstreamGradOffset = 0; // similar to forward pass
     for(const auto& p : parents) {
       assert(p->getRequiresGrad() && p->getDevice() == upstreamGrad.getDevice()); // device check can circumvented by updating copy-function
 
-      const auto& dims = p->getDims();
-      auto grad = make_shared<Tensor>(p->getDims(), p->getDevice());
-      const auto tgtDimSize = dims.getStride(dim - 1);
+      const auto& tgtDims = p->getDims();
+      auto grad = make_shared<Tensor>(tgtDims, p->getDevice());
+      const auto tgtDimSize = tgtDims.getStride(dim - 1);
 
-      copyValues(*grad, upstreamGrad.data(), upstreamGrad.getDevice(), upstreamGradOffset, tgtDimSize, srcDimSize);
+      copyValues(*grad, upstreamGrad.data(), upstreamGrad.getDevice(), upstreamGradOffset, srcDimSize, tgtDimSize);
       res.push_back(std::move(grad));
-      
+
       upstreamGradOffset += tgtDimSize;
     }
   }
   else [[unlikely]] {
-    // use createView here
+    tensorSize_t upstreamGradOffset = 0; // similar to forward pass
+    for(const auto& p : parents) {
+      assert(p->getRequiresGrad() && p->getDevice() == upstreamGrad.getDevice());
 
-    // res.emplace_back(make_shared<Tensor>(upstreamGrad.createView(p->getDims(), currSize)));
-    // currSize += p->getSize();
+      res.emplace_back(make_shared<Tensor>(upstreamGrad.createView(p->getDims(), upstreamGradOffset)));
+      upstreamGradOffset += p->getSize();
+    }
   }
-
 
   return res;
 }
