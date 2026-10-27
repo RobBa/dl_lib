@@ -10,6 +10,7 @@
  */
 
 #include "tensor_functions.h"
+#include "shared/initializers.h"
 
 #include <cstring>
 
@@ -132,7 +133,6 @@ namespace {
           cudaErrchk(cudaMemcpy(tgtValues + i * targetDimSize + targetDimOffset, srcValues + i * subArrSize, 
                                 subArrSize * sizeof(ftype), cudaMemcpyDeviceToDevice));
         }
-        break;
       #else 
         throw runtime_error("Received CUDA tensor in non-CUDA compiled version.");
       #endif
@@ -176,15 +176,11 @@ namespace {
  * 2. Determine the size of each sub-array we need to copy into result.
  * 3. Copy values into target.
  */
-Tensor tensorfunct::concatImpl(std::span<const Tensor* const> input, int dim) {
+Tensor tensorfunct::concatImpl(std::span<const Tensor* const> input, const tensorDim_t dim) {
   assert(input.size() > 0);
 
   // compute the dimensions of the result
   vector<tensorDim_t> resDims = input[0]->getDims().toVector();
-  if(dim < 0) {
-    dim += resDims.size();
-  }
-
   for(int i = 1; i < input.size(); i++) {
     const auto& rightDims = input[i]->getDims();
     assertDims(resDims, rightDims, dim);
@@ -226,13 +222,25 @@ Tensor tensorfunct::concatImpl(std::span<const Tensor* const> input, int dim) {
  * @brief Concatenates the tensors along specified dimension.
  */
 Tensor tensorfunct::concat(const std::vector<Tensor>& input, int dim) {
-    std::vector<const Tensor*> ptrs;
-    ptrs.reserve(input.size());
+#ifndef NDEBUG
+  if(input.size() < 2) {
+    throw std::invalid_argument("Concat must have at least two tensors");
+  }
+#endif
 
-    for (const auto& t : input) {
-      ptrs.push_back(&t);
-    }
-    return concatImpl(ptrs, dim);
+  if(dim < 0) {
+    dim += input.at(0).getDims().nDims();
+    assert(dim >= 0);
+  }
+
+  std::vector<const Tensor*> ptrs;
+  ptrs.reserve(input.size());
+
+  for (const auto& t : input) {
+    ptrs.push_back(&t);
+  }
+
+  return concatImpl(ptrs, dim);
 }
 
 void tensorfunct::ToZeros(Tensor& t) noexcept {

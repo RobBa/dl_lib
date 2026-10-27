@@ -13,7 +13,6 @@
 #pragma once
 
 #include "tensor.h"
-#include "shared/initializers.h"
 #include "utility/utils.h"
 
 #include <span>
@@ -54,7 +53,7 @@ namespace tensorfunct { // class name acts as namespace for us
   DLLIB_API void ToOnes(Tensor& t) noexcept;
   DLLIB_API void ToGaussian(Tensor& t, ftype stddev);
 
-  Tensor concatImpl(std::span<const Tensor* const> input, int dim); // internal-only, do not expose to outside of BE
+  Tensor concatImpl(std::span<const Tensor* const> input, tensorDim_t dim); // internal-only, do not expose to outside of BE
   DLLIB_API Tensor concat(const std::vector<Tensor>& input, int dim);
 
   // Arithmetics

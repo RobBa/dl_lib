@@ -61,7 +61,7 @@ MultiheadSelfAttn::MultiheadSelfAttn(SelfAttentionType attnType, tensorDim_t nHe
  * @brief Forward of all heads, returns concatenated output.
  */
 Tensor MultiheadSelfAttn::operator()(const Tensor& input, MaskType mask) {
-
+  
 }
 
 /**

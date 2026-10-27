@@ -22,6 +22,17 @@ using namespace std;
  * @brief Autograd enabled version of concat(). For more info read the overload's docstring.
  */
 std::shared_ptr<Tensor> cgraph::concat(const std::vector< std::shared_ptr<Tensor> >& input, int dim) {
+#ifndef NDEBUG
+  if(input.size() < 2) {
+    throw std::invalid_argument("Concat must have at least two tensors");
+  }
+#endif
+
+  if(dim < 0) {
+    dim += input.at(0)->getDims().nDims();
+    assert(dim >= 0);
+  }
+
   std::vector<const Tensor*> ptrs;
   ptrs.reserve(input.size());
 
@@ -37,7 +48,7 @@ std::shared_ptr<Tensor> cgraph::concat(const std::vector< std::shared_ptr<Tensor
                                        );
 
   if(requiresGrad) {
-    res->setCgNode(std::make_shared<cgraph::ConcatNode>(input));
+    res->setCgNode(std::make_shared<cgraph::ConcatNode>(input, dim));
     assert(res->getRequiresGrad());
   }
   

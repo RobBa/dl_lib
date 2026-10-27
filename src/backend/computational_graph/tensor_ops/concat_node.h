@@ -18,9 +18,12 @@
 
 namespace cgraph {
   class DLLIB_API ConcatNode final : public GraphNode {
+    private:
+      const tensorDim_t dim;
+
     public:
-      explicit ConcatNode(std::vector<std::shared_ptr<Tensor>> parents) 
-        : GraphNode(std::move(parents)) {}
+      explicit ConcatNode(std::vector<std::shared_ptr<Tensor>> parents, const tensorDim_t dim) 
+        : GraphNode(std::move(parents)), dim{dim} {}
 
       std::vector<std::shared_ptr<Tensor>> backward(const Tensor& upstreamGrad) override;
   };
